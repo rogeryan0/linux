@@ -496,16 +496,27 @@ xfs_sync_worker(
 					struct xfs_mount, m_sync_work);
 	int		error;
 
-	if (!(mp->m_flags & XFS_MOUNT_RDONLY)) {
-		/* dgc: errors ignored here */
-		if (mp->m_super->s_frozen == SB_UNFROZEN &&
-		    xfs_log_need_covered(mp))
-			error = xfs_fs_log_dummy(mp);
-		else
-			xfs_log_force(mp, 0);
+	/*
+	 * We shouldn't write/force the log if we are in the mount/unmount
+	 * process or on a read only filesystem. The workqueue still needs to be
+	 * active in both cases, however, because it is used for inode reclaim
+	 * during these times.  Use the s_umount semaphore to provide exclusion
+	 * with unmount.
+	 */
+	if (down_read_trylock(&mp->m_super->s_umount)) {
+		if (!(mp->m_flags & XFS_MOUNT_RDONLY)) {
+			/* dgc: errors ignored here */
+			if (mp->m_super->s_frozen == SB_UNFROZEN &&
+			    xfs_log_need_covered(mp))
+				error = xfs_fs_log_dummy(mp);
+			else
+				xfs_log_force(mp, 0);
 
-		/* start pushing all the metadata that is currently dirty */
-		xfs_ail_push_all(mp->m_ail);
+			/* start pushing all the metadata that is currently
+			 * dirty */
+			xfs_ail_push_all(mp->m_ail);
+		}
+		up_read(&mp->m_super->s_umount);
 	}
 
 	/* queue us up again */
@@ -523,14 +534,6 @@ static void
 xfs_syncd_queue_reclaim(
 	struct xfs_mount        *mp)
 {
-
-	/*
-	 * We can have inodes enter reclaim after we've shut down the syncd
-	 * workqueue during unmount, so don't allow reclaim work to be queued
-	 * during unmount.
-	 */
-	if (!(mp->m_super->s_flags & MS_ACTIVE))
-		return;
 
 	rcu_read_lock();
 	if (radix_tree_tagged(&mp->m_perag_tree, XFS_ICI_RECLAIM_TAG)) {
@@ -600,7 +603,6 @@ xfs_syncd_init(
 	INIT_DELAYED_WORK(&mp->m_reclaim_work, xfs_reclaim_worker);
 
 	xfs_syncd_queue_sync(mp);
-	xfs_syncd_queue_reclaim(mp);
 
 	return 0;
 }

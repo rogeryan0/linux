@@ -11,6 +11,7 @@
 /*
  * This handles all read/write requests to block devices
  */
+#include <linux/version.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/backing-dev.h>
@@ -34,6 +35,10 @@
 #include <trace/events/block.h>
 
 #include "blk.h"
+
+#ifdef CONFIG_BUFFALO_USE_KERNEVNT // BUFFALO_PLATFORM
+#include <buffalo/kernevnt.h>
+#endif // CONFIG_BUFFALO_USE_KERNEVNT
 
 EXPORT_TRACEPOINT_SYMBOL_GPL(block_bio_remap);
 EXPORT_TRACEPOINT_SYMBOL_GPL(block_rq_remap);
@@ -1554,6 +1559,34 @@ generic_make_request_checks(struct bio *bio)
 		goto end_io;
 	}
 
+#ifdef CONFIG_BUFFALO_IOERRS // BUFFALO_PLATFORM
+		if (bio->bi_bdev->bd_disk->limit_io_errors > 0 &&
+		    (bio->bi_bdev->bd_disk->io_errors > bio->bi_bdev->bd_disk->limit_io_errors)){
+			//printk("%s:io error limit\n",bdevname(bio->bi_bdev, b));
+			set_bit(QUEUE_FLAG_DEAD, &q->queue_flags);
+#ifdef CONFIG_BUFFALO_USE_KERNEVNT
+			kernevnt_DriveDead(bdevname(bio->bi_bdev, b));
+#endif // CONFIG_BUFFALO_USE_KERNEVNT
+			goto end_io;
+		}
+#endif // CONFIG_BUFFALO_IOERRS
+#ifdef CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK_DEBUG
+		struct hd_struct *p = bio->bi_bdev->bd_part;
+		struct fail_sector *fail_sect;
+
+		if (p && p->fail_sects.next && p->fail_sects.prev &&
+		    !list_empty(&p->fail_sects)) {
+			list_for_each_entry(fail_sect, &p->fail_sects, list) {
+				if (bio->bi_sector <= fail_sect->pos &&
+				    fail_sect->pos < bio->bi_sector + (bio->bi_size >> 9)) {
+					printk(KERN_NOTICE"pseudo io error by debug func at %llu (%u sects io from %llu)\n",
+					       fail_sect->pos, bio->bi_size >> 9, bio->bi_sector);
+					goto end_io;
+				}
+			}
+		}
+#endif // CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK_DEBUG
+
 	part = bio->bi_bdev->bd_part;
 	if (should_fail_request(part, bio->bi_size) ||
 	    should_fail_request(&part_to_disk(part)->part0,
@@ -2136,6 +2169,25 @@ bool blk_update_request(struct request *req, int error, unsigned int nr_bytes)
 		       error_type, req->rq_disk ? req->rq_disk->disk_name : "?",
 		       (unsigned long long)blk_rq_pos(req));
 	}
+
+#ifdef CONFIG_BUFFALO_IOERRS // BUFFALO_PLATFORM
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,36)
+	if (error && !blk_pc_request(req) && req->rq_disk) {
+#else
+	if (error && req->cmd_type != REQ_TYPE_BLOCK_PC && req->rq_disk) {
+#endif
+#ifdef CONFIG_BUFFALO_ERRCNT
+		if (atomic_inc_return(&req->rq_disk->nr_errs) < 0)
+			atomic_set(&req->rq_disk->nr_errs, INT_MAX);
+#endif /* CONFIG_BUFFALO_ERRCNT */
+#ifdef CONFIG_BUFFALO_USE_KERNEVNT
+		kernevnt_IOErr(req->rq_disk->disk_name,
+		    (rq_data_dir(req) == WRITE) ? "WRITE" : "READ",
+		    (unsigned long long)blk_rq_pos(req),
+		    ++req->rq_disk->io_errors);
+#endif // CONFIG_BUFFALO_USE_KERNEVNT
+	}
+#endif /* CONFIG_BUFFALO_IOERRS */
 
 	blk_account_io_completion(req, nr_bytes);
 

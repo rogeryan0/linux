@@ -51,6 +51,13 @@
 #define gadget_is_s3c_hsotg(g)		(!strcmp("s3c-hsotg", (g)->name))
 #define gadget_is_s3c_hsudc(g)		(!strcmp("s3c-hsudc", (g)->name))
 
+#ifdef CONFIG_USB_GADGET_MRVL
+#define gadget_is_mrvl(g)    (!strcmp("mv_udc", (g)->name))
+#else
+#define gadget_is_mrvl(g)    0
+#endif
+
+
 /**
  * usb_gadget_controller_number - support bcdDevice id convention
  * @gadget: the controller being driven
@@ -92,6 +99,8 @@ static inline int usb_gadget_controller_number(struct usb_gadget *gadget)
 		return 0x18;
 	else if (gadget_is_fsl_usb2(gadget))
 		return 0x19;
+	else if (gadget_is_mrvl(gadget))
+		return 0x1a;
 	else if (gadget_is_amd5536udc(gadget))
 		return 0x20;
 	else if (gadget_is_m66592(gadget))

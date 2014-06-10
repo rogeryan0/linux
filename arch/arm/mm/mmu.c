@@ -1121,6 +1121,7 @@ void __init paging_init(struct machine_desc *mdesc)
 
 	/* allocate the zero page. */
 	zero_page = early_alloc(PAGE_SIZE);
+	printk("%s: zero_page=0x%p\n", __func__, zero_page);
 
 	bootmem_init();
 

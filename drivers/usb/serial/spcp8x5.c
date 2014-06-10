@@ -331,6 +331,15 @@ static void spcp8x5_init_termios(struct tty_struct *tty)
 	tty->termios->c_ospeed = 115200;
 }
 
+static void spcp8x5_init_termios(struct tty_struct *tty)
+{
+	/* for the 1st time call this function */
+	*(tty->termios) = tty_std_termios;
+	tty->termios->c_cflag = B115200 | CS8 | CREAD | HUPCL | CLOCAL;
+	tty->termios->c_ispeed = 115200;
+	tty->termios->c_ospeed = 115200;
+}
+
 /* set the serial param for transfer. we should check if we really need to
  * transfer. if we set flow control we should do this too. */
 static void spcp8x5_set_termios(struct tty_struct *tty,

@@ -111,6 +111,16 @@
 #endif
 #include <net/secure_seq.h>
 
+#ifdef CONFIG_MV_ETH_NFP
+extern int fp_rule_db_init(u32 db_size);
+extern int fp_arp_db_init(u32 db_size);
+extern int fp_routing_info_set(u32 src_ip, u32 dst_ip, u32 def_gtw_ip, 
+				int ingress_if, int egress_if);
+extern int fp_routing_info_delete(u32 src_ip, u32 dst_ip);
+extern int fp_is_route_confirmed(u32 src_ip, u32 dst_ip);
+extern int fp_disable_flag;
+#endif /* CONFIG_MV_ETH_NFP */
+
 #define RT_FL_TOS(oldflp4) \
 	((oldflp4)->flowi4_tos & (IPTOS_RT_MASK | RTO_ONLINK))
 
@@ -658,6 +668,13 @@ static inline int ip_rt_proc_init(void)
 
 static inline void rt_free(struct rtable *rt)
 {
+#ifdef CONFIG_MV_ETH_NFP
+	if ( !fp_disable_flag &&
+	     !(rt->rt_flags & (RTCF_MULTICAST | RTCF_BROADCAST | RTCF_LOCAL | RTCF_REJECT))) {
+		fp_routing_info_delete(rt->rt_src, rt->rt_dst);
+	}
+#endif /* CONFIG_MV_ETH_NFP */
+
 	call_rcu_bh(&rt->dst.rcu_head, dst_rcu_free);
 }
 
@@ -688,6 +705,14 @@ static int rt_may_expire(struct rtable *rth, unsigned long tmo1, unsigned long t
 
 	if (atomic_read(&rth->dst.__refcnt))
 		goto out;
+
+#ifdef CONFIG_MV_ETH_NFP
+	if ( !fp_disable_flag &&
+	     !(rth->rt_flags & (RTCF_MULTICAST | RTCF_BROADCAST | RTCF_LOCAL | RTCF_REJECT))) {
+		if (fp_is_route_confirmed(rth->rt_src, rth->rt_dst))
+			rth->dst.lastuse = jiffies;
+	}
+#endif /* CONFIG_MV_ETH_NFP */
 
 	age = jiffies - rth->dst.lastuse;
 	if ((age <= tmo1 && !rt_fast_clean(rth)) ||
@@ -960,6 +985,10 @@ static void rt_emergency_hash_rebuild(struct net *net)
 {
 	if (net_ratelimit())
 		printk(KERN_WARNING "Route hash chain too long!\n");
+#ifdef CONFIG_MV_ETH_NFP
+	/* If NFP enabled doesn't flush */
+	if(fp_disable_flag)
+#endif /* CONFIG_MV_ETH_NFP */
 	rt_cache_invalidate(net);
 }
 
@@ -2205,6 +2234,15 @@ static int __mkroute_input(struct sk_buff *skb,
 	rt_set_nexthop(rth, NULL, res, res->fi, res->type, itag);
 
 	*result = rth;
+
+#ifdef CONFIG_MV_ETH_NFP
+	if ( !fp_disable_flag &&
+	     !(rth->rt_flags & (RTCF_MULTICAST | RTCF_BROADCAST | RTCF_LOCAL | RTCF_REJECT))) {
+		fp_routing_info_set(	rth->rt_src, rth->rt_dst, 
+					rth->rt_gateway, rth->rt_iif, rth->dst.dev->ifindex);
+	}
+#endif /* CONFIG_MV_ETH_NFP */
+
 	err = 0;
  cleanup:
 	return err;
@@ -3496,6 +3534,12 @@ int __init ip_rt_init(void)
 	register_pernet_subsys(&sysctl_route_ops);
 #endif
 	register_pernet_subsys(&rt_genid_ops);
+
+#ifdef CONFIG_MV_ETH_NFP
+	fp_rule_db_init(rt_hash_mask + 1);
+	fp_arp_db_init(rt_hash_mask + 1);	
+#endif /* CONFIG_MV_ETH_NFP */
+
 	return rc;
 }
 

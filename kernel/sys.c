@@ -405,6 +405,11 @@ EXPORT_SYMBOL_GPL(kernel_halt);
  */
 void kernel_power_off(void)
 {
+#if defined(CONFIG_BUFFALO_USE_UPS)
+	extern void BuffaloUps_ShutdownUps(void);
+
+	BuffaloUps_ShutdownUps();
+#endif
 	kernel_shutdown_prepare(SYSTEM_POWER_OFF);
 	if (pm_power_off_prepare)
 		pm_power_off_prepare();

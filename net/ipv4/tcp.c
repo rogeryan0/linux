@@ -277,6 +277,13 @@
 #include <asm/uaccess.h>
 #include <asm/ioctls.h>
 
+/* 2012/07/09 t.saito add for patch - 3.3.6 */
+/* that is "change tcp_adv_win_scale and tcp_rmem[2]" */
+#if 1 
+#define PATCH_3_3_6_TCP_C
+#endif
+/* 2012/07/09 t.saito add end */
+
 int sysctl_tcp_fin_timeout __read_mostly = TCP_FIN_TIMEOUT;
 
 struct percpu_counter tcp_orphan_count;
@@ -3240,7 +3247,11 @@ void __init tcp_init(void)
 {
 	struct sk_buff *skb = NULL;
 	unsigned long limit;
+#ifdef PATCH_3_3_6_TCP_C
+	int max_rshare, max_wshare, cnt;
+#else
 	int max_share, cnt;
+#endif
 	unsigned int i;
 	unsigned long jiffy = jiffies;
 
@@ -3300,16 +3311,26 @@ void __init tcp_init(void)
 	tcp_init_mem(&init_net);
 	/* Set per-socket limits to no more than 1/128 the pressure threshold */
 	limit = nr_free_buffer_pages() << (PAGE_SHIFT - 7);
+#ifdef PATCH_3_3_6_TCP_C
+	max_wshare = min(4UL*1024*1024, limit);
+	max_rshare = min(6UL*1024*1024, limit);
+#else
 	max_share = min(4UL*1024*1024, limit);
-
+#endif
 	sysctl_tcp_wmem[0] = SK_MEM_QUANTUM;
 	sysctl_tcp_wmem[1] = 16*1024;
+#ifdef PATCH_3_3_6_TCP_C
+	sysctl_tcp_wmem[2] = max(64*1024, max_wshare);
+#else
 	sysctl_tcp_wmem[2] = max(64*1024, max_share);
-
+#endif
 	sysctl_tcp_rmem[0] = SK_MEM_QUANTUM;
 	sysctl_tcp_rmem[1] = 87380;
+#ifdef PATCH_3_3_6_TCP_C
+	sysctl_tcp_rmem[2] = max(87380, max_rshare);
+#else
 	sysctl_tcp_rmem[2] = max(87380, max_share);
-
+#endif
 	printk(KERN_INFO "TCP: Hash tables configured "
 	       "(established %u bind %u)\n",
 	       tcp_hashinfo.ehash_mask + 1, tcp_hashinfo.bhash_size);

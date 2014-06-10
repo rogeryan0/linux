@@ -49,6 +49,18 @@
 #include <linux/io.h>
 #include <linux/mtd/partitions.h>
 
+#if defined(CONFIG_BUFFALO_PLATFORM)
+  #define BIP(x,fmt...) printk(x,##fmt)
+  #if defined(CONFIG_BUFFALO_DEBUG)
+    #define BDP(x,fmt...)       printk(x,##fmt)
+  #else
+    #define BDP(x,fmt...)
+  #endif
+#else
+  #define BIP(x,fmt...)
+  #define BDP(x,fmt...)
+#endif
+
 /* Define default oob placement schemes for large and small page devices */
 static struct nand_ecclayout nand_oob_8 = {
 	.eccbytes = 3,
@@ -3105,7 +3117,25 @@ ident_done:
 			   busw ? 16 : 8);
 		return ERR_PTR(-EINVAL);
 	}
+#if defined(CONFIG_BUFFALO_NOT_IMPLEMENTED_NAND_FLASH_DETECT_FIX)
+	else {
+		int mvBoardNandWidthGet(void);
+		int devWidth = mvBoardNandWidthGet();
+        int buswidth = (busw)? 2 : 1;
+		if (devWidth < 0 || buswidth != devWidth) {
+			pr_info("NAND device: Manufacturer ID:"
+					" 0x%02x, Chip ID: 0x%02x (%s %s)\n", *maf_id,
+					*dev_id, nand_manuf_ids[maf_idx].name, mtd->name);
+			pr_warn("NAND bus width %d instead %d bit\n",
+					devWidth*8, buswidth*8);
+			return ERR_PTR(-EINVAL);
+		}
+	}
 
+	if (nand_manuf_ids[maf_idx].id == 0x0) { /* Mafufacture Unknown */
+		return ERR_PTR(-EINVAL);
+	}
+#endif
 	/* Calculate the address shift from the page size */
 	chip->page_shift = ffs(mtd->writesize) - 1;
 	/* Convert chipsize to number of pages per chip -1 */

@@ -63,6 +63,12 @@
 #include <asm/div64.h>
 #include "internal.h"
 
+/* 2012/07/08 t.saito add for performance */
+#if 1
+#define CHANGE_PAGE_ALLOC_C
+#endif
+/* 2012/07/08 t.saito add end */
+
 #ifdef CONFIG_USE_PERCPU_NUMA_NODE_ID
 DEFINE_PER_CPU(int, numa_node);
 EXPORT_PER_CPU_SYMBOL(numa_node);
@@ -4983,9 +4989,21 @@ void setup_per_zone_wmarks(void)
 			 */
 			zone->watermark[WMARK_MIN] = tmp;
 		}
-
+#ifdef CHANGE_PAGE_ALLOC_C
+	if (!strstr(zone->name, "Normal") || !tmp) {
+		/* DMA, DMA32, HighMem */
 		zone->watermark[WMARK_LOW]  = min_wmark_pages(zone) + (tmp >> 2);
 		zone->watermark[WMARK_HIGH] = min_wmark_pages(zone) + (tmp >> 1);
+	} else {
+		/* Normal */
+		zone->watermark[WMARK_LOW]  = min_wmark_pages(zone) + 1024;		/* 4 + 4 = 8MB */
+		zone->watermark[WMARK_HIGH] = min_wmark_pages(zone) + 3072;		/* 4 + 12 = 16MB */
+	}
+#else
+		zone->watermark[WMARK_LOW]  = min_wmark_pages(zone) + (tmp >> 2);
+		zone->watermark[WMARK_HIGH] = min_wmark_pages(zone) + (tmp >> 1);
+#endif
+
 		setup_zone_migrate_reserve(zone);
 		spin_unlock_irqrestore(&zone->lock, flags);
 	}

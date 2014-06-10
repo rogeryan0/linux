@@ -976,6 +976,74 @@ static ssize_t disk_discard_alignment_show(struct device *dev,
 	return sprintf(buf, "%d\n", queue_discard_alignment(disk->queue));
 }
 
+#ifdef CONFIG_BUFFALO_IOERRS // BUFFALO_PLATFORM
+static ssize_t disk_io_error_show(struct device *dev,
+				  struct device_attribute *attr, char *buf)
+{
+	struct gendisk *disk = dev_to_disk(dev);
+
+	return sprintf(buf, "%u\n", disk->io_errors);
+}
+
+static ssize_t disk_limit_io_error_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	struct gendisk *disk = dev_to_disk(dev);
+
+	return sprintf(buf, "%u\n", disk->limit_io_errors);
+}
+
+#define STORE_FUNCTION(__FUNC, __PTR, MIN, MAX, __CONV)			\
+ssize_t __FUNC(struct device *dev, struct device_attribute *attr,	\
+	       const char *buf, size_t count)				\
+{									\
+	struct gendisk *disk = dev_to_disk(dev);			\
+	unsigned int __data;						\
+	char *p = (char *) buf;						\
+									\
+	__data = simple_strtoul(p, &p, 10);				\
+	if (__data < (MIN))						\
+		__data = (MIN);						\
+	else if (__data > (MAX))					\
+		__data = (MAX);						\
+	if (__CONV)							\
+		*(__PTR) = msecs_to_jiffies(__data);			\
+	else								\
+		*(__PTR) = __data;					\
+	return count;							\
+}
+
+static STORE_FUNCTION(disk_io_error_store, &disk->io_errors, 0, UINT_MAX, 0)
+static STORE_FUNCTION(disk_limit_io_error_store, &disk->limit_io_errors, 0, UINT_MAX, 0)
+
+#ifdef CONFIG_BUFFALO_ERRCNT
+static ssize_t disk_nr_errs_show(struct device *dev,
+				 struct device_attribute *attr, char *buf)
+{
+	struct gendisk *disk = dev_to_disk(dev);
+
+	return sprintf(buf, "%u\n", disk->nr_errs);
+}
+
+static ssize_t disk_nr_errs_store(struct device *dev,
+				  struct device_attribute *attr,
+				  const char *buf, size_t count)
+{
+	struct gendisk *disk = dev_to_disk(dev);
+	long n;
+	char *e, *p = (char *) buf;
+
+	n = simple_strtoul(p, &e, 10);
+	if (*p && (*e == 0 || *e == '\n') && n >= 0 ) {
+		atomic_set(&disk->nr_errs, n);
+		return count;
+	}
+	return -EINVAL;
+}
+#endif /* CONFIG_BUFFALO_ERRCNT */
+#endif /* CONFIG_BUFFALO_IOERRS */
+
 static DEVICE_ATTR(range, S_IRUGO, disk_range_show, NULL);
 static DEVICE_ATTR(ext_range, S_IRUGO, disk_ext_range_show, NULL);
 static DEVICE_ATTR(removable, S_IRUGO, disk_removable_show, NULL);
@@ -996,6 +1064,13 @@ static struct device_attribute dev_attr_fail_timeout =
 	__ATTR(io-timeout-fail,  S_IRUGO|S_IWUSR, part_timeout_show,
 		part_timeout_store);
 #endif
+#ifdef CONFIG_BUFFALO_IOERRS // BUFFALO_PLATFORM
+static DEVICE_ATTR(io_errors, S_IRUGO|S_IWUSR, disk_io_error_show, disk_io_error_store);
+static DEVICE_ATTR(limit_io_errors, S_IRUGO|S_IWUSR, disk_limit_io_error_show, disk_limit_io_error_store);
+#ifdef CONFIG_BUFFALO_ERRCNT
+static DEVICE_ATTR(nr_errs, S_IRUGO|S_IWUSR, disk_nr_errs_show, disk_nr_errs_store);
+#endif /* CONFIG_BUFFALO_ERRCNT */
+#endif /* CONFIG_BUFFALO_IOERRS */
 
 static struct attribute *disk_attrs[] = {
 	&dev_attr_range.attr,
@@ -1014,6 +1089,13 @@ static struct attribute *disk_attrs[] = {
 #ifdef CONFIG_FAIL_IO_TIMEOUT
 	&dev_attr_fail_timeout.attr,
 #endif
+#ifdef CONFIG_BUFFALO_IOERRS // BUFFALO_PLATFORM
+	&dev_attr_io_errors.attr,
+	&dev_attr_limit_io_errors.attr,
+#ifdef CONFIG_BUFFALO_ERRCNT
+	&dev_attr_nr_errs.attr,
+#endif /* CONFIG_BUFFALO_ERRCNT */
+#endif /* CONFIG_BUFFALO_IOERRS */
 	NULL
 };
 
@@ -1269,6 +1351,9 @@ struct gendisk *alloc_disk_node(int minors, int node_id)
 		hd_ref_init(&disk->part0);
 
 		disk->minors = minors;
+#ifdef CONFIG_BUFFALO_ERRCNT
+		atomic_set(&disk->nr_errs, 0);
+#endif /* CONFIG_BUFFALO_ERRCNT */
 		rand_initialize_disk(disk);
 		disk_to_dev(disk)->class = &block_class;
 		disk_to_dev(disk)->type = &disk_type;

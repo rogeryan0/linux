@@ -296,12 +296,29 @@ static void raid1_end_read_request(struct bio *bio, int error)
 	struct r1bio *r1_bio = bio->bi_private;
 	int mirror;
 	struct r1conf *conf = r1_bio->mddev->private;
+#ifdef CONFIG_BUFFALO_ERRCNT
+	struct md_rdev *rdev;
+#endif
 
 	mirror = r1_bio->read_disk;
 	/*
 	 * this branch is our 'one mirror IO has finished' event handler:
 	 */
 	update_head_pos(mirror, r1_bio);
+
+#ifdef CONFIG_BUFFALO_ERRCNT
+	rcu_read_lock();
+	if ((rdev = rcu_dereference(conf->mirrors[r1_bio->read_disk].rdev)) !=
+	    NULL) {
+		int maxerr_cnt = atomic_read(&conf->mddev->maxerr_cnt);
+
+		if (atomic_read(&rdev->bdev->bd_disk->nr_errs) > maxerr_cnt &&
+		    maxerr_cnt != -1)
+			if (conf->raid_disks - r1_bio->mddev->degraded != 1)
+				goto do_degrade;
+	}
+	rcu_read_unlock();
+#endif /* CONFIG_BUFFALO_ERRCNT */
 
 	if (uptodate)
 		set_bit(R1BIO_Uptodate, &r1_bio->state);
@@ -326,6 +343,9 @@ static void raid1_end_read_request(struct bio *bio, int error)
 		 * oops, read error:
 		 */
 		char b[BDEVNAME_SIZE];
+#ifdef CONFIG_BUFFALO_ERRCNT
+do_degrade:
+#endif /* CONFIG_BUFFALO_ERRCNT */
 		printk_ratelimited(
 			KERN_ERR "md/raid1:%s: %s: "
 			"rescheduling sector %llu\n",
@@ -1756,6 +1776,24 @@ static void sync_request_write(struct mddev *mddev, struct r1bio *r1_bio)
 	if (test_bit(MD_RECOVERY_REQUESTED, &mddev->recovery))
 		if (process_checks(r1_bio) < 0)
 			return;
+#ifdef CONFIG_BUFFALO_ERRCNT
+	rcu_read_lock();
+	for (i = 0; i < mddev->raid_disks; i++) {
+		struct md_rdev *rdev = rcu_dereference(conf->mirrors[i].rdev);
+		int maxerr_cnt = atomic_read(&mddev->maxerr_cnt);
+
+		if (r1_bio->bios[i]->bi_end_io != end_sync_read ||
+		    rdev == NULL)
+			continue;
+
+		if (atomic_read(&rdev->bdev->bd_disk->nr_errs) > maxerr_cnt &&
+		    maxerr_cnt != -1)
+			if (!test_bit(Faulty, &conf->mirrors[i].rdev->flags))
+				md_error(mddev, conf->mirrors[i].rdev);
+	}
+	rcu_read_unlock();
+#endif /* CONFIG_BUFFALO_ERRCNT */
+
 	/*
 	 * schedule writes
 	 */
@@ -2044,6 +2082,17 @@ static void handle_read_error(struct r1conf *conf, struct r1bio *r1_bio)
 		freeze_array(conf);
 		fix_read_error(conf, r1_bio->read_disk,
 			       r1_bio->sector, r1_bio->sectors);
+#ifdef CONFIG_BUFFALO_ERRCNT
+				rdev = conf->mirrors[r1_bio->read_disk].rdev;
+				if (rdev != NULL) {
+					int maxerr_cnt =
+					    atomic_read(&mddev->maxerr_cnt);
+
+					if (atomic_read(&rdev->bdev->bd_disk->nr_errs) > maxerr_cnt &&
+					    maxerr_cnt != -1)
+						md_error(mddev, rdev);
+				}
+#endif /* CONFIG_BUFFALO_ERRCNT */
 		unfreeze_array(conf);
 	} else
 		md_error(mddev, conf->mirrors[r1_bio->read_disk].rdev);

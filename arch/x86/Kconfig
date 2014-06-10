@@ -973,6 +973,48 @@ config I8K
 	  Say Y if you intend to run this kernel on a Dell Inspiron 8000.
 	  Say N otherwise.
 
+menu "BUFFALO Features"
+
+config BUFFALO_PLATFORM
+	bool "BUFFALO_PLATFORM"
+	---help---
+	  Hardware/Software is BUFFALO platfrom
+
+config BUFFALO_MATSU_PLATFORM
+	bool "MATSU_PLATFORM"
+	---help---
+	  Enable hdd control driver / button control driver for matsu platform.
+
+config BUFFALO_MATSU_USE_EVT_BOARD
+	bool "MATSU_EVT_BOARD"
+	depends on BUFFALO_MATSU_PLATFORM
+	---help---
+	  EVT board and DVT board has difference for GPIO pin.
+	  If this value set to enable, use EVT GPIO settings.
+
+config BUFFALO_KIRI_PLATFORM
+	bool "KIRI_PLATFORM"
+	---help---
+	  Enable hdd control driver / button control driver for kiri platform.
+
+config BUFFALO_USE_MD_KERNEVNT
+	bool "BUFFALO_USE_MD_KERNEVNT"
+	depends on BUFFALO_PLATFORM
+	---help---
+	  Use kernelevent of md driver.
+
+config BUFFALO_ERRCNT
+	bool "BUFFALO_ERRCNT"
+	---help---
+	disk I/O error counter and auto MD degrading.	 
+
+config BUFFALO_USE_UPS
+	bool "BUFFALO_USE_UPS"
+	---help---
+	Enable kernel support of ups shutdown.
+
+endmenu
+
 config X86_REBOOTFIXUPS
 	bool "Enable X86 board specific fixups for reboot"
 	depends on X86_32

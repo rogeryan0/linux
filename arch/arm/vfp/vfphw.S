@@ -294,7 +294,11 @@ ENDPROC(vfp_get_double)
 ENTRY(vfp_put_double)
 	tbl_branch r2, r3, #3
 	.irp	dr,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
-1:	fmdrr	d\dr, r0, r1
+ #ifdef __ARMEB__
+ 	fmdrr	d\dr, r1, r0
+ #else
+	fmdrr	d\dr, r0, r1
+#endif
 	mov	pc, lr
 	.org	1b + 8
 	.endr

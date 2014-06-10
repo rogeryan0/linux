@@ -101,7 +101,7 @@
 #endif	/* CONFIG_CPU_V6 */
 
 #else
-#include <mach/debug-macro.S>
+#include <mach/debug-macro.S>    
 #endif	/* CONFIG_DEBUG_ICEDCC */
 
 #ifdef CONFIG_MMU

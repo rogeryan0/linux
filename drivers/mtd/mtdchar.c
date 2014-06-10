@@ -37,6 +37,10 @@
 
 #include <asm/uaccess.h>
 
+#ifdef CONFIG_BUFFALO_USE_MTD_KERNEVNT // BUFFALO_PLATFORM
+ #include <buffalo/kernevnt.h>
+#endif // CONFIG_BUFFALO_USE_MTD_KERNEVNT
+
 #define MTD_INODE_FS_MAGIC 0x11307854
 static DEFINE_MUTEX(mtd_mutex);
 static struct vfsmount *mtd_inode_mnt __read_mostly;
@@ -128,6 +132,12 @@ static int mtdchar_open(struct inode *inode, struct file *file)
 		goto out;
 	}
 
+#ifdef CONFIG_BUFFALO_USE_MTD_KERNEVNT // BUFFALO_PLATFORM
+	if (file->f_mode & 2){
+		// write access
+		kernevnt_FlashUpdate(1);
+	}
+#endif // CONFIG_BUFFALO_USE_MTD_KERNEVNT
 	mfi = kzalloc(sizeof(*mfi), GFP_KERNEL);
 	if (!mfi) {
 		iput(mtd_ino);
@@ -160,6 +170,11 @@ static int mtdchar_close(struct inode *inode, struct file *file)
 	iput(mfi->ino);
 
 	put_mtd_device(mtd);
+#ifdef CONFIG_BUFFALO_USE_MTD_KERNEVNT // BUFFALO_PLATFORM
+	if (file->f_mode & 2)
+		// write access
+		kernevnt_FlashUpdate(0); /* __LS_COMMENT__ BUFFALO add 2005.3.10 */     
+#endif // CONFIG_BUFFALO_USE_MTD_KERNEVNT
 	file->private_data = NULL;
 	kfree(mfi);
 

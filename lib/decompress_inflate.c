@@ -31,6 +31,14 @@ static int INIT nofill(void *buffer, unsigned int len)
 	return -1;
 }
 
+//return decompress(input, len, 
+//NULL, 
+//NULL, 
+//output, 
+//NULL, 
+//error);
+unsigned int debug_gunzip_total_out;
+
 /* Included from initramfs et al code */
 STATIC int INIT gunzip(unsigned char *buf, int len,
 		       int(*fill)(void*, unsigned int),
@@ -43,12 +51,19 @@ STATIC int INIT gunzip(unsigned char *buf, int len,
 	int rc;
 	size_t out_len;
 
+	//putstr("gunzip");
+
 	rc = -1;
 	if (flush) {
 		out_len = 0x8000; /* 32 K */
 		out_buf = malloc(out_len);
 	} else {
-		out_len = 0x7fffffff; /* no limit */
+#if 0
+		//out_len = 0x7fffffff; /* no limit */
+#else
+		//out_len = 0x00500000 - 0x00008000;  uncompression error
+		out_len = 0x00700000 - 0x00008000;
+#endif
 	}
 	if (!out_buf) {
 		error("Out of memory while allocating output buffer");
@@ -177,6 +192,7 @@ gunzip_nomem2:
 	if (flush)
 		free(out_buf);
 gunzip_nomem1:
+	debug_gunzip_total_out = strm->total_out;
 	return rc; /* returns Z_OK (0) if successful */
 }
 

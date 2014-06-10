@@ -857,6 +857,7 @@ static bool parse_ntfs_boot_sector(ntfs_volume *vol, const NTFS_BOOT_SECTOR *b)
 	}
 	vol->nr_clusters = ll;
 	ntfs_debug("vol->nr_clusters = 0x%llx", (long long)vol->nr_clusters);
+#ifndef CONFIG_BUFFALO_NTFS_CPU32_FIX
 	/*
 	 * On an architecture where unsigned long is 32-bits, we restrict the
 	 * volume size to 2TiB (2^41). On a 64-bit architecture, the compiler
@@ -872,6 +873,26 @@ static bool parse_ntfs_boot_sector(ntfs_volume *vol, const NTFS_BOOT_SECTOR *b)
 			return false;
 		}
 	}
+#else /* CONFIG_BUFFALO_NTFS_CPU32_FIX */
+	/*
+	 * On an architecture where unsigned long is 32-bits, we restrict the
+	 * volume size to 2TiB (2^41) when cluster size 512byte, upto 16TiB (2^44) 
+     * when cluster size 4096byte. On a 64-bit architecture, the compiler
+	 * will hopefully optimize the whole check away.
+	 */
+	if (sizeof(unsigned long) < 8) {
+		int shift = 41 + (vol->cluster_size_bits - 9); /* 512byte is (2^9)*/
+		if ((ll << vol->cluster_size_bits) >= (1ULL << shift)) {
+			ntfs_error(vol->sb, "Volume size (%lluTiB) is too "
+					"large for this architecture.  "
+					"Maximum supported is %dTiB.  Sorry.",
+					(unsigned long long)ll >> (40 -
+					vol->cluster_size_bits),
+					16 >> (44 - shift));
+			return false;
+		}
+	}
+#endif /* CONFIG_BUFFALO_NTFS_CPU32_FIX */
 	ll = sle64_to_cpu(b->mft_lcn);
 	if (ll >= vol->nr_clusters) {
 		ntfs_error(vol->sb, "MFT LCN (%lli, 0x%llx) is beyond end of "

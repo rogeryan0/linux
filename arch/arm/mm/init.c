@@ -164,6 +164,7 @@ static void __init arm_bootmem_init(unsigned long start_pfn,
 	boot_pages = bootmem_bootmap_pages(end_pfn - start_pfn);
 	bitmap = memblock_alloc_base(boot_pages << PAGE_SHIFT, L1_CACHE_BYTES,
 				__pfn_to_phys(end_pfn));
+	printk("%s: boot_pages=0x%x bitmap=0x%x\n", __func__, boot_pages, bitmap);
 
 	/*
 	 * Initialise the bootmem allocator, handing the

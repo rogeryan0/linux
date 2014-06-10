@@ -11,6 +11,13 @@ static int do_sched_rt_period_timer(struct rt_bandwidth *rt_b, int overrun);
 
 struct rt_bandwidth def_rt_bandwidth;
 
+#ifdef CONFIG_MV_REAL_TIME
+int mv_task_has_rt_policy(struct task_struct *p)
+{
+	return task_has_rt_policy(p);
+}
+#endif
+
 static enum hrtimer_restart sched_rt_period_timer(struct hrtimer *timer)
 {
 	struct rt_bandwidth *rt_b =

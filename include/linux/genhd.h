@@ -66,6 +66,10 @@ enum {
 #include <linux/fs.h>
 #include <linux/workqueue.h>
 
+#ifdef CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK_DEBUG
+#include <linux/list.h>
+#endif // CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK_DEBUG
+
 struct partition {
 	unsigned char boot_ind;		/* 0x80 - active */
 	unsigned char head;		/* starting head */
@@ -96,6 +100,13 @@ struct partition_meta_info {
 	u8 volname[PARTITION_META_INFO_VOLNAMELTH];
 };
 
+#ifdef CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK_DEBUG
+struct fail_sector {
+	sector_t pos;
+	struct list_head list;
+};
+#endif // CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK_DEBUG
+	
 struct hd_struct {
 	sector_t start_sect;
 	sector_t nr_sects;
@@ -117,6 +128,9 @@ struct hd_struct {
 #endif
 	atomic_t ref;
 	struct rcu_head rcu_head;
+#ifdef CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK_DEBUG
+	struct list_head fail_sects;
+#endif // CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK_DEBUG
 };
 
 #define GENHD_FL_REMOVABLE			1
@@ -191,6 +205,14 @@ struct gendisk {
 	struct blk_integrity *integrity;
 #endif
 	int node_id;
+#ifdef CONFIG_BUFFALO_IOERRS // BUFFALO_PLATFORM
+	unsigned io_errors;		/* I/O error counter */
+	unsigned limit_io_errors;	/* I/O error limit */
+#ifdef CONFIG_BUFFALO_ERRCNT
+	atomic_t nr_errs;		/* number of errors occur during
+					 * Block I/O execution. */
+#endif /* CONFIG_BUFFALO_ERRCNT */
+#endif /* CONFIG_BUFFALO_IOERRS */
 };
 
 static inline struct gendisk *part_to_disk(struct hd_struct *part)

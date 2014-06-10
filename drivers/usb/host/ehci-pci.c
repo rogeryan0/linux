@@ -55,6 +55,12 @@ static int ehci_pci_setup(struct usb_hcd *hcd)
 	int			retval;
 
 	switch (pdev->vendor) {
+	case PCI_VENDOR_ID_INTEL:
+		if (pdev->device == 0x27cc) {
+			ehci->broken_periodic = 1;
+			ehci_info(ehci, "using broken periodic workaround\n");
+		}
+		break;
 	case PCI_VENDOR_ID_TOSHIBA_2:
 		/* celleb's companion chip */
 		if (pdev->device == 0x01b5) {
@@ -124,6 +130,9 @@ static int ehci_pci_setup(struct usb_hcd *hcd)
 	if (retval)
 		return retval;
 
+#ifdef CONFIG_BUFFALO_PLATFORM
+    if (hcd->self.controller->bus == &pci_bus_type) {
+#endif /* CONFIG_BUFFALO_PLATFORM */
 	switch (pdev->vendor) {
 	case PCI_VENDOR_ID_NEC:
 		ehci->need_io_watchdog = 0;
@@ -251,6 +260,9 @@ static int ehci_pci_setup(struct usb_hcd *hcd)
 	}
 
 	ehci_reset(ehci);
+#ifdef CONFIG_BUFFALO_PLATFORM
+    }
+#endif /* CONFIG_BUFFALO_PLATFORM */
 
 	/* at least the Genesys GL880S needs fixup here */
 	temp = HCS_N_CC(ehci->hcs_params) * HCS_N_PCC(ehci->hcs_params);
@@ -262,6 +274,9 @@ static int ehci_pci_setup(struct usb_hcd *hcd)
 			HCS_N_PCC(ehci->hcs_params),
 			HCS_N_PORTS(ehci->hcs_params));
 
+#ifdef CONFIG_BUFFALO_PLATFORM
+	    if (hcd->self.controller->bus == &pci_bus_type) {
+#endif /* CONFIG_BUFFALO_PLATFORM */
 		switch (pdev->vendor) {
 		case 0x17a0:		/* GENESYS */
 			/* GL880S: should be PORTS=2 */
@@ -272,8 +287,14 @@ static int ehci_pci_setup(struct usb_hcd *hcd)
 			/* NF4: should be PCC=10 */
 			break;
 		}
+#ifdef CONFIG_BUFFALO_PLATFORM
+	    }
+#endif /* CONFIG_BUFFALO_PLATFORM */
 	}
 
+#ifdef CONFIG_BUFFALO_PLATFORM
+    if (hcd->self.controller->bus == &pci_bus_type) {
+#endif /* CONFIG_BUFFALO_PLATFORM */
 	/* Serial Bus Release Number is at PCI 0x60 offset */
 	pci_read_config_byte(pdev, 0x60, &ehci->sbrn);
 	if (pdev->vendor == PCI_VENDOR_ID_STMICRO
@@ -312,6 +333,9 @@ static int ehci_pci_setup(struct usb_hcd *hcd)
 
 	ehci_port_power(ehci, 1);
 	retval = ehci_pci_reinit(ehci, pdev);
+#ifdef CONFIG_BUFFALO_PLATFORM
+    }
+#endif /* CONFIG_BUFFALO_PLATFORM */
 done:
 	return retval;
 }

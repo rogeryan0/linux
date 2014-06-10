@@ -409,6 +409,21 @@ struct mddev {
 	struct work_struct flush_work;
 	struct work_struct event_work;	/* used by dm to report failure event */
 	void (*sync_super)(struct mddev *mddev, struct md_rdev *rdev);
+#ifdef CONFIG_BUFFALO_ERRCNT
+#define MAXERR_CNT_DEFAULT	1000
+	atomic_t			maxerr_cnt; /* If rdev->bdev->bd_disk->
+						     * nr_err reaches to
+						     * maxerr_cnt excepting
+						     * maxerr_cnt is -1,
+						     * disk will be faulty.
+						     */
+#endif /* CONFIG_BUFFALO_ERRCNT */
+#ifdef CONFIG_BUFFALO_SKIP_RESYNC
+	atomic_t			skip_resync;
+#endif // CONFIG_BUFFALO_SKIP_RESYNC
+#ifdef CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK
+	struct bio			*sb_chain;
+#endif // CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK
 };
 
 

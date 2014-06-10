@@ -269,6 +269,39 @@ config ARCH_INTEGRATOR
 	help
 	  Support for ARM's Integrator platform.
 
+config ARCH_FEROCEON_ORION
+        bool "Feroceon-Orion based"
+	select ARCH_FEROCEON
+        select PCI
+	select GENERIC_TIME
+        select GENERIC_CLOCKEVENTS
+	select MIGHT_HAVE_PCI
+
+config ARCH_FEROCEON_KW
+        bool "Feroceon-KW based"
+	select CPU_FEROCEON
+	select ARCH_FEROCEON
+	select PCI
+	select GENERIC_GPIO
+	select ARCH_REQUIRE_GPIOLIB
+	select GENERIC_TIME
+        select GENERIC_CLOCKEVENTS
+	select ARCH_HAS_CPUFREQ
+	select MIGHT_HAVE_PCI
+
+config ARCH_FEROCEON_MV78XX0
+        bool "Feroceon-MV78XX0 based"
+	select CPU_FEROCEON
+	select ARCH_FEROCEON
+	select PLAT_FEROCEON
+	select PCI
+	select GENERIC_GPIO
+	select ARCH_REQUIRE_GPIOLIB
+	select GENERIC_TIME
+        select GENERIC_CLOCKEVENTS
+	select MIGHT_HAVE_PCI
+
+
 config ARCH_REALVIEW
 	bool "ARM Ltd. RealView family"
 	select ARM_AMBA
@@ -990,6 +1023,10 @@ endchoice
 # Kconfigs may be included either alphabetically (according to the
 # plat- suffix) or along side the corresponding mach-* source.
 #
+if ARCH_FEROCEON_ORION || ARCH_FEROCEON_KW || ARCH_FEROCEON_MV78XX0
+source "arch/arm/plat-feroceon/Kconfig"
+endif
+
 source "arch/arm/mach-at91/Kconfig"
 
 source "arch/arm/mach-bcmring/Kconfig"
@@ -1117,6 +1154,9 @@ config PLAT_ORION
 	select CLKSRC_MMIO
 	select GENERIC_IRQ_CHIP
 	select HAVE_SCHED_CLOCK
+
+config ARCH_FEROCEON
+	bool
 
 config PLAT_PXA
 	bool
@@ -1529,6 +1569,7 @@ config HAVE_ARM_TWD
 
 choice
 	prompt "Memory split"
+	default VMSPLIT_2G if ARCH_FEROCEON_MV78XX0
 	default VMSPLIT_3G
 	help
 	  Select the desired split between kernel and user memory.
@@ -1676,6 +1717,14 @@ config OABI_COMPAT
 
 config ARCH_HAS_HOLES_MEMORYMODEL
 	bool
+	default n
+config REORDER
+        bool "Function reordering"
+        default n
+        help
+          This option enables the toolchain to reorder functions for a more
+          optimal TLB/Icache usage. If you have pretty much any version of binutils,
+          this can increase your kernel build time by roughly one minute.
 
 config ARCH_SPARSEMEM_ENABLE
 	bool
@@ -1722,8 +1771,10 @@ source "mm/Kconfig"
 
 config FORCE_MAX_ZONEORDER
 	int "Maximum zone order" if ARCH_SHMOBILE
+        depends on SA1111 || ARCH_FEROCEON_KW || ARCH_SHMOBILE
 	range 11 64 if ARCH_SHMOBILE
 	default "9" if SA1111
+        default "19" if ARCH_FEROCEON_KW
 	default "11"
 	help
 	  The kernel memory allocator divides physically contiguous memory
@@ -1744,7 +1795,8 @@ config LEDS
 		   ARCH_OMAP || ARCH_P720T || ARCH_PXA_IDP || \
 		   ARCH_SA1100 || ARCH_SHARK || ARCH_VERSATILE || \
 		   ARCH_AT91 || ARCH_DAVINCI || \
-		   ARCH_KS8695 || MACH_RD88F5182 || ARCH_REALVIEW
+		   ARCH_KS8695 || MACH_RD88F5182 || ARCH_FEROCEON || \
+		   ARCH_REALVIEW
 	help
 	  If you say Y here, the LEDs on your machine will be used
 	  to provide useful information about your current system status.
@@ -2153,6 +2205,14 @@ config CPU_FREQ_S3C24XX_DEBUGFS
 	help
 	  Export status information via debugfs.
 
+config CPU_FREQ_FEROCEON_KW
+	tristate "CPUfreq driver for Kirkwood SoC"
+	depends on CPU_FREQ && ARCH_FEROCEON_KW
+	default n
+	help
+	  This enables the CPUfreq driver for Kirkwood SoC.
+
+	  If in doubt, say N.
 endif
 
 source "drivers/cpuidle/Kconfig"
@@ -2213,6 +2273,18 @@ config VFP
 
 	  Say N if your target does not have VFP hardware.
 
+config VFP_FASTVFP
+        bool "FastVFP"
+	depends on VFP
+        help
+          Say Y here to include the FAST Vector Floating Point in the kernel.
+	  This means the VFP co-processor runs in a determinable time without 
+	  support code assistance, regardless of the characteristics of the input data. 
+	  In RunFast mode, no user exception traps are available.
+
+	  It should be sufficient for most programs. It may be not suitable
+	  for scientific calculations, but you have to check this for yourself.
+
 config VFPv3
 	bool
 	depends on VFP
@@ -2271,3 +2343,5 @@ source "security/Kconfig"
 source "crypto/Kconfig"
 
 source "lib/Kconfig"
+
+source "buffalo/drivers/Kconfig"

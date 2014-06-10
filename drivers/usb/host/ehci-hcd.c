@@ -305,6 +305,9 @@ static void tdi_reset (struct ehci_hcd *ehci)
 	reg_ptr = (u32 __iomem *)(((u8 __iomem *)ehci->regs) + USBMODE);
 	tmp = ehci_readl(ehci, reg_ptr);
 	tmp |= USBMODE_CM_HC;
+
+	tmp |= (1 << 4); //disable USB streamin
+
 	/* The default byte access to MMR space is LE after
 	 * controller reset. Set the required endian mode
 	 * for transfer buffers to match the host microprocessor
@@ -730,6 +733,11 @@ static int ehci_run (struct usb_hcd *hcd)
 	struct ehci_hcd		*ehci = hcd_to_ehci (hcd);
 	u32			temp;
 	u32			hcc_params;
+
+#ifdef BUFFALO_USB_DEBUG
+	printk("%s> hcd->self.controller->bus = %d\n", __FUNCTION__, hcd->self.controller->bus);
+	printk("%s> &platform_bus_type=%d\n", __FUNCTION__, &platform_bus_type);
+#endif
 
 	hcd->uses_new_polling = 1;
 
@@ -1299,6 +1307,11 @@ MODULE_LICENSE ("GPL");
 #ifdef CONFIG_PLAT_ORION
 #include "ehci-orion.c"
 #define	PLATFORM_DRIVER		ehci_orion_driver
+#endif
+
+#if defined(CONFIG_ARCH_FEROCEON) || defined(CONFIG_MARVELL)
+#include "ehci_marvell.c"
+#define PLATFORM_DRIVER         ehci_marvell_driver
 #endif
 
 #ifdef CONFIG_ARCH_IXP4XX

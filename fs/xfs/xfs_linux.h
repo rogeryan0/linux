@@ -26,7 +26,11 @@
  */
 #if defined(CONFIG_LBDAF) || (BITS_PER_LONG == 64)
 # define XFS_BIG_BLKNOS	1
-# define XFS_BIG_INUMS	1
+	#if defined (CONFIG_BUFFALO_PLATFORM) && (defined(CONFIG_ARCH_FEROCEON_KW) || defined(CONFIG_ARCH_FEROCEON_MV78XX0))
+	# define XFS_BIG_INUMS	0
+	#else
+	# define XFS_BIG_INUMS	1
+	#endif
 #else
 # define XFS_BIG_BLKNOS	0
 # define XFS_BIG_INUMS	0

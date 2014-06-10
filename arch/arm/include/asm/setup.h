@@ -143,6 +143,36 @@ struct tag_memclk {
 	__u32 fmemclk;
 };
 
+/* Marvell uboot parameters */
+#define ATAG_MV_UBOOT   0x41000403
+#define MV_ARRAY_SIZE	4
+#define UMSG_SIZE	8192
+struct tag_mv_uboot {
+        __u32 uboot_version;
+        __u32 tclk;
+        __u32 sysclk;
+        __u32 isUsbHost;
+        __u8  macAddr[MV_ARRAY_SIZE][6];
+	__u16 mtu[MV_ARRAY_SIZE];
+#if defined(CONFIG_BUFFALO_UBOOT_PARAMS) // BUFFALO_PLATFORM
+        __u32 fw_image_base;
+	__u32 fw_image_size;
+	__u32 env_addr;
+	__u32 env_size;
+	__u32 env_offset;
+#if defined(CONFIG_ARCH_FEROCEON_MV78XX0)
+	char umsg[UMSG_SIZE];
+#endif
+#endif // CONFIG_BUFFALO_UBOOT_PARAMS
+	__u32 nand_ecc;
+#ifdef CONFIG_ARCH_ARMADA370
+	__u32 bit_mask_config;
+#else
+	__u32 rgmii0Src;
+	__u32 feGeSrc;
+#endif
+};                     
+
 struct tag {
 	struct tag_header hdr;
 	union {
@@ -165,6 +195,11 @@ struct tag {
 		 * DC21285 specific
 		 */
 		struct tag_memclk	memclk;
+		 /*
+		  * Marvell specific
+		  */
+		struct tag_mv_uboot     mv_uboot;
+	
 	} u;
 };
 
@@ -173,15 +208,19 @@ struct tagtable {
 	int (*parse)(const struct tag *);
 };
 
+#ifdef CONFIG_BE8_ON_LE
+#define read_tag(a)	le32_to_cpu(a)
+#else
+#define read_tag(a)	a
+#endif
 #define tag_member_present(tag,member)				\
 	((unsigned long)(&((struct tag *)0L)->member + 1)	\
-		<= (tag)->hdr.size * 4)
-
-#define tag_next(t)	((struct tag *)((__u32 *)(t) + (t)->hdr.size))
+		<= read_tag((tag)->hdr.size) * 4)
+#define tag_next(t)	((struct tag *)((__u32 *)(t) + read_tag((t)->hdr.size)))
 #define tag_size(type)	((sizeof(struct tag_header) + sizeof(struct type)) >> 2)
 
 #define for_each_tag(t,base)		\
-	for (t = base; t->hdr.size; t = tag_next(t))
+	for (t = base; read_tag((t)->hdr.size); t = tag_next(t))
 
 #ifdef __KERNEL__
 

@@ -32,6 +32,7 @@
    Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
+#include <linux/version.h>
 #include <linux/kthread.h>
 #include <linux/blkdev.h>
 #include <linux/sysctl.h>
@@ -53,6 +54,10 @@
 #include <linux/slab.h>
 #include "md.h"
 #include "bitmap.h"
+
+#ifdef CONFIG_BUFFALO_USE_KERNEVNT // BUFFALO_PLATFORM
+#include <buffalo/kernevnt.h>
+#endif // CONFIG_BUFFALO_USE_KERNEVNT
 
 #ifndef MODULE
 static void autostart_arrays(int part);
@@ -94,7 +99,17 @@ static struct workqueue_struct *md_misc_wq;
  */
 
 static int sysctl_speed_limit_min = 1000;
+#if defined(CONFIG_BUFFALO_PLATFORM)
+static int sysctl_speed_limit_max = 50000;
+#ifdef CONFIG_BUFFALO_SKIP_RESYNC
+static int sysctl_skip_resync=0;
+#endif // CONFIG_BUFFALO_SKIP_RESYNC
+#if defined(CONFIG_BUFFALO_USE_MD_KERNEVNT)
+static int sysctl_use_kernevnt=1;
+#endif // CONFIG_BUFFALO_USE_MD_KERNEVNT
+#else // CONFIG_BUFFALO_PLATFORM
 static int sysctl_speed_limit_max = 200000;
+#endif // CONFIG_BUFFALO_PLATFORM
 static inline int speed_min(struct mddev *mddev)
 {
 	return mddev->sync_speed_min ?
@@ -124,6 +139,24 @@ static ctl_table raid_table[] = {
 		.mode		= S_IRUGO|S_IWUSR,
 		.proc_handler	= proc_dointvec,
 	},
+#ifdef CONFIG_BUFFALO_SKIP_RESYNC // BUFFALO_PLATFORM
+	{
+		.procname	= "skip_resync",
+		.data		= &sysctl_skip_resync,
+		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= proc_dointvec,
+	},
+#endif // CONFIG_BUFFALO_SKIP_RESYNC
+#if defined(CONFIG_BUFFALO_USE_MD_KERNEVNT)
+	{
+		.procname	= "use_kernevnt",
+		.data		= &sysctl_use_kernevnt,
+		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= proc_dointvec,
+	},
+#endif
 	{ }
 };
 
@@ -816,6 +849,56 @@ static void free_disk_sb(struct md_rdev * rdev)
 }
 
 
+#ifdef CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK
+static void super_sub_written(struct bio *bio, int error)
+{
+	struct bio *bio1 = bio->bi_private;
+	struct md_rdev *rdev = bio1->bi_private;
+	struct mddev *mddev = rdev->mddev;
+
+	if (error || !test_bit(BIO_UPTODATE, &bio->bi_flags)) {
+		printk("md: backup: super_written gets error=%d, uptodate=%d\n",
+		       error, test_bit(BIO_UPTODATE, &bio->bi_flags));
+		if (!test_bit(BIO_UPTODATE, &bio1->bi_flags)) {
+			md_error(mddev, rdev);
+		}
+	}
+
+	if (atomic_dec_and_test(&mddev->pending_writes))
+		wake_up(&mddev->sb_wait);
+	bio_put(bio);
+	bio_put(bio1);
+}
+
+static void super_main_written(struct bio *bio, int error)
+{
+	struct bio *bio2 = bio->bi_private;
+	struct md_rdev *rdev = bio2->bi_private;
+	struct mddev *mddev = rdev->mddev;
+
+	unsigned long flags;
+
+	if (error || !test_bit(BIO_UPTODATE, &bio->bi_flags)) {
+		printk("md: main: super_written gets error=%d, uptodate=%d\n",
+		       error, test_bit(BIO_UPTODATE, &bio->bi_flags));
+		clear_bit(BIO_UPTODATE, &bio->bi_flags);
+	}
+
+	bio->bi_private = rdev;
+	bio2->bi_private = bio;
+
+#ifdef CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK
+	spin_lock_irqsave(&mddev->write_lock, flags);
+	bio2->bi_next = mddev->sb_chain;
+	mddev->sb_chain = bio2;
+	spin_unlock_irqrestore(&mddev->write_lock, flags);
+	wake_up(&mddev->sb_wait);
+#endif // CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK
+
+	return;
+}
+#endif // CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK
+
 static void super_written(struct bio *bio, int error)
 {
 	struct md_rdev *rdev = bio->bi_private;
@@ -851,6 +934,27 @@ void md_super_write(struct mddev *mddev, struct md_rdev *rdev,
 	bio->bi_end_io = super_written;
 
 	atomic_inc(&mddev->pending_writes);
+#ifdef CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK
+	if (mddev->major_version == 1) {
+		switch(mddev->minor_version) {
+		case 0:
+		case 1:
+			break;
+		case 2:
+			if (bio->bi_sector == rdev->sb_start) {
+				struct bio *bio2 = bio_clone(bio, GFP_NOIO);
+				bio2->bi_sector = 0;
+				bio2->bi_private = rdev;
+				bio2->bi_end_io = super_sub_written;
+				bio->bi_private = bio2;
+				bio->bi_end_io = super_main_written;
+			}
+		default:
+			break;
+		}
+	}
+#endif // CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK
+
 	submit_bio(WRITE_FLUSH_FUA, bio);
 }
 
@@ -862,6 +966,17 @@ void md_super_wait(struct mddev *mddev)
 		prepare_to_wait(&mddev->sb_wait, &wq, TASK_UNINTERRUPTIBLE);
 		if (atomic_read(&mddev->pending_writes)==0)
 			break;
+#ifdef CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK
+		while (mddev->sb_chain) {
+			struct bio *bio;
+			spin_lock_irq(&mddev->write_lock);
+			bio = mddev->sb_chain;
+			mddev->sb_chain = bio->bi_next ;
+			bio->bi_next = NULL;
+			spin_unlock_irq(&mddev->write_lock);
+			submit_bio(REQ_WRITE | REQ_SYNC | REQ_FLUSH | REQ_FUA, bio);
+		}
+#endif // CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK
 		schedule();
 	}
 	finish_wait(&mddev->sb_wait, &wq);
@@ -1464,8 +1579,13 @@ static int md_set_badblocks(struct badblocks *bb, sector_t s, int sectors,
 			    int acknowledged);
 static int super_1_load(struct md_rdev *rdev, struct md_rdev *refdev, int minor_version)
 {
+#ifdef CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK
+	struct mdp_superblock_1 *sb, *sbb;
+	int ret, rst_main, rst_backup;
+#else // CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK
 	struct mdp_superblock_1 *sb;
 	int ret;
+#endif // CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK
 	sector_t sb_start;
 	char b[BDEVNAME_SIZE], b2[BDEVNAME_SIZE];
 	int bmask;
@@ -1499,7 +1619,14 @@ static int super_1_load(struct md_rdev *rdev, struct md_rdev *refdev, int minor_
 	 * and it is safe to read 4k, so we do that
 	 */
 	ret = read_disk_sb(rdev, 4096);
+#ifdef CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK
+	if (ret) {
+		rst_main = ret;
+		goto out_main;
+	}
+#else // CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK
 	if (ret) return ret;
+#endif // CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK
 
 
 	sb = page_address(rdev->sb_page);
@@ -1508,18 +1635,105 @@ static int super_1_load(struct md_rdev *rdev, struct md_rdev *refdev, int minor_
 	    sb->major_version != cpu_to_le32(1) ||
 	    le32_to_cpu(sb->max_dev) > (4096-256)/2 ||
 	    le64_to_cpu(sb->super_offset) != rdev->sb_start ||
+#ifdef CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK
+	    (le32_to_cpu(sb->feature_map) & ~MD_FEATURE_ALL) != 0) {
+		rst_main = -EINVAL;
+		goto out_main;
+	}
+#else // CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK
 	    (le32_to_cpu(sb->feature_map) & ~MD_FEATURE_ALL) != 0)
 		return -EINVAL;
+#endif // CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK
 
 	if (calc_sb_1_csum(sb) != sb->sb_csum) {
 		printk("md: invalid superblock checksum on %s\n",
 			bdevname(rdev->bdev,b));
+#ifdef CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK
+		rst_main = -EINVAL;
+		goto out_main;
+#else // CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK
 		return -EINVAL;
+#endif // CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK
 	}
 	if (le64_to_cpu(sb->data_size) < 10) {
 		printk("md: data_size too small on %s\n",
 		       bdevname(rdev->bdev,b));
+#ifdef CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK
+		rst_main = -EINVAL;
+		goto out_main;
+	}
+	rst_main = 0;
+
+out_main:
+
+	rst_backup = -1;
+	sbb = NULL;
+	struct page *sbb_page = NULL;
+
+	if (minor_version != 2) {
+		goto out_backup;
+	}
+	sbb_page = alloc_page(GFP_KERNEL);
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,38)
+	if (!sync_page_io(rdev->bdev, 0, 4096, sbb_page, READ)) {
+#else
+	if (!sync_page_io(rdev, -rdev->sb_start, 4096, sbb_page, READ, true)) {
+#endif
+		rst_backup = -EINVAL;
+		goto out_backup;
+	}
+	rdev->sb_loaded = 1;
+
+	sbb = (struct mdp_superblock_1*)page_address(sbb_page);
+
+	if (sbb->magic != cpu_to_le32(MD_SB_MAGIC) ||
+	    sbb->major_version != cpu_to_le32(1) ||
+	    le32_to_cpu(sbb->max_dev) > (4096-256)/2 ||
+	    le64_to_cpu(sbb->super_offset) != rdev->sb_start ||
+	    (le32_to_cpu(sbb->feature_map) & ~MD_FEATURE_ALL) != 0) {
+		rst_backup = -EINVAL;
+		goto out_backup;
+	}
+
+	if (calc_sb_1_csum(sbb) != sbb->sb_csum) {
+		printk("md: invalid superblock checksum on %s\n",
+			bdevname(rdev->bdev,b));
+		rst_backup = -EINVAL;
+		goto out_backup;
+	}
+	if (le64_to_cpu(sbb->data_size) < 10) {
+		printk("md: data_size too small on %s\n",
+		       bdevname(rdev->bdev,b));
+		rst_backup = -EINVAL;
+		goto out_backup;
+	}
+	rst_backup = 0;
+
+out_backup:
+
+	if (rst_main != 0 && rst_backup != 0) {
+		if (sbb_page != NULL) {
+			put_page(sbb_page);
+		}
+#endif // CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK
 		return -EINVAL;
+#ifdef CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK
+	} else if (rst_main != 0) {
+		// rst_backup == 0
+		rdev->sb_page = sbb_page;
+		sb = sbb;
+	} else if (rst_backup != 0) {
+		// rst_main == 0
+	} else if (sb->events >= sbb->events) {
+		if (sbb_page != NULL) {
+			put_page(sbb_page);
+		}
+	} else {
+		put_page(rdev->sb_page);
+		rdev->sb_page = sbb_page;
+		sb = sbb;
+#endif // CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK
 	}
 
 	rdev->preferred_minor = 0xffff;
@@ -2382,6 +2596,10 @@ repeat:
 	spin_lock_irq(&mddev->write_lock);
 
 	mddev->utime = get_seconds();
+
+#ifdef CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK
+	force_change = 1;
+#endif // CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK
 
 	if (test_and_clear_bit(MD_CHANGE_DEVS, &mddev->flags))
 		force_change = 1;
@@ -3553,6 +3771,56 @@ static struct md_sysfs_entry md_layout =
 __ATTR(layout, S_IRUGO|S_IWUSR, layout_show, layout_store);
 
 
+#ifdef CONFIG_BUFFALO_ERRCNT
+static ssize_t
+maxerr_cnt_show(struct mddev *mddev, char *page)
+{
+
+	return sprintf(page, "%d\n", atomic_read(&mddev->maxerr_cnt));
+}
+
+static ssize_t
+maxerr_cnt_store(struct mddev *mddev, const char *buf, size_t len)
+{
+	char *e;
+	unsigned long n = simple_strtol(buf, &e, 10);
+
+	if (*buf &&
+	    (*e == 0 || *e == '\n') &&
+	    (n == -1 || (signed int)n >= 0)) {
+		atomic_set(&mddev->maxerr_cnt, n);
+		return len;
+	}
+	return -EINVAL;
+}
+static struct md_sysfs_entry md_maxerr_cnt =
+__ATTR(maxerr_cnt, S_IRUGO|S_IWUSR, maxerr_cnt_show, maxerr_cnt_store);
+#endif /* CONFIG_BUFFALO_ERRCNT */
+
+#ifdef CONFIG_BUFFALO_SKIP_RESYNC
+static ssize_t
+skip_resync_show(struct mddev *mddev, char *page)
+{
+	return sprintf(page, "%d\n", atomic_read(&mddev->skip_resync));
+}
+static ssize_t
+skip_resync_store(struct mddev *mddev, const char *buf, size_t len)
+{
+	char *e;
+	unsigned long n = simple_strtol(buf, &e, 10);
+
+	if (*buf &&
+	    (*e == 0 || *e == '\n') &&
+	    (n == 1 || n == 0)) {
+		atomic_set(&mddev->skip_resync, n);
+		return len;
+	}
+	return -EINVAL;
+}
+static struct md_sysfs_entry md_skip_resync =
+__ATTR(skip_resync, S_IRUGO|S_IWUSR, skip_resync_show, skip_resync_store);
+#endif // CONFIG_BUFFALO_SKIP_RESYNC
+
 static ssize_t
 raid_disks_show(struct mddev *mddev, char *page)
 {
@@ -4490,6 +4758,12 @@ __ATTR(array_size, S_IRUGO|S_IWUSR, array_size_show,
 static struct attribute *md_default_attrs[] = {
 	&md_level.attr,
 	&md_layout.attr,
+#ifdef CONFIG_BUFFALO_ERRCNT
+	&md_maxerr_cnt.attr,
+#endif /* CONFIG_BUFFALO_ERRCNT */
+#ifdef CONFIG_BUFFALO_SKIP_RESYNC
+	&md_skip_resync.attr,
+#endif // CONFIG_BUFFALO_SKIP_RESYNC
 	&md_raid_disks.attr,
 	&md_chunk_size.attr,
 	&md_size.attr,
@@ -4955,6 +5229,13 @@ int md_run(struct mddev *mddev)
 	
 	if (mddev->flags)
 		md_update_sb(mddev, 0);
+
+#ifdef CONFIG_BUFFALO_ERRCNT
+	atomic_set(&mddev->maxerr_cnt, MAXERR_CNT_DEFAULT);
+#endif
+#ifdef CONFIG_BUFFALO_SKIP_RESYNC
+	atomic_set(&mddev->skip_resync, 0);
+#endif // CONFIG_BUFFALO_SKIP_RESYNC
 
 	md_new_event(mddev);
 	sysfs_notify_dirent_safe(mddev->sysfs_state);
@@ -6535,6 +6816,11 @@ void md_error(struct mddev *mddev, struct md_rdev *rdev)
 	if (!rdev || test_bit(Faulty, &rdev->flags))
 		return;
 
+#if defined(CONFIG_BUFFALO_USE_MD_DEGRADE_KERNEVNT)
+	if(sysctl_use_kernevnt)
+		kernevnt_RaidDegraded(mddev->md_minor,MAJOR(rdev->bdev->bd_dev),MINOR(rdev->bdev->bd_dev));
+#endif
+
 	if (!mddev->pers || !mddev->pers->error_handler)
 		return;
 	mddev->pers->error_handler(mddev,rdev);
@@ -7067,6 +7353,13 @@ void md_do_sync(struct mddev *mddev)
 	int skipped = 0;
 	struct md_rdev *rdev;
 	char *desc;
+#if defined(CONFIG_BUFFALO_USE_MD_REBUILD_KERNEVNT)
+	int isRecovery, major=0, minor=0;
+#endif
+
+#if defined(CONFIG_BUFFALO_PLATFORM)
+	set_user_nice(current, 4);
+#endif
 
 	/* just incase thread restarts... */
 	if (test_bit(MD_RECOVERY_DONE, &mddev->recovery))
@@ -7081,6 +7374,12 @@ void md_do_sync(struct mddev *mddev)
 			desc = "requested-resync";
 		else
 			desc = "resync";
+#ifdef CONFIG_BUFFALO_USE_MD_SCAN_KERNEVNT // BUFFALO_PLATFORM
+		if (test_bit(MD_RECOVERY_SYNC, &mddev->recovery) &&
+		    test_bit(MD_RECOVERY_REQUESTED, &mddev->recovery) &&
+		    !test_bit(MD_RECOVERY_CHECK, &mddev->recovery))
+			kernevnt_RaidScan(mddev->md_minor, 1);
+#endif // CONFIG_BUFFALO_USE_MD_SCAN_KERNEVNT
 	} else if (test_bit(MD_RECOVERY_RESHAPE, &mddev->recovery))
 		desc = "reshape";
 	else
@@ -7180,6 +7479,33 @@ void md_do_sync(struct mddev *mddev)
 		rcu_read_unlock();
 	}
 
+#if defined(CONFIG_BUFFALO_USE_MD_REBUILD_KERNEVNT)
+	if(sysctl_use_kernevnt)
+	{
+		if((test_bit(MD_RECOVERY_SYNC, &mddev->recovery) && 
+		    !test_bit(MD_RECOVERY_REQUESTED, &mddev->recovery)) ||
+		   (!test_bit(MD_RECOVERY_SYNC, &mddev->recovery) &&
+		    test_bit(MD_RECOVERY_RECOVER, &mddev->recovery)))
+		{
+			struct md_rdev *rdev_tmp;
+			list_for_each_entry(rdev_tmp, &mddev->disks, same_set)
+			{
+				if(rdev_tmp->flags != In_sync)
+				{
+					major = MAJOR(rdev_tmp->bdev->bd_dev);
+					minor = MINOR(rdev_tmp->bdev->bd_dev);
+					break;
+				}
+			}
+			isRecovery = !test_bit(MD_RECOVERY_SYNC, &mddev->recovery);
+			kernevnt_RaidRecovery(mddev->md_minor, 1, isRecovery, major, minor);
+		}
+		else if((test_bit(MD_RECOVERY_RESHAPE, &mddev->recovery)))
+		{
+			kernevnt_RaidReshape(mddev->md_minor, 1);
+		}
+	}
+#endif
 	printk(KERN_INFO "md: %s of RAID array %s\n", desc, mdname(mddev));
 	printk(KERN_INFO "md: minimum _guaranteed_  speed:"
 		" %d KB/sec/disk.\n", speed_min(mddev));
@@ -7218,6 +7544,14 @@ void md_do_sync(struct mddev *mddev)
 
 	while (j < max_sectors) {
 		sector_t sectors;
+
+#ifdef CONFIG_BUFFALO_SKIP_RESYNC // BUFFALO_PLATFORM
+		if (sysctl_skip_resync || atomic_read(&mddev->skip_resync))
+		{
+			mddev->curr_resync = max_sectors;
+			break;
+		}
+#endif // CONFIG_BUFFALO_SKIP_RESYNC
 
 		skipped = 0;
 
@@ -7322,6 +7656,21 @@ void md_do_sync(struct mddev *mddev)
 	 */
  out:
 	wait_event(mddev->recovery_wait, !atomic_read(&mddev->recovery_active));
+#if defined(CONFIG_BUFFALO_USE_MD_REBUILD_KERNEVNT)
+	if(sysctl_use_kernevnt)
+	{
+		if((test_bit(MD_RECOVERY_SYNC, &mddev->recovery) && 
+		    !test_bit(MD_RECOVERY_REQUESTED, &mddev->recovery)) ||
+		   (!test_bit(MD_RECOVERY_SYNC, &mddev->recovery) &&
+		    test_bit(MD_RECOVERY_RECOVER, &mddev->recovery)))
+			kernevnt_RaidRecovery(mddev->md_minor,0,isRecovery,major,minor);
+		else if((test_bit(MD_RECOVERY_RESHAPE, &mddev->recovery)))
+		{
+			printk("RaidReshape(mddev->md_minor, 0)\n");
+			kernevnt_RaidReshape(mddev->md_minor, 0);
+		}
+	}
+#endif
 
 	/* tell personality that we are finished */
 	mddev->pers->sync_request(mddev, max_sectors, &skipped, 1);
@@ -7364,6 +7713,12 @@ void md_do_sync(struct mddev *mddev)
 	} else if (test_bit(MD_RECOVERY_REQUESTED, &mddev->recovery))
 		mddev->resync_min = mddev->curr_resync_completed;
 	mddev->curr_resync = 0;
+#ifdef CONFIG_BUFFALO_USE_MD_SCAN_KERNEVNT // BUFFALO_PLATFORM
+	if (test_bit(MD_RECOVERY_SYNC, &mddev->recovery) &&
+	    test_bit(MD_RECOVERY_REQUESTED, &mddev->recovery) &&
+	    !test_bit(MD_RECOVERY_CHECK, &mddev->recovery))
+		kernevnt_RaidScan(mddev->md_minor, 0);
+#endif // CONFIG_BUFFALO_USE_MD_SCAN_KERNEVNT
 	wake_up(&resync_wait);
 	set_bit(MD_RECOVERY_DONE, &mddev->recovery);
 	md_wakeup_thread(mddev->thread);

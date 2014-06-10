@@ -1014,6 +1014,9 @@ struct file {
 #ifdef CONFIG_DEBUG_WRITECOUNT
 	unsigned long f_mnt_write_state;
 #endif
+#ifdef CONFIG_OCF_CRYPTODEV /* && LINUX_VERSION_CODE >= KERNEL_VERSION(3,3,4) */
+	void			*ocf_private_data;
+#endif
 };
 
 struct file_handle {

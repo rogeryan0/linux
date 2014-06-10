@@ -63,6 +63,9 @@
 #include <scsi/scsi_eh.h>
 #include <scsi/scsi_host.h>
 #include <scsi/scsi_tcq.h>
+#ifdef CONFIG_MV_SCATTERED_SPINUP
+#include <scsi/scsi_spinup.h>
+#endif
 
 #include "scsi_priv.h"
 #include "scsi_logging.h"
@@ -102,8 +105,14 @@ static const char *const scsi_device_types[] = {
 	"WORM             ",
 	"CD-ROM           ",
 	"Scanner          ",
+#ifdef CONFIG_BUFFALO_PLATFORM
+// __LS_COMMENT__ BUFFALO change 2004.8.30
+	"Optical-Device   ",
+	"Medium-Changer   ",
+#else  
 	"Optical Device   ",
 	"Medium Changer   ",
+#endif
 	"Communications   ",
 	"ASC IT8          ",
 	"ASC IT8          ",
@@ -694,8 +703,15 @@ int scsi_dispatch_cmd(struct scsi_cmnd *cmd)
 	 */
 	if (cmd->device->scsi_level <= SCSI_2 &&
 	    cmd->device->scsi_level != SCSI_UNKNOWN) {
+#if defined(CONFIG_BUFFALO_IGNORE_LUN) // BUFFALO_PLATFORM
+		/* support for AVU2 */
+		if (!cmd->device->ignore_lun || !(cmd->cmnd[0] & 0xc0))
+			cmd->cmnd[1] = (cmd->cmnd[1] & 0x1f) |
+						(cmd->device->lun << 5 & 0xe0);
+#else // CONFIG_BUFFALO_IGNORE_LUN
 		cmd->cmnd[1] = (cmd->cmnd[1] & 0x1f) |
 			       (cmd->device->lun << 5 & 0xe0);
+#endif // CONFIG_BUFFALO_IGNORE_LUN
 	}
 
 	/*
@@ -778,6 +794,28 @@ int scsi_dispatch_cmd(struct scsi_cmnd *cmd)
  */
 static void scsi_done(struct scsi_cmnd *cmd)
 {
+#ifdef CONFIG_MV_SCATTERED_SPINUP
+	unsigned long flags = 0;
+	/*
+	* TODO: add support to verify failed commands that didn't woke up the drive.
+	*/
+	if (scsi_spinup_enabled())
+	{
+		spin_lock_irqsave(cmd->device->host->host_lock, flags);
+		if (cmd->device->sdev_power_state == SDEV_PW_SPINNING_UP) 
+		{
+			if (cmd->device->standby_timeout_secs > 0)
+			{
+				/* had a timer before spinup, restarting the timer again */
+				cmd->device->sdev_power_state = SDEV_PW_STANDBY_TIMEOUT_WAIT;
+				standby_add_timer(cmd->device, cmd->device->standby_timeout_secs, standby_times_out);
+			}
+			else
+				cmd->device->sdev_power_state = SDEV_PW_ON;
+		}
+			spin_unlock_irqrestore(cmd->device->host->host_lock, flags);
+	}
+#endif
 	trace_scsi_dispatch_cmd_done(cmd);
 	blk_complete_request(cmd->request);
 }
@@ -1263,7 +1301,7 @@ struct scsi_device *__scsi_device_lookup(struct Scsi_Host *shost,
 
 	list_for_each_entry(sdev, &shost->__devices, siblings) {
 		if (sdev->channel == channel && sdev->id == id &&
-				sdev->lun ==lun)
+				sdev->lun == lun && sdev->sdev_state != SDEV_DEL)
 			return sdev;
 	}
 
@@ -1307,6 +1345,13 @@ MODULE_PARM_DESC(scsi_logging_level, "a bit mask of logging levels");
 static int __init init_scsi(void)
 {
 	int error;
+
+#ifdef CONFIG_MV_SCATTERED_SPINUP
+	/* init will parse the kernel line for the spinup param */
+	error = scsi_spinup_init();
+	if (error)
+		return error;
+#endif
 
 	error = scsi_init_queue();
 	if (error)

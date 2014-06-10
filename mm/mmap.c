@@ -46,6 +46,12 @@
 #define arch_rebalance_pgtables(addr, len)		(addr)
 #endif
 
+/* 2012/07/11 t.saito add for page_alloc(watermark) change */
+#if 1
+#define CHANGE_MMAP_C
+#endif
+/* 2012/07/11 t.saito add end */
+
 static void unmap_region(struct mm_struct *mm,
 		struct vm_area_struct *vma, struct vm_area_struct *prev,
 		unsigned long start, unsigned long end);
@@ -84,7 +90,11 @@ pgprot_t vm_get_page_prot(unsigned long vm_flags)
 }
 EXPORT_SYMBOL(vm_get_page_prot);
 
+#ifdef CHANGE_MMAP_C
+int sysctl_overcommit_memory __read_mostly = OVERCOMMIT_ALWAYS;  /* always overcommit */
+#else
 int sysctl_overcommit_memory __read_mostly = OVERCOMMIT_GUESS;  /* heuristic overcommit */
+#endif
 int sysctl_overcommit_ratio __read_mostly = 50;	/* default is 50% */
 int sysctl_max_map_count __read_mostly = DEFAULT_MAX_MAP_COUNT;
 /*

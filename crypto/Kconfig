@@ -960,4 +960,6 @@ config CRYPTO_USER_API_SKCIPHER
 
 source "drivers/crypto/Kconfig"
 
+source "crypto/ocf/Kconfig"
+
 endif	# if CRYPTO

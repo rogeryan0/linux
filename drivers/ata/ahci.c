@@ -1119,6 +1119,11 @@ static int ahci_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 	if (ahci_sb600_enable_64bit(pdev))
 		hpriv->flags &= ~AHCI_HFLAG_32BIT_ONLY;
 
+#ifdef CONFIG_BUFFALO_DISABLE_NCQ // BUFFALO_PLATFORM
+	printk("** BUFFALO Disable Command Queuing Function [%s %s] **\n", dev_driver_string(&pdev->dev), dev_name(&pdev->dev));
+	hpriv->flags |= AHCI_HFLAG_NO_NCQ;
+#endif // CONFIG_BUFFALO_DISABLE_NCQ
+
 	if ((hpriv->flags & AHCI_HFLAG_NO_MSI) || pci_enable_msi(pdev))
 		pci_intx(pdev, 1);
 

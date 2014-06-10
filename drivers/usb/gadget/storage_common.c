@@ -305,6 +305,7 @@ struct fsg_buffhd {
 #else
 	void				*buf;
 #endif
+	dma_addr_t			dma;
 	enum fsg_buffer_state		state;
 	struct fsg_buffhd		*next;
 
@@ -318,7 +319,14 @@ struct fsg_buffhd {
 	struct usb_request		*inreq;
 	int				inreq_busy;
 	struct usb_request		*outreq;
-	int				outreq_busy;
+	//	int				outreq_busy;
+	volatile int			outreq_busy;
+
+	/* added to support async wr */
+	struct file	*file;
+	unsigned int	amount;
+	loff_t		file_offset;
+	struct fsg_buffhd   *next_to_wr;
 };
 
 enum fsg_state {

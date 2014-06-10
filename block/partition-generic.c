@@ -167,6 +167,54 @@ ssize_t part_fail_store(struct device *dev,
 }
 #endif
 
+#ifdef CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK_DEBUG
+ssize_t part_fails_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct hd_struct *p = dev_to_part(dev);
+	struct fail_sector *fail_sect, *save;
+	size_t t = 0;
+
+	list_for_each_entry_safe(fail_sect, save, &p->fail_sects, list) {
+		t = sprintf(buf, "%s %llu", buf, fail_sect->pos);
+	}
+	t = sprintf(buf, "%s\n", buf);
+
+	return t;
+}
+
+ssize_t part_fails_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct hd_struct *p = dev_to_part(dev);
+	sector_t sec;
+	char *eob = (char *) buf;
+	struct fail_sector *fail_sect, *save;
+
+	if (!list_empty(&p->fail_sects)) {
+		list_for_each_entry_safe(fail_sect, save, &p->fail_sects, list) {
+			list_del(&fail_sect->list);
+			kfree(fail_sect);
+		}
+	}
+
+	for (; ((sec = simple_strtol(buf, &eob, 10)) || *eob != '\0'); buf = ++eob) {
+		if (*eob != ' ' && *eob != '\n') {
+			list_for_each_entry_safe(fail_sect, save, &p->fail_sects, list) {
+				list_del(&fail_sect->list);
+				kfree(fail_sect);
+			}
+			return -EINVAL;
+		} else if (eob == buf) {
+			break;
+		}
+		fail_sect = kzalloc(sizeof(struct fail_sector), GFP_KERNEL);
+		fail_sect->pos = sec;
+		list_add_tail(&fail_sect->list, &p->fail_sects);
+	}
+
+	return count;
+}
+#endif // CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK_DEBUG
+
 static DEVICE_ATTR(partition, S_IRUGO, part_partition_show, NULL);
 static DEVICE_ATTR(start, S_IRUGO, part_start_show, NULL);
 static DEVICE_ATTR(size, S_IRUGO, part_size_show, NULL);
@@ -180,6 +228,10 @@ static DEVICE_ATTR(inflight, S_IRUGO, part_inflight_show, NULL);
 static struct device_attribute dev_attr_fail =
 	__ATTR(make-it-fail, S_IRUGO|S_IWUSR, part_fail_show, part_fail_store);
 #endif
+#ifdef CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK_DEBUG
+static struct device_attribute dev_attr_fails =
+	__ATTR(fail_sectors, S_IRUGO|S_IWUSR, part_fails_show, part_fails_store);
+#endif // CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK_DEBUG
 
 static struct attribute *part_attrs[] = {
 	&dev_attr_partition.attr,
@@ -193,6 +245,9 @@ static struct attribute *part_attrs[] = {
 #ifdef CONFIG_FAIL_MAKE_REQUEST
 	&dev_attr_fail.attr,
 #endif
+#ifdef CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK_DEBUG
+	&dev_attr_fails.attr,
+#endif // CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK_DEBUG
 	NULL
 };
 
@@ -304,6 +359,9 @@ struct hd_struct *add_partition(struct gendisk *disk, int partno,
 	p->nr_sects = len;
 	p->partno = partno;
 	p->policy = get_disk_ro(disk);
+#ifdef CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK_DEBUG
+	INIT_LIST_HEAD(&p->fail_sects);
+#endif // CONFIG_BUFFALO_DUPLICATE_SUPERBLOCK_DEBUG
 
 	if (info) {
 		struct partition_meta_info *pinfo = alloc_part_info(disk);

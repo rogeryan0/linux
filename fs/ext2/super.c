@@ -814,7 +814,12 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 	sbi->s_es = es;
 	sb->s_magic = le16_to_cpu(es->s_magic);
 
+#ifdef CONFIG_BUFFALO_EXT23_EXTENSION // BUFFALO_PLATFORM
+	if ((sb->s_magic != EXT2_SUPER_MAGIC) &&
+	    (sb->s_magic != MEL_EXT2_SUPER_MAGIC))
+#else // CONFIG_BUFFALO_EXT23_EXTENSION
 	if (sb->s_magic != EXT2_SUPER_MAGIC)
+#endif // CONFIG_BUFFALO_EXT23_EXTENSION
 		goto cantfind_ext2;
 
 	/* Set defaults before we parse the mount options */
@@ -912,7 +917,12 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 		}
 		es = (struct ext2_super_block *) (((char *)bh->b_data) + offset);
 		sbi->s_es = es;
+#ifdef CONFIG_BUFFALO_EXT23_EXTENSION // BUFFALO_PLATFORM
+		if ((sb->s_magic != cpu_to_le16(EXT2_SUPER_MAGIC)) &&
+		    (sb->s_magic != cpu_to_le16(MEL_EXT2_SUPER_MAGIC))) {
+#else // CONFIG_BUFFALO_EXT23_EXTENSION
 		if (es->s_magic != cpu_to_le16(EXT2_SUPER_MAGIC)) {
+#endif // CONFIG_BUFFALO_EXT23_EXTENSION
 			ext2_msg(sb, KERN_ERR, "error: magic mismatch");
 			goto failed_mount;
 		}
@@ -962,7 +972,12 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 	sbi->s_desc_per_block_bits =
 		ilog2 (EXT2_DESC_PER_BLOCK(sb));
 
+#ifdef CONFIG_BUFFALO_EXT23_EXTENSION // BUFFALO_PLATFORM
+	if ((sb->s_magic != EXT2_SUPER_MAGIC) &&
+	    (sb->s_magic != MEL_EXT2_SUPER_MAGIC))
+#else // CONFIG_BUFFALO_EXT23_EXTENSION
 	if (sb->s_magic != EXT2_SUPER_MAGIC)
+#endif // CONFIG_BUFFALO_EXT23_EXTENSION
 		goto cantfind_ext2;
 
 	if (sb->s_blocksize != bh->b_size) {

@@ -78,7 +78,7 @@ static unsigned long ai_half;
 static unsigned long ai_word;
 static unsigned long ai_dword;
 static unsigned long ai_multi;
-static int ai_usermode;
+static int ai_usermode = 2;
 
 core_param(alignment, ai_usermode, int, 0600);
 

@@ -2788,7 +2788,21 @@ serial8250_register_ports(struct uart_driver *drv, struct device *dev)
 			serial8250_init_fixed_type_port(up, up->port.type);
 
 		uart_add_one_port(drv, &up->port);
+#if (defined(CONFIG_BUFFALO_PLATFORM) && defined(CONFIG_ARCH_FEROCEON_MV78XX0)) || defined(CONFIG_BUFFALO_USE_UPS)
+		{
+			extern struct uart_port *uart_ports[];
+
+			uart_ports[i] = &up->port;
+		}
+#endif 
 	}
+#if defined(CONFIG_BUFFALO_PLATFORM) && defined(CONFIG_ARCH_FEROCEON_MV78XX0)
+	{
+		extern void BuffaloInitUpsUartPort(void);
+
+		BuffaloInitUpsUartPort();
+	}
+#endif
 }
 
 #ifdef CONFIG_SERIAL_8250_CONSOLE

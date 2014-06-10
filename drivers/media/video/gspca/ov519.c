@@ -2176,8 +2176,10 @@ leave:
 	if (ret < 0) {
 		pr_err("reg_w %02x failed %d\n", index, ret);
 		sd->gspca_dev.usb_err = ret;
+		msleep(1);
 		return;
 	}
+	msleep(1);
 }
 
 /* Read from a OV519 register, note not valid for the w9968cf!! */
@@ -2217,6 +2219,7 @@ static int reg_r(struct sd *sd, u16 index)
 		sd->gspca_dev.usb_err = ret;
 	}
 
+	msleep(1);
 	return ret;
 }
 
@@ -2242,6 +2245,7 @@ static int reg_r8(struct sd *sd,
 		sd->gspca_dev.usb_err = ret;
 	}
 
+	msleep(1);
 	return ret;
 }
 
@@ -2674,6 +2678,7 @@ static int init_ov_sensor(struct sd *sd, u8 slave)
 		if (i2c_r(sd, 0x00) < 0)
 			return -1;
 	}
+	PDEBUG(D_PROBE, "init_ov_sensor failed after %d attempt(s)", i);
 	return -1;
 }
 

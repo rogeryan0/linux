@@ -29,6 +29,15 @@
 #define RTC_MONTH_OFFS		8
 #define RTC_YEAR_OFFS		16
 
+#if defined(CONFIG_BUFFALO_RTC_EXPANSION)
+#define RTC_DATE_YEAR_SHF			RTC_YEAR_OFFS
+#define RTC_DATE_YEAR_MSK			(0xF << RTC_DATE_YEAR_SHF)
+#define RTC_DATE_10YEAR_SHF			20
+  #define RTC_DATE_BUFFALO_FLAG_SHF		23
+  #define RTC_DATE_BUFFALO_FLAG_MSK		(0x1 << RTC_DATE_BUFFALO_FLAG_SHF)
+  #define RTC_DATE_10YEAR_MSK			(0x7 << RTC_DATE_10YEAR_SHF)
+#endif
+
 #define RTC_ALARM_TIME_REG_OFFS	8
 #define RTC_ALARM_DATE_REG_OFFS	0xc
 #define RTC_ALARM_VALID		(1 << 7)
@@ -47,6 +56,10 @@ static int mv_rtc_set_time(struct device *dev, struct rtc_time *tm)
 	struct rtc_plat_data *pdata = dev_get_drvdata(dev);
 	void __iomem *ioaddr = pdata->ioaddr;
 	u32	rtc_reg;
+#if defined(CONFIG_BUFFALO_RTC_EXPANSION)
+	u32 BuffaloFlag = 0;
+	u8 tens, single;
+#endif
 
 	rtc_reg = (bin2bcd(tm->tm_sec) << RTC_SECONDS_OFFS) |
 		(bin2bcd(tm->tm_min) << RTC_MINUTES_OFFS) |
@@ -54,9 +67,32 @@ static int mv_rtc_set_time(struct device *dev, struct rtc_time *tm)
 		(bin2bcd(tm->tm_wday) << RTC_WDAY_OFFS);
 	writel(rtc_reg, ioaddr + RTC_TIME_REG_OFFS);
 
+#if defined(CONFIG_BUFFALO_RTC_EXPANSION)
+	/* read Date register */
+	BuffaloFlag = ((readl(ioaddr + RTC_DATE_REG_OFFS) & RTC_DATE_BUFFALO_FLAG_MSK) >> RTC_DATE_BUFFALO_FLAG_SHF);
+#endif
+
 	rtc_reg = (bin2bcd(tm->tm_mday) << RTC_MDAY_OFFS) |
 		(bin2bcd(tm->tm_mon + 1) << RTC_MONTH_OFFS) |
 		(bin2bcd(tm->tm_year % 100) << RTC_YEAR_OFFS);
+
+#if defined(CONFIG_BUFFALO_RTC_EXPANSION)
+	rtc_reg = (bin2bcd(tm->tm_mday) << RTC_MDAY_OFFS) |
+		(bin2bcd(tm->tm_mon + 1) << RTC_MONTH_OFFS);
+
+	/* year */
+	tens = tm->tm_year % 100 / 10;
+	single = tm->tm_year % 10;
+	rtc_reg |= ((tens  << RTC_DATE_10YEAR_SHF) & RTC_DATE_10YEAR_MSK) |
+		  (( single << RTC_DATE_YEAR_SHF) & RTC_DATE_YEAR_MSK);
+
+	rtc_reg |= ((BuffaloFlag << RTC_DATE_BUFFALO_FLAG_SHF) & RTC_DATE_BUFFALO_FLAG_MSK);
+#else
+	rtc_reg = (bin2bcd(tm->tm_mday) << RTC_MDAY_OFFS) |
+		(bin2bcd(tm->tm_mon + 1) << RTC_MONTH_OFFS) |
+		(bin2bcd(tm->tm_year % 100) << RTC_YEAR_OFFS);
+#endif
+
 	writel(rtc_reg, ioaddr + RTC_DATE_REG_OFFS);
 
 	return 0;
@@ -68,6 +104,9 @@ static int mv_rtc_read_time(struct device *dev, struct rtc_time *tm)
 	void __iomem *ioaddr = pdata->ioaddr;
 	u32	rtc_time, rtc_date;
 	unsigned int year, month, day, hour, minute, second, wday;
+#if defined(CONFIG_BUFFALO_RTC_EXPANSION)
+	u8 tens, single;
+#endif
 
 	rtc_time = readl(ioaddr + RTC_TIME_REG_OFFS);
 	rtc_date = readl(ioaddr + RTC_DATE_REG_OFFS);
@@ -79,8 +118,13 @@ static int mv_rtc_read_time(struct device *dev, struct rtc_time *tm)
 
 	day = rtc_date & 0x3f;
 	month = (rtc_date >> RTC_MONTH_OFFS) & 0x3f;
+#if defined(CONFIG_BUFFALO_RTC_EXPANSION)
+	/* year */
+	tens = ((rtc_date & RTC_DATE_10YEAR_MSK) >> RTC_DATE_10YEAR_SHF);
+	single = ((rtc_date  & RTC_DATE_YEAR_MSK) >> RTC_DATE_YEAR_SHF);
+#else
 	year = (rtc_date >> RTC_YEAR_OFFS) & 0xff;
-
+#endif
 	tm->tm_sec = bcd2bin(second);
 	tm->tm_min = bcd2bin(minute);
 	tm->tm_hour = bcd2bin(hour);
@@ -88,8 +132,11 @@ static int mv_rtc_read_time(struct device *dev, struct rtc_time *tm)
 	tm->tm_wday = bcd2bin(wday);
 	tm->tm_mon = bcd2bin(month) - 1;
 	/* hw counts from year 2000, but tm_year is relative to 1900 */
+#if defined(CONFIG_BUFFALO_RTC_EXPANSION)
+	tm->tm_year = 10*tens + single + 100;
+#else
 	tm->tm_year = bcd2bin(year) + 100;
-
+#endif
 	return rtc_valid_tm(tm);
 }
 
