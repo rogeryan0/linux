@@ -1,0 +1,60 @@
+
+config  MV_NET_CONFIG
+	string "Network interface configuration"
+	depends on MV_GATEWAY
+	default "(eth0,00:11:66:11:66:11,0)(eth1,00:22:77:22:77:22,1:2:3:4)"
+	---help---
+	 Set the network interface configuration. For each interface, define the interface 
+	 name, MAC address and participating ports. For example, the default configuration 
+	 defines two interfaces, eth0 and eth1.
+
+config MV_GTW_HEADER_MODE
+	bool "Use Marvell Header Mode"
+	depends on MV_GATEWAY && MV_INCLUDE_UNM_ETH 
+	---help---
+	  Use Marvell Header Mode to improve routing performance.
+
+config ETH_FLOW_CONTROL
+	bool "Use flow-control Mode"
+	depends on MV_GATEWAY && !MV_GTW_HEADER_MODE
+	default n
+	---help---
+	  Use flow control between switch and MAC. If unsure say No.
+
+config  MV_GTW_IGMP
+        bool "L2 IGMP Snooping support"
+        depends on MV_GATEWAY
+        default y
+        ---help---
+          Support L2 IGMP snooping at the switch level, i.e. directing L3 routed multicast
+          stream to the specific L2 port which originally received an IGMP Join message,
+          instead of fluding all VLAN ports.
+
+config  MV_GTW_LINK_STATUS
+	bool "Link status change indications"
+	depends on MV_GATEWAY
+	default y
+	---help---
+	  Support Phy link status change indications.
+
+config  HAVE_ARCH_DEV_ALLOC_SKB
+        bool "Customize SKB headroom size"
+        depends on MV_GATEWAY
+        default n
+        ---help---
+          Customize SKB headroom size used in dev_alloc_skb() kernel function.
+
+config  MV_SKB_HEADROOM
+        int "SKB headroom size"
+        depends on HAVE_ARCH_DEV_ALLOC_SKB
+        default 64
+        ---help---
+          Define SKB headroom size.
+
+config  MV_GTW_PROC
+        bool "mv_gateway /proc API support (for mvGtwTool)"
+        depends on MV_GATEWAY
+        ---help---
+
+
+

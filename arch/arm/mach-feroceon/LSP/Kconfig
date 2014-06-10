@@ -1,0 +1,482 @@
+if ARCH_FEROCEON
+
+menu "Feroceon SoC options"
+	depends on ARCH_FEROCEON
+
+choice
+	prompt "Feroceon SoC type"
+	default MV88F5182
+
+config MV88F1181
+	bool "88F1181 SoC"
+	---help---
+	Choosing this option will generate a linux kernel for the 88F1181 SoC
+
+config MV88F1281
+	bool "88F1281 SoC"
+	---help---
+	Choosing this option will generate a linux kernel for the 88F1281 SoC
+
+config MV88F5181
+	bool "88F5181 SoC"
+	---help---
+	Choosing this option will generate a linux kernel for the 88F5181 SoC
+
+config MV88F5181L
+	bool "88F5181L SoC"
+	---help---
+	Choosing this option will generate a linux kernel for the 88F5181L SoC
+
+config  MV88F5182
+	bool "88F5182 SoC"
+	---help---
+	Choosing this option will generate a linux kernel for the 88F5182 SoC
+
+config  MV88F5082
+	bool "88F5082 SoC"
+	---help---
+	Choosing this option will generate a linux kernel for the 88F5082 SoC
+
+config  MV88F5180N
+	bool "88F5180N SoC"
+	---help---	
+	Choosing this option will generate a linux kernel for the 88F5180N SoC
+
+config  MV88F6082
+	bool "88F6082 SoC"
+	---help---	
+	Choosing this option will generate a linux kernel for the 88F6082 SoC
+
+	
+config  MV88W8660
+	bool "88W8660 SoC"
+	---help---	
+	Choosing this option will generate a linux kernel for the 88W8660 SoC
+
+
+endchoice
+
+config JTAG_DEBUG
+        bool "Enable JTAG by disable \"wait for interrupt\" (only relevant for 5281)."
+	depends on MV88F5181
+        default n
+        ---help---
+           Enable the JTAG debugger taking over the CPU by disabling "wait for interrupt" idle loop."
+
+
+menu "Feroceon SoC Included Features"
+
+config  MV_INCLUDE_PCI
+	bool "PCI Support"
+	depends on PCI && MV88F5181 || MV88W8660 || MV88F5180N || MV88F5182 || MV88F5181L
+	default y
+	---help---
+	Please don't change this configs unless you know what you are doing.
+
+
+config MV_INCLUDE_PEX
+	bool "PCI Express Support"
+	depends on PCI && MV88F5181 || MV88W8660 || MV88F5182 || MV88F5082 || MV88F5181L || MV88F1281 || MV88F6082
+	default y
+        ---help---
+        Please don't change this configs unless you know what you are doing.
+
+config MV_INCLUDE_IDMA
+	bool "IDMA Support"
+	depends on MV88F5181 || MV88W8660 || MV88F5180N || MV88F5182 || MV88F5082 || MV88F5181L
+	default y
+        ---help---
+        Please don't change this configs unless you know what you are doing.
+
+config MV_INCLUDE_USB
+	bool "USB Support"
+	depends on MV88F5181 || MV88W8660 || MV88F5180N || MV88F5182 || MV88F5082 || MV88F5181L || MV88F6082
+	default y
+        ---help---
+        Please don't change this configs unless you know what you are doing.
+
+config MV_INCLUDE_XOR
+	bool "XOR Support"
+	depends on MV88F5182
+	default y
+        ---help---
+        Please don't change this configs unless you know what you are doing.
+
+config MV_INCLUDE_CESA
+	bool "CESA Support"
+	depends on MV88F5182 || MV88F5082 ||  MV88F5181L || MV88F6082
+	default y
+        ---help---
+        Please don't change this configs unless you know what you are doing.
+
+config MV_INCLUDE_NAND
+	bool "NAND Support"
+	depends on MV88F5181 || MV88W8660 || MV88F5182 || MV88F5082 || MV88F5181L || MV88F1281 || MV88F6082
+	default y
+        ---help---
+        Please don't change this configs unless you know what you are doing.
+
+config MV_INCLUDE_INTEG_SATA
+	bool "Integrated SATA Support"
+	depends on MV88F5182 || MV88F5082 || MV88F6082
+	default y
+        ---help---
+        Please don't change this configs unless you know what you are doing.
+
+config MV_INCLUDE_TDM
+	bool "Integrated TDM Support"
+	depends on MV88F5181L
+	default y
+        ---help---
+        Please don't change this configs unless you know what you are doing.
+
+config MV_INCLUDE_GIG_ETH
+	bool "Giga Ethernet Support"
+	depends on MV88F5181 || MV88F5182 || MV88F5082 || MV88F5181L || MV88F5180N || MV88F6082 
+	default y
+
+config MV_INCLUDE_UNM_ETH
+	bool "Unimac Support"
+	depends on MV88W8660
+	default y
+        ---help---
+        Please don't change this configs unless you know what you are doing.
+	
+config MV_INCLUDE_INTEG_MFLASH
+    bool "Integrated Marvell Flash Support"
+    depends on MV88F6082
+	default y
+        ---help---
+        Please don't change this configs unless you know what you are doing.
+          
+config MV_INCLUDE_SPI
+	bool "SPI Support"
+	depends on MV88F6082
+	default y
+        ---help---
+        Please don't change this configs unless you know what you are doing.
+
+endmenu
+
+config MV_GPP_MAX_PINS
+	int
+	default 32 if MV88F5181 || MV88W8660 || MV88F5180N || MV88F5182 || MV88F5082 || MV88F5181L || MV88F6082
+	default 16 if MV88F1181 || MV88F1281
+	
+	
+config MV_DCACHE_SIZE
+	hex
+	default 0x8000 if MV88F5181 || MV88W8660 || MV88F5180N || MV88F5182 || MV88F5082 || MV88F5181L || MV88F1281
+	default 0x4000 if MV88F6082
+
+config MV_ICACHE_SIZE
+	hex
+	default 0x8000 if MV88F5181 || MV88W8660 || MV88F5180N || MV88F5182 || MV88F5082 || MV88F5181L || MV88F1281
+	default 0x4000 if MV88F6082
+	          
+menu "Feroceon SoC MTD support"
+
+config MV_INCLUDE_SFLASH_MTD
+    bool "Marvell support for MTD SPI flash device"
+    depends on MTD && MV_INCLUDE_SPI
+   	default y
+                    
+config MV_INCLUDE_MFLASH_MTD
+    bool "Marvell support for MTD Marvell flash device"
+    depends on MTD && MV_INCLUDE_INTEG_MFLASH
+   	default y
+
+config MV_NAND
+	bool "Marvell support for MTD NAND device"
+	depends on MTD && MV_INCLUDE_NAND
+	default n
+
+config MV_NAND_BOOT
+	bool "Marvell boot support from MTD NAND device"
+	depends on MV_NAND
+	default n
+	---help---
+	Choose this option if NAND MTD is the system boot device.	            
+
+endmenu
+
+choice
+	prompt "SoC USB Mode"
+	depends on MV_INCLUDE_USB && !UBOOT_STRUCT
+	default MV_USB_HOST
+
+config MV_USB_HOST
+	bool "Support for USB Host"
+	---help---
+	Choosing this option will configure on chip USB Controller to work in Host mode
+
+config MV_USB_DEVICE
+	bool "Support for USB Device"
+	---help---
+	Choosing this option will configure on chip USB Controller to work in Device mode
+endchoice
+
+
+config ARCH_SUPPORTS_BIG_ENDIAN
+	bool
+	default n
+
+
+config USE_DSP
+	bool "Use pld/ldrd/strd arm DSP instructions"
+	default n
+
+config MV_USE_IDMA_ENGINE
+        bool "Use the IDMA engine to offload CPU tasks"   
+	depends on (MV_INCLUDE_IDMA) && EXPERIMENTAL
+        default n
+        help
+            Say Y of you want to use the IDMA engine to offload some of the 
+            CPU tasks.
+
+config MV_IDMA_COPYUSER
+	bool "Use the IDMA enignes to accelerate the copy_to_user() and copy_from_user functions"
+	depends on (MV_USE_IDMA_ENGINE) && (!MV_USE_XOR_FOR_COPY_USER_BUFFERS)
+	default n
+	help
+	  Say Y here if you want to use the IDMA engine to perform
+	  copy_to_user() and copy_from_user() functionality.
+
+config MV_IDMA_COPYUSER_THRESHOLD
+	int "Minimum number of bytes to use IDMA acceleration for copy_to_user() and copy_from_user()"
+	depends on MV_IDMA_COPYUSER
+	default "1260"
+	help
+	  This is the minimum buffer size needed in order to operate the IDMA engine
+          for accelerating the copy_to_user() and copy_from_user() operations
+
+config MV_IDMA_MEMZERO
+	bool "Use the IDMA to accelerate memzero"
+	depends on (MV_USE_IDMA_ENGINE) && (!MV_XORMEMZERO)
+	default n
+	help
+	  Say Y here if you want to use the IDMA engine to perform the memzero.
+
+config MV_IDMA_MEMZERO_THRESHOLD
+	int "Minimum number of bytes to use IDMA acceleration for memzero()"
+	depends on MV_IDMA_MEMZERO
+	default "192"
+	help
+	  This is the minimum buffer size needed in order to operate the IDMA engine
+          for accelerating the memzero operation
+
+config MV_IDMA_MEMCOPY
+	bool "Use the IDMA to accelerate memcpy and memmove"
+	depends on (MV_USE_IDMA_ENGINE) && (!MV_XORMEMCOPY)
+	default n
+	help
+	  Say Y here if you want to use the IDMA engine to perform the memcpy 
+          and memmove.
+
+config MV_IDMA_MEMCOPY_THRESHOLD
+	int "Minimum number of bytes to use IDMA acceleration for memcpy()"
+	depends on MV_IDMA_MEMCOPY
+	default "128"
+	help
+	  This is the minimum buffer size needed in order to operate the IDMA engine
+          for accelerating the memcpy() and memmove() operations
+
+config MV_USE_XOR_ENGINE
+        bool "Use the XOR engines to offload CPU tasks"   
+	depends on (MV_INCLUDE_XOR) && EXPERIMENTAL
+        default n
+        help
+            Say Y of you want to use the XOR engine to offload some of the 
+            CPU tasks.
+
+config MV_RAID5_XOR_OFFLOAD
+	bool "Use the XOR engine to perfom the xor calculation"
+	depends on MV_USE_XOR_ENGINE
+	default n
+	help
+	  Say Y here if you want to use the XOR engine to perform
+	  the RAID4/5 xor calculation.
+
+config MV_XORMEMCOPY
+	bool "Use the XOR engine to accelerate memcpy and memmove"
+	depends on MV_USE_XOR_ENGINE
+	default n
+	help
+	  Say Y here if you want to use the XOR engine to perform
+	  the memcpy and memmove.
+
+config MV_XOR_MEMCOPY_THRESHOLD
+	int "Minimum number of bytes to use XOR acceleration for memcpy()"
+	depends on MV_XORMEMCOPY
+	default "128"
+	help
+	  This is the minimum buffer size needed in order to operate the XOR engine
+          for accelerating the memcpy() and memmove() operations
+
+config MV_XORMEMZERO
+	bool "Use the XOR engine to accelerate memzero"
+	depends on MV_USE_XOR_ENGINE
+	default n
+	help
+	  Say Y here if you want to use the XOR engine to perform
+	  the memzero.
+
+config MV_XOR_MEMZERO_THRESHOLD
+	int "Minimum number of bytes to use XOR acceleration for memzero()"
+	depends on MV_XORMEMZERO
+	default "192"
+	help
+	  This is the minimum buffer size needed in order to operate the XOR engine
+          for accelerating the memzero operation
+
+config MV_USE_XOR_FOR_COPY_USER_BUFFERS
+	bool "Use the XOR engine to accelerate copy_to_user and copy_from_user functions"
+	depends on MV_USE_XOR_ENGINE
+	default n
+	help
+	  Say Y here if you want to accelerate the copy_to_user and copy_from_user functions
+          using the XOR engine instead of the IDMA.
+
+config MV_XOR_COPYUSER_THRESHOLD
+	int "Minimum number of bytes to use XOR acceleration for copy_to_user() and copy_from_user()"
+	depends on MV_USE_XOR_FOR_COPY_USER_BUFFERS
+	default "1260"
+	help
+	  This is the minimum buffer size needed in order to operate the XOR engine
+          for accelerating the copy_to_user() and copy_from_user() operations
+
+config ENABLE_XOR_INTERRUPTS
+	bool "Activate the XOR in offloading mode (Enable XOR interrupts)."
+	depends on MV_USE_XOR_ENGINE
+	default n
+	help
+	  Say Y here if you want to use the activate the XOR engine in interrupts
+          mode (offloading).
+config USE_TWO_ENGINES
+	bool "Use two XOR engines"
+	depends on MV_USE_XOR_ENGINE
+	default n
+	help
+	  Say Y here if you want to use the both of the XOR engines.
+
+
+config  FEROCEON_PROC
+	bool "Support for MV-shell proc file system"
+	depends on PROC_FS
+	---help---	
+	  Choosing this option will enable you to use the MV-shell through the Proc
+	  File system.
+	  The MV-shell is a debug utility which can be run from the shell.
+
+config  MV_GENERIC_NAS_FS
+	bool "Enable patches needed for Marvell's generic NAS file system"
+        default n
+	---help---	
+	  Choosing this option will enable various kernel patches, those patches are needed
+          when running Marvell's generic NAS file system.
+
+config  UBOOT_STRUCT
+	bool "Use UBoot Marvell tag structure"
+	---help---
+	  Choosing this option will cause the linux to extract the Tclk, Sysclk and
+	  the uboot version from the Tag list passed by the uboot.
+
+
+config  MV_DBG_TRACE
+	bool "Enable tracing utility"
+	default n
+	---help---
+	  Choosing this debug option will cause some kernel modules to log operations into
+	  a cyclic buffer and dump them on failures. Enabling this feature decreases performance.
+
+
+menu "SoC Networking support"
+depends on MV_INCLUDE_GIG_ETH || MV_INCLUDE_UNM_ETH
+
+choice
+        prompt "Network driver"
+        default MV_ETHERNET
+
+config MV_ETHERNET
+        bool "Ethernet"
+        ---help---
+        Choose this option to support platforms with the Gigabit / UniMAC Ethernet Controller
+	that do not have an on-board QuarterDeck switch.
+ 
+config MV_GATEWAY
+        bool "Gateway"
+        ---help---
+        Choose this option to support the on-board QuarterDeck switch family.
+
+endchoice
+
+config MV_ETH_NAME
+	string "Marvell network driver name"
+	depends on MV_ETHERNET
+	default "egiga"
+	---help---
+	
+config ETH_MULTI_Q
+        bool "Multi Q Support"
+        ---help---
+          Use Multi Q.
+
+config MV_GTW_QOS
+	bool "ToS based QoS support"
+	depends on MV_GATEWAY && ETH_MULTI_Q
+	default y
+	---help---
+	  Priorities packets marked with predefined ToS in IP header comming from WAN interface. 
+
+config MV_GTW_QOS_NET_IF
+        string "WAN Network interface name"
+        depends on MV_GTW_QOS
+        default "eth0"
+
+config MV_GTW_QOS_VOIP
+        bool "VoIP QoS"
+        depends on MV_GTW_QOS
+        default y
+
+config MV_GTW_QOS_VOIP_TOS
+        string "VoIP ToS value"
+        depends on MV_GTW_QOS_VOIP
+        default "0xA0"
+
+config MV_GTW_QOS_ROUTING
+        bool "Routing QoS"
+        depends on MV_GTW_QOS
+        default y
+
+config MV_GTW_QOS_ROUTING_TOS
+        string "Routing ToS value"
+        depends on MV_GTW_QOS_ROUTING
+        default "0x11;0x22"
+
+config  EGIGA_STATIS
+        bool "Collect egiga statistics"
+        ---help---
+        Collect egiga statistics. Can be displayed using mvEgigaTool.
+
+source arch/arm/mach-feroceon/LSP/mv_ethernet/Kconfig
+
+source arch/arm/mach-feroceon/LSP/mv_gateway/Kconfig
+
+endmenu
+
+
+source arch/arm/mach-feroceon/LSP/cesa/Kconfig
+
+config  SCSI_MVSATA
+	tristate "Support for Marvell Sata Adapters"
+	depends on ( MV_INCLUDE_INTEG_SATA && SCSI ) || ( PCI && SCSI )
+	---help---
+	  Choosing this option will enable you to use the Marvell Sata
+	  adapters support with emulation as SCSI adapters.
+	  Note that the kernel scsi subsystem must be chosen too.
+
+source arch/arm/mach-feroceon/LSP/mvSata/Kconfig
+
+endmenu
+endif
+

@@ -1,0 +1,220 @@
+
+Release notes for LSP release  3.0.5
+====================================
+
+Table of Contents
+-----------------
+
+1.	Contents of this Release
+2. 	HowTo build
+3.	Changes from previous releases
+4.	Known Issues
+5.      Notes
+6.      Disclaimer
+	
+
+1. Contents of This Release
+===========================
+
+	Included in current release :
+	- Support for ttyS0.
+	- Interrupts handling:
+  	- Timer interrupt on the internal Tclk timer.
+  	- PCI/PEX interrupts A/B.
+	- Support for passing Marvell Tag list from uboot.
+	- MtdBlock on the flash.
+	- Kconfig scripts for Orion platforms configuration.
+	- Heart Beat counting leds.
+	- Reset support.
+	- Optimized cache flush for context switching.
+	- MV shell Proc FS.
+	- USB host and device support.
+	- CESA support.
+	- PCI and PEX support.
+	- RTC support.
+	- Network interface support on the Orion giga port.
+	- Marvell SATA support.
+	- Copy buffers from/to user space by using the IDMA/XOR
+	- This release is a patch to Linux 2.6.22.7 which can be download from
+          (www.kernel.org)
+
+	
+	
+	Binaries:
+	This release includes the following pre-built images/drivers under the binaries
+        directory. The supported boards are listed under their relevant binary and SoC:
+
+	1. db88f5181.tgz (88F5181 and 88F5281): db88f5181_defconfig
+	     Supported boards:
+		DB-88F5x81-DDR1-BP
+		DB-88F5x81-DDR2-BP
+		DB-88F5x81-DDR2-BP-B
+		RD-88F5x81-88SX7042-2xSATA
+	
+	2. db88f5281_vfp.tgz (88F5281 only). This images enables the VFP in full mode: db88f5281_vfp_defconfig
+	     Supported boards:
+		DB-88F5281-DDR1-BP
+		DB-88F5281-DDR1-BP-A
+		DB-88F5281-DDR2-BP
+		DB-88F5281-DDR2-BP-A
+		DB-88F5281-DDR2-BP-B		
+	
+	3. rd88f5182.tgz (88F5182): mv88f5182_defconfig
+	     Supported boards:
+		DB-88F5182-DDR2-BP
+		RD-88F5182-NAS-2
+		RD-88F5182-NAS-3
+
+	4. mv88f5082.tgz (88F5082): mv88f5082_defconfig
+	     Supported boards:
+		DB-88F5082-DDR2-BP
+		RD-88F5082-NAS-3
+
+	5. mv88f6082.tgz (88F6082):  mv88f6082_defconfig
+	     Supported boards:
+		DB-88F6082-BP
+		RD-88F6082-u-NAS-DAS
+		RD-88F6082-NAS-B
+
+2. HowTo build
+===============
+		get linux-2.6.22.7 from ww.kernel.org
+		change its name to the release name (linux_feroceon_...).
+		unzip the release.zip in the directory where you put the kernel,
+                	say A to replace all.
+		cd to the kernel directory.
+		'make mrproper'
+		config the kernel:
+                	'make <platform>_defconfig' 
+		'make uImage'
+		the kernel uImage will be found under arch/arm/boot/.
+
+3. Changes from previous releases
+=================================
+Changes from 3.0.4 :
+--------------------------------------
+- Update SK98 driver to version v10.22.3
+- Fix memove bug which cause data corruption.
+- Update defconfigs.
+- Fix a bug in the OpenSWAN patch which causes the negotiation of IKE against windows to fail.
+- Fix a bug that prevents the NAS-RD1 from working in USB device mode.
+
+Changes from 2.3.1 (kernel 2.6.12.6) :
+--------------------------------------
+- Porting of the LSP core to kernel 2.6.22.7.
+- New SDK
+- Support more then 2TB HDD:
+	- claim SCSI version 3 (SPC-3 and SBC-3 standards).
+	- support Read Capacity 16, Synchronise cache 16, Read 16, Write 16, Verify 16.
+- SATA adjustments (SMART) - map virtual address to the data buffer when only physical 
+	address is provided to the driver.
+- Update timer driver supporting the new GENERIC_TIME subsystem through using 2 h/w
+  timers to provde the kernel with both a "clocksource" and "clockevent" devices. This
+  is part of the infrastructure needed to operate the kernel in a tickless mode.
+- Support for e1000 PCIE NIC as part of the new e1000 driver.
+- New SK98 driver (8055) from the community.
+- Thor - Integration of the Thor driver version 1.0.0.9 into the LSP under the scsi drivers.
+- OCF update the OCF/OpenSWAN/OpenSSL packages:
+	OCF Ver 20051110 -> Ver 20070727
+	OpenSWAN Ver 2.4.2 -> Ver 2.4.9
+	OpenSSL Ver 0.9.7e -> Ver 0.9.8e
+- CESA HAL optimizations:
+	Convert functions to inlines	   
+	Decrement number of calls to mvOsIoCacheFlush 	   
+	Optimize VirtToPhys address conversion 
+
+
+4. Known Issues
+===============
+- Timeout errors of commands for ATAPI devices can cause to the device to be
+  set in offline mode, this issue will be fixed in future releases.
+
+- When disconnecting a SATA device while it used by the kernel (e.g. contains
+  unmounted file system), the user must delete the block devices on that 
+  channel (using the sysfs), otherwise, farther hotswap events on that channel
+  may cause to kernel crash.
+
+  In order to overcome this issue, 
+  We recommend that the user will cleanly remove the scsi dev through the sysfs by using the 
+  following command:
+  #echo 1 > /sys/class/scsi_host/hostH/device/targetH:B:T/H:B:T:L/delete
+  Where H, B, T and L stands for Host, Bus, Target and Lun.
+
+  In case that the disk was removed brutally, the udev should detect this event and should remove 
+  the device from the sysfs by using the same command as above.
+
+- In current U-Boot 2.4.x the U-boot is located at address 3MB therefore uImages larger then 
+  ~2MB are not supported, in order to overcome this issue pls make sure your uImage will be smaller 
+  then 1.9MB.
+
+- Thor has 2 issues concerning hot swap support:
+    Linux does not detect new disk connection if a disk has SATA2PATA bridge on it.
+    Quick removal and insertion of a disk can cause the Linux to miss the plug of the disk.
+
+5. Notes
+========
+
+- In kernel 2.6.22 the performance on EXT3 is very sensitive to the journaling mode,
+  in order to achieve the best performance please use data=writeback.
+
+- This release support up to 256MB of DRAM with current memory layout definition.
+
+- When using the g_file_storage only one of the USB ports should be configured as a device.
+
+- The NAND on the DB-NAS is not functional by default because we are short of BARs.
+
+- When using Orion2 (5281) it is safer to disable write allocate from the U-Boot to overcome 
+   cases where the kernel doesn't handle cache aliasing correctly.
+
+5. Disclaimer
+=============
+This document provides preliminary information about the products described, and such 
+information should not be used for purpose of final design. Visit the Marvell(r) web 
+site at www.marvell.com for the latest information on Marvell products.
+
+No part of this document may be reproduced or transmitted in any form or by any means, 
+electronic or mechanical, including photocopying and recording, for any purpose, 
+without the express written permission of Marvell. Marvell retains the right to make 
+changes to this document at any time, without notice. Marvell makes no warranty of 
+any kind, expressed or implied, with regard to any information contained in this 
+document, including, but not limited to, the implied warranties of merchantability 
+or fitness for any particular purpose. Further, Marvell does not warrant the accuracy 
+or completeness of the information, text, graphics, or other items contained within 
+this document. Marvell makes no commitment either to update or to keep current the 
+information contained in this document. Marvell products are not designed for use in 
+life-support equipment or applications that would cause a life-threatening situation 
+if any such products failed. Do not use Marvell products in these types of equipment 
+or applications. The user should contact Marvell to obtain the latest specifications 
+before finalizing a product design. Marvell assumes no responsibility, either for use 
+of these products or for any infringements of patents and trademarks, or other rights 
+of third parties resulting from its use. No license is granted under any patents, 
+patent rights, or trademarks of Marvell.These products may include one or more 
+optional functions. The user has the choice of implementing any particular optional 
+function. Should the user choose to implement any of these optional functions, it is 
+possible that the use could be subject to third party intellectual property rights. 
+Marvell recommends that the user investigate whether third party intellectual property 
+rights are relevant to the intended use of these products and obtain licenses as 
+appropriate under relevant intellectual property rights. 
+Marvell comprises Marvell Technology Group Ltd. (MTGL) and its subsidiaries, Marvell 
+International Ltd. (MIL), Marvell Semiconductor, Inc. (MSI), Marvell Asia Pte Ltd. (MAPL), 
+Marvell Japan K.K. (MJKK), Marvell Semiconductor Israel Ltd. (MSIL), SysKonnect GmbH, 
+and Radlan Computer Communications, Ltd.
+Export Controls.  With respect to any of Marvell's Information, the user or recipient, 
+in the absence of appropriate U.S. government authorization, agrees: 1) not to re-export 
+or release any such information consisting of technology, software or source code 
+controlled for national security reasons by the U.S. Export Control Regulations ("EAR"), 
+to a national of EAR Country Groups D:1 or E:2; 2) not to export the direct product of 
+such technology or such software, to EAR Country Groups D:1 or E:2, if such technology or 
+software and direct products thereof are controlled for national security reasons by the 
+EAR; and, 3) in the case of technology controlled for national security reasons under the 
+EAR where the direct product of the technology is a complete plant or component of a plant, 
+not to export to EAR Country Groups D:1 or E:2 the direct product of the plant or major 
+component thereof, if such direct product is controlled for national security reasons by 
+the EAR, or is subject to controls under the U.S. Munitions List  ("USML").  At all times 
+hereunder, the recipient of any such information agrees that they shall be deemed to have 
+manually signed this document in connection with their receipt of any such information. 
+Copyright (c) 2004.  Marvell.  All rights reserved.  Marvell, the Marvell logo, Moving 
+Forward Faster, Alaska, and GalNet are registered trademarks of Marvell.  Discovery, 
+Fastwriter, GalTis, Horizon, Libertas, Link Street, NetGX, PHY Advantage, Prestera, 
+Raising The Technology Bar, UniMAC, Virtual Cable Tester, and Yukon are trademarks of 
+Marvell.  All other trademarks are the property of their respective owners.

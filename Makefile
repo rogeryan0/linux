@@ -182,8 +182,10 @@ SUBARCH := $(shell uname -m | sed -e s/i.86/i386/ -e s/sun4u/sparc64/ \
 # Default value for CROSS_COMPILE is not to prefix executables
 # Note: Some architectures assign CROSS_COMPILE in their arch/*/Makefile
 
-ARCH		?= $(SUBARCH)
-CROSS_COMPILE	?=
+#ARCH		?= $(SUBARCH)
+#CROSS_COMPILE	?=
+ARCH		?= arm
+CROSS_COMPILE=arm-none-linux-gnueabi-
 
 # Architecture as present in compile.h
 UTS_MACHINE := $(ARCH)
@@ -431,7 +433,7 @@ scripts: scripts_basic include/config/auto.conf
 
 # Objects we will link into vmlinux / subdirs we need to visit
 init-y		:= init/
-drivers-y	:= drivers/ sound/
+drivers-y	:= drivers/ sound/ buffalo/drivers/
 net-y		:= net/
 libs-y		:= lib/
 core-y		:= usr/
@@ -531,6 +533,7 @@ export	INSTALL_PATH ?= /boot
 # makefile but the argument can be passed to make if needed.
 #
 
+INSTALL_MOD_PATH=binaries
 MODLIB	= $(INSTALL_MOD_PATH)/lib/modules/$(KERNELRELEASE)
 export MODLIB
 

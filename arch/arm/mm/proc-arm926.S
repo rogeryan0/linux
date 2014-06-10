@@ -43,12 +43,20 @@
  * This value should be chosen such that we choose the cheapest
  * alternative.
  */
-#define CACHE_DLIMIT	16384
+#if (CONFIG_MV_DCACHE_SIZE == 0x4000)                         
+#define CACHE_DLIMIT               8192                       
+#else                                                         
+#define CACHE_DLIMIT    16384              
+#endif   
 
 /*
  * the cache line size of the I and D cache
  */
 #define CACHE_DLINESIZE	32
+
+#ifdef CONFIG_ARCH_FEROCEON      
+#include <asm/arch/orion_ver_macro.h>                         
+#endif      
 
 	.text
 /*
@@ -101,6 +109,17 @@ ENTRY(cpu_arm926_reset)
  */
 	.align	10
 ENTRY(cpu_arm926_do_idle)
+#ifdef CONFIG_ARCH_FEROCEON      
+        /* Implement workaround for FEr# CPU-C16: Wait for interrupt command */
+        /* is not processed properly, the workaround is not to use this command */
+        /* the erratum is relevant for 5281 devices with revision less than C0 */
+
+        ldr     r0, support_wait_for_interrupt_address /* this variable set in core.c*/
+        ldr     r0, [r0]
+        cmp     r0, #1    /* check if the device doesn't support wait for interrupt*/
+        bne     1f        /* if yes, then go out*/
+        /* workaround ends here*/
+#endif
 	mov	r0, #0
 	mrc	p15, 0, r1, c1, c0, 0		@ Read control register
 	mcr	p15, 0, r0, c7, c10, 4		@ Drain write buffer
@@ -108,7 +127,11 @@ ENTRY(cpu_arm926_do_idle)
 	mcr	p15, 0, r2, c1, c0, 0		@ Disable I cache
 	mcr	p15, 0, r0, c7, c0, 4		@ Wait for interrupt
 	mcr	p15, 0, r1, c1, c0, 0		@ Restore ICache enable
+#ifdef CONFIG_ARCH_FEROCEON
+1:
+#endif
 	mov	pc, lr
+
 
 /*
  *	flush_user_cache_all()
@@ -337,8 +360,13 @@ ENTRY(cpu_arm926_switch_mm)
 	mcr	p15, 0, ip, c7, c6, 0		@ invalidate D cache
 #else
 @ && 'Clean & Invalidate whole DCache'
+#ifdef CONFIG_ARCH_FEROCEON
+        mv_flush_all r1, r2, r3, ip
+        mov     ip, #0
+#else
 1:	mrc	p15, 0, r15, c7, c14, 3 	@ test,clean,invalidate
 	bne	1b
+#endif
 #endif
 	mcr	p15, 0, ip, c7, c5, 0		@ invalidate I cache
 	mcr	p15, 0, ip, c7, c10, 4		@ drain WB
@@ -484,6 +512,10 @@ __arm926_proc_info:
 	.long	cpu_arm926_name
 	.long	arm926_processor_functions
 	.long	v4wbi_tlb_fns
+#ifdef  ARCH_FEROCEON
+        .long   v4wb_wa_user_fns
+#else
 	.long	v4wb_user_fns
+#endif
 	.long	arm926_cache_fns
 	.size	__arm926_proc_info, . - __arm926_proc_info

@@ -18,7 +18,11 @@
 
 unsigned int __machine_arch_type;
 
-#include <linux/string.h>
+
+/*#include <linux/string.h>*/
+#define NULL        ((void *) 0)
+#define size_t    unsigned int
+#define memzero(p,n) ({ if ((n) != 0) __memzero((p),(n)); (p); })
 
 #ifdef STANDALONE_DEBUG
 #define putstr printf
@@ -69,6 +73,7 @@ static void icedcc_putc(int ch)
 #define flush()	do { } while (0)
 #endif
 
+#ifndef CONFIG_ARCH_FEROCEON
 static void putstr(const char *ptr)
 {
 	char c;
@@ -81,6 +86,7 @@ static void putstr(const char *ptr)
 
 	flush();
 }
+#endif
 
 #endif
 
@@ -353,6 +359,27 @@ decompress_kernel(ulg output_start, ulg free_mem_ptr_p, ulg free_mem_ptr_end_p,
 
 	arch_decomp_setup();
 
+#ifdef CONFIG_BUFFALO_PLATFORM
+	putstr("CONFIG_BUFFALO_PLATFORM ");
+// #if defined(CONFIG_BUFFALO_LINKSTATION_LSGL)
+//	putstr("CONFIG_BUFFALO_LINKSTATION_LSGL ");
+// #elif defined(CONFIG_BUFFALO_TERASTATION_TSHTGL)
+//	putstr("CONFIG_BUFFALO_TERASTATION_TSHTGL ");
+// #elif defined(CONFIG_BUFFALO_LINKSTATION_HSWDHTGL_R1)
+//	putstr("CONFIG_BUFFALO_LINKSTATION_HSWDHTGL_R1");
+// #elif defined(CONFIG_BUFFALO_LINKSTATION_LSWTGL_R1)
+//	putstr("CONFIG_BUFFALO_LINKSTATION_LSWTGL_R1");
+// #elif defined(CONFIG_BUFFALO_LINKSTATION_LSWSGL_R1)
+//	putstr("CONFIG_BUFFALO_LINKSTATION_LSWSGL_R1");
+// #elif defined(CONFIG_BUFFALO_LINKSTATION_LSWWN_R1)
+//	putstr("CONFIG_BUFFALO_LINKSTATION_LSWWN_R1");
+// #elif defined(CONFIG_BUFFALO_LINKSTATION_LSQGL_R5)
+//	putstr("CONFIG_BUFFALO_LINKSTATION_LSQGL_R5");
+// #else
+//	#error
+// #endif
+	putstr("---\n");
+#endif
 	makecrc();
 	putstr("Uncompressing Linux...");
 	gunzip();
@@ -374,4 +401,4 @@ int main()
 	return 0;
 }
 #endif
-	
+

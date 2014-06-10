@@ -159,6 +159,12 @@ config ARCH_INTEGRATOR
 	help
 	  Support for ARM's Integrator platform.
 
+config ARCH_FEROCEON
+        bool "Feroceon-based"
+        select PCI
+	select GENERIC_TIME
+        select GENERIC_CLOCKEVENTS
+
 config ARCH_REALVIEW
 	bool "ARM Ltd. RealView family"
 	select ARM_AMBA
@@ -396,6 +402,99 @@ config ARCH_OMAP
 
 endchoice
 
+menu "BUFFALO Features"
+
+config BUFFALO_PLATFORM
+	bool "BUFFALO_PLATFORM"
+	---help---
+	  Hardware/Software is BUFFALO platfrom
+
+config USE_REFERENCE_PCB
+	bool "USE_REFERENCE PCB"
+	---help---
+	  Hardware is Reference platfrom
+
+config BUFFALO_ERRCNT
+	bool "BUFFALO_ERRCNT"
+        ---help---
+          disk I/O error counter and auto MD degrading.
+
+config BUFFALO_SCAN
+	bool "BUFFALO_SCAN"
+        ----help---
+	  MD redundancy array scan and repair sector error.
+
+config BUFFALO_DEGRADEKEEP
+	bool "BUFFALO_DEGRADEKEEP"
+        ----help---
+	  keeping MD degrade state.
+
+config DEBUG_RAID
+	bool "DEBUG_RAID"
+	----help---
+	  I/O error emulation code for debugging redundancy array.
+          (disk_brk_req_r, disk_brk_req_w, err_r_prob)
+
+config BUFFALO_SOFT_BOARDID
+	bool "USE SOFT_BOARDID"
+	depends on BUFFALO_PLATFORM
+
+config USE_RS5C372
+	bool "USE RTC chip RS5C372"
+	depends on BUFFALO_PLATFORM
+	---help---
+	  BUFFALO  arch/arm/mach-mv88fxx81/Board/rtc/mvDS1339Reg.h.c
+
+config BUFFALO_USE_MICON
+	bool "USE MICON control"
+	depends on BUFFALO_PLATFORM
+	---help---
+	  BUFFALO  buffalo/drivers
+
+config BUFFALO_USE_INTERRUPT_DRIVER
+	bool "USE interrupt driver"
+	depends on BUFFALO_PLATFORM
+	---help---
+	  BUFFALO buffalo/drivers
+
+config BUFFALO_USE_GPIO_DRIVER
+	bool "USE gpio driver"
+	depends on BUFFALO_PLATFORM
+	---help---
+	  BUFFALO buffalo/drivers
+	  Only use for miconless models.
+
+config BUFFALO_SUPPORT_BOARD_INFO
+	bool "support board info from kernel"
+	depends on BUFFALO_PLATFORM
+	---help---
+	  BUFFALO  buffalo/drivers
+
+config BUFFALO_SUPPORT_WHITE_SPACE_ISERIAL
+	bool "Enable make_guid white space skip routine"
+	depends on BUFFALO_PLATFORM
+	default n
+	---help---
+	  BUFFALO drivers/usb/storage/scsiglue.c
+	  If this option would enable, make_guid routine will change.
+	  White space of USB iSerial is ignored in the time to generate GUID.
+
+config BUFFALO_USE_UPS
+	bool "USE UPS control"
+	depends on BUFFALO_PLATFORM
+	---help---
+	  BUFFALO  buffalo/drivers
+
+config BUFFALO_ENABLE_TESTCODE
+	bool "enable debug codes"
+	depends on BUFFALO_PLATFORM
+	---help---
+	  BUFFALO buffalo/drivers
+
+endmenu
+
+source "arch/arm/mach-feroceon/LSP/Kconfig"
+
 source "arch/arm/mach-clps711x/Kconfig"
 
 source "arch/arm/mach-ep93xx/Kconfig"
@@ -519,7 +618,7 @@ config ISA_DMA_API
 	bool
 
 config PCI
-	bool "PCI support" if ARCH_INTEGRATOR_AP || ARCH_VERSATILE_PB || ARCH_IXP4XX || ARCH_KS8695
+	bool "PCI support" if ARCH_INTEGRATOR_AP || ARCH_VERSATILE_PB || ARCH_IXP4XX || ARCH_KS8695 || ARCH_FEROCEON
 	help
 	  Find out whether you have a PCI motherboard. PCI is the name of a
 	  bus system, i.e. the way the CPU talks to the other stuff inside
@@ -664,6 +763,14 @@ config OABI_COMPAT
 	  UNPREDICTABLE (in fact it can be predicted that it won't work
 	  at all). If in doubt say Y.
 
+config REORDER
+        bool "Function reordering"
+        default n
+        help
+          This option enables the toolchain to reorder functions for a more
+          optimal TLB/Icache usage. If you have pretty much any version of binutils,
+          this can increase your kernel build time by roughly one minute.
+
 config ARCH_DISCONTIGMEM_ENABLE
 	bool
 	default (ARCH_LH7A40X && !LH7A40X_CONTIGMEM)
@@ -689,7 +796,7 @@ config LEDS
 		   ARCH_OMAP || ARCH_P720T || ARCH_PXA_IDP || \
 		   ARCH_SA1100 || ARCH_SHARK || ARCH_VERSATILE || \
 		   ARCH_AT91 || MACH_TRIZEPS4 || ARCH_DAVINCI || \
-		   ARCH_KS8695
+		   ARCH_KS8695 || ARCH_FEROCEON
 	help
 	  If you say Y here, the LEDs on your machine will be used
 	  to provide useful information about your current system status.
@@ -930,6 +1037,18 @@ config VFP
 	  release notes and additional status information.
 
 	  Say N if your target does not have VFP hardware.
+
+config VFP_FASTVFP
+        bool "FastVFP"
+	depends on VFP
+        help
+          Say Y here to include the FAST Vector Floating Point in the kernel.
+	  This means the VFP co-processor runs in a determinable time without 
+	  support code assistance, regardless of the characteristics of the input data. 
+	  In RunFast mode, no user exception traps are available.
+
+	  It should be sufficient for most programs. It may be not suitable
+	  for scientific calculations, but you have to check this for yourself.
 
 endmenu
 

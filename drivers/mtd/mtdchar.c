@@ -19,6 +19,10 @@
 
 #include <asm/uaccess.h>
 
+#ifdef CONFIG_BUFFALO_PLATFORM
+ #include <buffalo/kernevnt.h>
+#endif
+
 static struct class *mtd_class;
 
 static void mtd_notify_add(struct mtd_info* mtd)
@@ -115,6 +119,12 @@ static int mtd_open(struct inode *inode, struct file *file)
 		return -EACCES;
 	}
 
+#ifdef CONFIG_BUFFALO_PLATFORM
+	if (file->f_mode & 2){
+		// write access
+		kernevnt_FlashUpdate(1);
+	}
+#endif
 	mfi = kzalloc(sizeof(*mfi), GFP_KERNEL);
 	if (!mfi) {
 		put_mtd_device(mtd);
@@ -139,6 +149,12 @@ static int mtd_close(struct inode *inode, struct file *file)
 		mtd->sync(mtd);
 
 	put_mtd_device(mtd);
+#ifdef CONFIG_BUFFALO_PLATFORM
+	if (file->f_mode & 2){
+		// write access
+		kernevnt_FlashUpdate(0); /* __LS_COMMENT__ BUFFALO add 2005.3.10 */
+	}
+#endif
 	file->private_data = NULL;
 	kfree(mfi);
 

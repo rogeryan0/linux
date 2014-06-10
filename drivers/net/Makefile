@@ -10,6 +10,8 @@ obj-$(CONFIG_CHELSIO_T3) += cxgb3/
 obj-$(CONFIG_EHEA) += ehea/
 obj-$(CONFIG_BONDING) += bonding/
 obj-$(CONFIG_ATL1) += atl1/
+obj-$(CONFIG_MV_ETHERNET) += ../../arch/arm/mach-feroceon/LSP/mv_ethernet/
+obj-$(CONFIG_MV_GATEWAY) += ../../arch/arm/mach-feroceon/LSP/mv_gateway/
 obj-$(CONFIG_GIANFAR) += gianfar_driver.o
 
 gianfar_driver-objs := gianfar.o \

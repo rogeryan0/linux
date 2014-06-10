@@ -339,6 +339,12 @@ handle_level_irq(unsigned int irq, struct irq_desc *desc)
 	struct irqaction *action;
 	irqreturn_t action_ret;
 
+#ifdef TRACE_GPIOIRQ
+	if (irq>=32){
+		printk("*** %s GPIO irq=%d\n",__FUNCTION__,irq);
+	}
+#endif
+
 	spin_lock(&desc->lock);
 	mask_ack_irq(desc, irq);
 

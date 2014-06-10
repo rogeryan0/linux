@@ -179,6 +179,11 @@ struct stripe_head {
 #define	STRIPE_EXPANDING	9
 #define	STRIPE_EXPAND_SOURCE	10
 #define	STRIPE_EXPAND_READY	11
+#ifdef CONFIG_BUFFALO_SCAN
+  #define STRIPE_SCANING         12
+  #define STRIPE_INSCAN          13
+#endif /* CONFIG_BUFFALO_SCAN */
+
 /*
  * Plugging:
  *

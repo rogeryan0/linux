@@ -37,6 +37,14 @@
 #include <asm/uaccess.h>
 #include <asm/mach/time.h>
 
+#if defined(CONFIG_BUFFALO_USE_GPIO_DRIVER)
+ #include "buffalo/BuffaloGpio.h"
+#endif
+
+#ifdef CONFIG_BUFFALO_USE_MICON
+#include "buffalo/miconcntl.h"
+#endif
+
 static const char *processor_modes[] = {
   "USER_26", "FIQ_26" , "IRQ_26" , "SVC_26" , "UK4_26" , "UK5_26" , "UK6_26" , "UK7_26" ,
   "UK8_26" , "UK9_26" , "UK10_26", "UK11_26", "UK12_26", "UK13_26", "UK14_26", "UK15_26",
@@ -92,6 +100,18 @@ void arm_machine_restart(char mode)
 	 * soft boot works.
 	 */
 	setup_mm_for_reboot(mode);
+
+#if defined(CONFIG_BUFFALO_USE_GPIO_DRIVER)
+ #if 1
+	BuffaloGpio_ChangePowerStatus(POWER_STATUS_REBOOTING);
+ #else
+	BuffaloChangePowerStatusBeforeHalt();
+	BuffaloGpio_CpuReset();
+ #endif
+#endif
+#ifdef CONFIG_BUFFALO_USE_MICON
+	miconCntl_Reboot();
+#endif
 
 	/*
 	 * Now call the architecture specific reboot code.
@@ -182,8 +202,40 @@ int __init reboot_setup(char *str)
 
 __setup("reboot=", reboot_setup);
 
+#if defined(CONFIG_BUFFALO_USE_GPIO_DRIVER)
+void
+BuffaloChangePowerStatusBeforeHalt(void)
+{
+	unsigned int MagicKey = BuffaloGpio_ChangePowerStatus(0);
+	printk("%s > Check power status. MagicKey = 0x%02x\n", __FUNCTION__, MagicKey);
+
+	switch(MagicKey)
+	{
+	case MagicKeyReboot:
+		BuffaloGpio_ChangePowerStatus(POWER_STATUS_REBOOT_REACHED_HALT);
+		printk("%s > Changed to 0x%02x from 0x%02x\n", __FUNCTION__, MagicKeyRebootReachedHalt, MagicKey);
+		break;
+	case MagicKeySwPoff:
+		BuffaloGpio_ChangePowerStatus(POWER_STATUS_SW_POFF_REACHED_HALT);
+		printk("%s > Changed to 0x%02x from 0x%02x\n", __FUNCTION__, MagicKeySWPoffReachedHalt, MagicKey);
+		break;
+	case MagicKeyUpsShutdown:
+		BuffaloGpio_ChangePowerStatus(POWER_STATUS_UPS_SHUTDOWN_REACHED_HALT);
+		printk("%s > Changed to 0x%02x from 0x%02x\n", __FUNCTION__, MagicKeyUpsShutdownReachedHalt, MagicKey);
+		break;
+	}
+}
+#endif
+
 void machine_halt(void)
 {
+#if defined(CONFIG_BUFFALO_USE_GPIO_DRIVER)
+	BuffaloChangePowerStatusBeforeHalt();
+	BuffaloGpio_CpuReset();
+#endif
+#ifdef CONFIG_BUFFALO_USE_MICON
+	miconCntl_PowerOff();
+#endif
 }
 
 

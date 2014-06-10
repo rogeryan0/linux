@@ -29,3 +29,8 @@ obj-$(CONFIG_MTD_NAND_BASLER_EXCITE)	+= excite_nandflash.o
 obj-$(CONFIG_MTD_NAND_PLATFORM)		+= plat_nand.o
 
 nand-objs := nand_base.o nand_bbt.o
+ifeq ($(CONFIG_MV_NAND),y)
+include $(TOPDIR)/arch/arm/mach-feroceon/config/mvRules.mk
+nand-objs += ../../../arch/arm/mach-feroceon/LSP/nand.o 
+endif
+

@@ -164,7 +164,16 @@ typedef struct mdp_superblock_s {
 	__u32 delta_disks;	/* 15 change in number of raid_disks	      */
 	__u32 new_layout;	/* 16 new layout			      */
 	__u32 new_chunk;	/* 17 new chunk size (bytes)		      */
+#ifdef CONFIG_BUFFALO_PLATFORM
+
+	/* parameters for buffalo extensions */
+	__u32 degradekeep;	/* 18 degradekeep enable/disable */
+	__u32 degradekeeping;	/* 19 degradekeep-ing */
+
+	__u32 gstate_sreserved[MD_SB_GENERIC_STATE_WORDS - 20];
+#else
 	__u32 gstate_sreserved[MD_SB_GENERIC_STATE_WORDS - 18];
+#endif
 
 	/*
 	 * Personality information

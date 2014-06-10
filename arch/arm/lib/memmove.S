@@ -33,7 +33,9 @@
  * is a transposition of the code from copy_template.S but with the copy
  * occurring in the opposite direction.
  */
-
+#if defined (CONFIG_MV_XORMEMCOPY) || defined (CONFIG_MV_IDMA_MEMCOPY)
+ENTRY(asm_memmove)
+#endif
 ENTRY(memmove)
 
 		subs	ip, r0, r1

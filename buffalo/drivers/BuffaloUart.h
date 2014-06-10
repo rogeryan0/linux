@@ -1,0 +1,1 @@
+../../arch/arm/mach-feroceon/Board/buffalo/BuffaloUart.h
