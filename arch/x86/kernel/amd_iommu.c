@@ -485,8 +485,6 @@ void amd_iommu_flush_all_devices(void)
 	int i;
 
 	for (i = 0; i <= amd_iommu_last_bdf; ++i) {
-		if (amd_iommu_pd_table[i] == NULL)
-			continue;
 
 		iommu = amd_iommu_rlookup_table[i];
 		if (!iommu)
@@ -1113,6 +1111,8 @@ static void __detach_device(struct protection_domain *domain, u16 devid)
 	amd_iommu_dev_table[devid].data[0] = IOMMU_PTE_P | IOMMU_PTE_TV;
 	amd_iommu_dev_table[devid].data[1] = 0;
 	amd_iommu_dev_table[devid].data[2] = 0;
+
+	amd_iommu_apply_erratum_63(devid);
 
 	/* decrease reference counter */
 	domain->dev_cnt -= 1;
