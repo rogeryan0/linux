@@ -167,6 +167,14 @@ struct gendisk {
 	struct blk_integrity *integrity;
 #endif
 	int node_id;
+#ifdef CONFIG_BUFFALO_PLATFORM
+	unsigned io_errors;		/* I/O error counter */
+	unsigned limit_io_errors;	/* I/O error limit */
+#ifdef CONFIG_BUFFALO_ERRCNT
+	atomic_t nr_errs;		/* number of errors occur during
+					 * Block I/O execution. */
+#endif /* CONFIG_BUFFALO_ERRCNT */
+#endif /* CONFIG_BUFFALO_PLATFORM */
 };
 
 static inline struct gendisk *part_to_disk(struct hd_struct *part)

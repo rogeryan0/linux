@@ -128,7 +128,7 @@ static inline void l2_inv_all(void)
  * inclusive start and end addresses.
  */
 #define CACHE_LINE_SIZE		32
-#define MAX_RANGE_SIZE		1024
+#define MAX_RANGE_SIZE		PAGE_SIZE
 
 static int l2_wt_override;
 

@@ -50,6 +50,10 @@
 #include "md.h"
 #include "bitmap.h"
 
+#ifdef CONFIG_BUFFALO_PLATFORM
+#include <buffalo/kernevnt.h>
+#endif
+
 #define DEBUG 0
 #define dprintk(x...) ((void)(DEBUG && printk(x)))
 
@@ -81,7 +85,15 @@ static DECLARE_WAIT_QUEUE_HEAD(resync_wait);
  */
 
 static int sysctl_speed_limit_min = 1000;
+#if defined(CONFIG_BUFFALO_PLATFORM)
+static int sysctl_speed_limit_max = 50000;
+static int sysctl_skip_resync=0;
+#if defined(CONFIG_BUFFALO_USE_MD_KERNEVNT)
+static int sysctl_use_kernevnt=1;
+#endif
+#else
 static int sysctl_speed_limit_max = 200000;
+#endif
 static inline int speed_min(mddev_t *mddev)
 {
 	return mddev->sync_speed_min ?
@@ -113,6 +125,26 @@ static ctl_table raid_table[] = {
 		.mode		= S_IRUGO|S_IWUSR,
 		.proc_handler	= &proc_dointvec,
 	},
+#ifdef CONFIG_BUFFALO_PLATFORM
+	{
+		.ctl_name	= DEV_RAID_SKIP_RESYNC,
+		.procname	= "skip_resync",
+		.data		= &sysctl_skip_resync,
+		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= &proc_dointvec,
+	},
+#endif
+#if defined(CONFIG_BUFFALO_USE_MD_KERNEVNT)
+	{
+		.ctl_name	= DEV_RAID_USE_KERNELEVENT,
+		.procname	= "use_kernevnt",
+		.data		= &sysctl_use_kernevnt,
+		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= &proc_dointvec,
+	},
+#endif
 	{ .ctl_name = 0 }
 };
 
@@ -2850,6 +2882,32 @@ static struct md_sysfs_entry md_layout =
 __ATTR(layout, S_IRUGO|S_IWUSR, layout_show, layout_store);
 
 
+#ifdef CONFIG_BUFFALO_ERRCNT
+static ssize_t
+maxerr_cnt_show(mddev_t *mddev, char *page)
+{
+
+	return sprintf(page, "%d\n", atomic_read(&mddev->maxerr_cnt));
+}
+
+static ssize_t
+maxerr_cnt_store(mddev_t *mddev, const char *buf, size_t len)
+{
+	char *e;
+	unsigned long n = simple_strtol(buf, &e, 10);
+
+	if (*buf &&
+	    (*e == 0 || *e == '\n') &&
+	    (n == -1 || (signed int)n >= 0)) {
+		atomic_set(&mddev->maxerr_cnt, n);
+		return len;
+	}
+	return -EINVAL;
+}
+static struct md_sysfs_entry md_maxerr_cnt =
+__ATTR(maxerr_cnt, S_IRUGO|S_IWUSR, maxerr_cnt_show, maxerr_cnt_store);
+#endif /* CONFIG_BUFFALO_ERRCNT */
+
 static ssize_t
 raid_disks_show(mddev_t *mddev, char *page)
 {
@@ -3753,6 +3811,9 @@ __ATTR(array_size, S_IRUGO|S_IWUSR, array_size_show,
 static struct attribute *md_default_attrs[] = {
 	&md_level.attr,
 	&md_layout.attr,
+#ifdef CONFIG_BUFFALO_ERRCNT
+	&md_maxerr_cnt.attr,
+#endif /* CONFIG_BUFFALO_ERRCNT */
 	&md_raid_disks.attr,
 	&md_chunk_size.attr,
 	&md_size.attr,
@@ -4233,6 +4294,11 @@ static int do_md_run(mddev_t * mddev)
 
 	revalidate_disk(mddev->gendisk);
 	mddev->changed = 1;
+
+#ifdef CONFIG_BUFFALO_ERRCNT
+	atomic_set(&mddev->maxerr_cnt, MAXERR_CNT_DEFAULT);
+#endif
+
 	md_new_event(mddev);
 	sysfs_notify_dirent(mddev->sysfs_state);
 	if (mddev->sysfs_action)
@@ -5668,6 +5734,11 @@ void md_error(mddev_t *mddev, mdk_rdev_t *rdev)
 		__builtin_return_address(0),__builtin_return_address(1),
 		__builtin_return_address(2),__builtin_return_address(3));
 */
+#if defined(CONFIG_BUFFALO_USE_MD_KERNEVNT)
+	if(sysctl_use_kernevnt)
+		kernevnt_RaidDegraded(mddev->md_minor,MAJOR(rdev->bdev->bd_dev),MINOR(rdev->bdev->bd_dev));
+#endif
+
 	if (!mddev->pers)
 		return;
 	if (!mddev->pers->error_handler)
@@ -6206,6 +6277,13 @@ void md_do_sync(mddev_t *mddev)
 	int skipped = 0;
 	mdk_rdev_t *rdev;
 	char *desc;
+#if defined(CONFIG_BUFFALO_USE_MD_KERNEVNT)
+	int isRecovery, major=0, minor=0;
+#endif
+
+#if defined(CONFIG_BUFFALO_PLATFORM)
+	set_user_nice(current, 4);
+#endif
 
 	/* just incase thread restarts... */
 	if (test_bit(MD_RECOVERY_DONE, &mddev->recovery))
@@ -6220,6 +6298,12 @@ void md_do_sync(mddev_t *mddev)
 			desc = "requested-resync";
 		else
 			desc = "resync";
+#ifdef CONFIG_BUFFALO_PLATFORM
+		if (test_bit(MD_RECOVERY_SYNC, &mddev->recovery) &&
+		    test_bit(MD_RECOVERY_REQUESTED, &mddev->recovery) &&
+		    !test_bit(MD_RECOVERY_CHECK, &mddev->recovery))
+			kernevnt_RaidScan(mddev->md_minor, 1);
+#endif
 	} else if (test_bit(MD_RECOVERY_RESHAPE, &mddev->recovery))
 		desc = "reshape";
 	else
@@ -6315,7 +6399,33 @@ void md_do_sync(mddev_t *mddev)
 			    rdev->recovery_offset < j)
 				j = rdev->recovery_offset;
 	}
-
+#if defined(CONFIG_BUFFALO_USE_MD_KERNEVNT)
+	if(sysctl_use_kernevnt)
+	{
+		if((test_bit(MD_RECOVERY_SYNC, &mddev->recovery) && 
+		    !test_bit(MD_RECOVERY_REQUESTED, &mddev->recovery)) ||
+		   (!test_bit(MD_RECOVERY_SYNC, &mddev->recovery) &&
+		    test_bit(MD_RECOVERY_RECOVER, &mddev->recovery)))
+		{
+			mdk_rdev_t *rdev_tmp;
+			list_for_each_entry(rdev_tmp, &mddev->disks, same_set)
+			{
+				if(rdev_tmp->flags != In_sync)
+				{
+					major = MAJOR(rdev_tmp->bdev->bd_dev);
+					minor = MINOR(rdev_tmp->bdev->bd_dev);
+					break;
+				}
+			}
+			isRecovery = !test_bit(MD_RECOVERY_SYNC, &mddev->recovery);
+			kernevnt_RaidRecovery(mddev->md_minor, 1, isRecovery, major, minor);
+		}
+		else if((test_bit(MD_RECOVERY_RESHAPE, &mddev->recovery)))
+		{
+			kernevnt_RaidReshape(mddev->md_minor, 1);
+		}
+	}
+#endif
 	printk(KERN_INFO "md: %s of RAID array %s\n", desc, mdname(mddev));
 	printk(KERN_INFO "md: minimum _guaranteed_  speed:"
 		" %d KB/sec/disk.\n", speed_min(mddev));
@@ -6353,6 +6463,11 @@ void md_do_sync(mddev_t *mddev)
 
 	while (j < max_sectors) {
 		sector_t sectors;
+
+#ifdef CONFIG_BUFFALO_PLATFORM
+		if (sysctl_skip_resync)
+			break;
+#endif
 
 		skipped = 0;
 
@@ -6463,6 +6578,21 @@ void md_do_sync(mddev_t *mddev)
 	blk_unplug(mddev->queue);
 
 	wait_event(mddev->recovery_wait, !atomic_read(&mddev->recovery_active));
+#if defined(CONFIG_BUFFALO_USE_MD_KERNEVNT)
+	if(sysctl_use_kernevnt)
+	{
+		if((test_bit(MD_RECOVERY_SYNC, &mddev->recovery) && 
+		    !test_bit(MD_RECOVERY_REQUESTED, &mddev->recovery)) ||
+		   (!test_bit(MD_RECOVERY_SYNC, &mddev->recovery) &&
+		    test_bit(MD_RECOVERY_RECOVER, &mddev->recovery)))
+			kernevnt_RaidRecovery(mddev->md_minor,0,isRecovery,major,minor);
+		else if((test_bit(MD_RECOVERY_RESHAPE, &mddev->recovery)))
+		{
+			printk("RaidReshape(mddev->md_minor, 0)\n");
+			kernevnt_RaidReshape(mddev->md_minor, 0);
+		}
+	}
+#endif
 
 	/* tell personality that we are finished */
 	mddev->pers->sync_request(mddev, max_sectors, &skipped, 1);
@@ -6498,6 +6628,12 @@ void md_do_sync(mddev_t *mddev)
 	if (!test_bit(MD_RECOVERY_INTR, &mddev->recovery))
 		/* We completed so max setting can be forgotten. */
 		mddev->resync_max = MaxSector;
+#ifdef CONFIG_BUFFALO_PLATFORM
+	if (test_bit(MD_RECOVERY_SYNC, &mddev->recovery) &&
+	    test_bit(MD_RECOVERY_REQUESTED, &mddev->recovery) &&
+	    !test_bit(MD_RECOVERY_CHECK, &mddev->recovery))
+		kernevnt_RaidScan(mddev->md_minor, 0);
+#endif
 	sysfs_notify(&mddev->kobj, NULL, "sync_completed");
 	wake_up(&resync_wait);
 	set_bit(MD_RECOVERY_DONE, &mddev->recovery);

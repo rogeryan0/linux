@@ -1993,6 +1993,10 @@ static void sd_probe_async(void *data, async_cookie_t cookie)
 	gd->fops = &sd_fops;
 	gd->private_data = &sdkp->driver;
 	gd->queue = sdkp->device->request_queue;
+#ifdef CONFIG_BUFFALO_PLATFORM
+	gd->io_errors = 0;
+	gd->limit_io_errors = 1000;		/* default limit */
+#endif
 
 	/* defaults, until the device tells us otherwise */
 	sdp->sector_size = 512;

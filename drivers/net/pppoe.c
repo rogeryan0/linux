@@ -85,6 +85,13 @@
 
 #include <asm/uaccess.h>
 
+#ifdef CONFIG_MV_ETH_NFP_PPP
+extern int fp_ppp_db_init(void);
+extern int fp_ppp_info_set(u32 if_ppp, u32 if_eth, u16 sid, u8 *mac, u32 channel);
+extern int fp_ppp_info_del(u32 channel);
+extern int fp_ppp_db_clear(void);
+#endif
+
 #define PPPOE_HASH_BITS 4
 #define PPPOE_HASH_SIZE (1 << PPPOE_HASH_BITS)
 #define PPPOE_HASH_MASK	(PPPOE_HASH_SIZE - 1)
@@ -597,6 +604,9 @@ static int pppoe_release(struct socket *sock)
 	write_lock_bh(&pn->hash_lock);
 
 	po = pppox_sk(sk);
+#ifdef CONFIG_MV_ETH_NFP_PPP
+	fp_ppp_info_del(&po->chan);
+#endif
 	if (stage_session(po->pppoe_pa.sid))
 		__delete_item(pn, po->pppoe_pa.sid, po->pppoe_pa.remote,
 				po->pppoe_ifindex);
@@ -700,6 +710,9 @@ static int pppoe_connect(struct socket *sock, struct sockaddr *uservaddr,
 			goto err_put;
 
 		sk->sk_state = PPPOX_CONNECTED;
+#ifdef CONFIG_MV_ETH_NFP_PPP
+		fp_ppp_info_set(0, dev->ifindex, sp->sa_addr.pppoe.sid, po->pppoe_pa.remote, &po->chan);
+#endif
 	}
 
 	po->num = sp->sa_addr.pppoe.sid;
@@ -1200,7 +1213,9 @@ static int __init pppoe_init(void)
 	dev_add_pack(&pppoes_ptype);
 	dev_add_pack(&pppoed_ptype);
 	register_netdevice_notifier(&pppoe_notifier);
-
+#ifdef CONFIG_MV_ETH_NFP_PPP
+	fp_ppp_db_init();
+#endif
 	return 0;
 
 out_unregister_pppox_proto:
@@ -1213,6 +1228,9 @@ out:
 
 static void __exit pppoe_exit(void)
 {
+#ifdef CONFIG_MV_ETH_NFP_PPP
+	fp_ppp_db_clear();
+#endif
 	unregister_pppox_proto(PX_PROTO_OE);
 	dev_remove_pack(&pppoes_ptype);
 	dev_remove_pack(&pppoed_ptype);

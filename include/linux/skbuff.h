@@ -30,6 +30,9 @@
 #include <linux/dmaengine.h>
 #include <linux/hrtimer.h>
 
+#if defined(CONFIG_NET_SKB_HEADROOM)
+# define NET_SKB_PAD  CONFIG_NET_SKB_HEADROOM
+#endif
 /* Don't change this without changing skb_csum_unnecessary! */
 #define CHECKSUM_NONE 0
 #define CHECKSUM_UNNECESSARY 1
@@ -359,6 +362,11 @@ struct sk_buff {
 	__be16			protocol;
 
 	void			(*destructor)(struct sk_buff *skb);
+#ifdef CONFIG_NET_SKB_RECYCLE
+	int			(*skb_recycle) (struct sk_buff *skb, int reject);
+	void			*hw_cookie;
+#endif /* CONFIG_NET_SKB_RECYCLE */
+
 #if defined(CONFIG_NF_CONNTRACK) || defined(CONFIG_NF_CONNTRACK_MODULE)
 	struct nf_conntrack	*nfct;
 	struct sk_buff		*nfct_reasm;

@@ -879,7 +879,13 @@ enum {
 /* /proc/sys/dev/raid */
 enum {
 	DEV_RAID_SPEED_LIMIT_MIN=1,
-	DEV_RAID_SPEED_LIMIT_MAX=2
+	DEV_RAID_SPEED_LIMIT_MAX=2,
+#ifdef CONFIG_BUFFALO_PLATFORM
+	DEV_RAID_SKIP_RESYNC=3,
+#if defined(CONFIG_BUFFALO_USE_MD_KERNEVNT)
+	DEV_RAID_USE_KERNELEVENT=4,
+#endif
+#endif
 };
 
 /* /proc/sys/dev/parport/default */

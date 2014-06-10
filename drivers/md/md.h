@@ -291,6 +291,15 @@ struct mddev_s
 								*/
 
 	struct list_head		all_mddevs;
+#ifdef CONFIG_BUFFALO_ERRCNT
+#define MAXERR_CNT_DEFAULT	1000
+	atomic_t			maxerr_cnt; /* If rdev->bdev->bd_disk->
+						     * nr_err reaches to
+						     * maxerr_cnt excepting
+						     * maxerr_cnt is -1,
+						     * disk will be faulty.
+						     */
+#endif /* CONFIG_BUFFALO_ERRCNT */
 };
 
 

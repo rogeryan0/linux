@@ -134,6 +134,9 @@ static int ehci_pci_setup(struct usb_hcd *hcd)
 	if (retval)
 		return retval;
 
+#ifdef CONFIG_BUFFALO_PLATFORM
+    if (hcd->self.controller->bus == &pci_bus_type) {
+#endif /* CONFIG_BUFFALO_PLATFORM */
 	switch (pdev->vendor) {
 	case PCI_VENDOR_ID_TDI:
 		if (pdev->device == PCI_DEVICE_ID_TDI_EHCI) {
@@ -199,6 +202,9 @@ static int ehci_pci_setup(struct usb_hcd *hcd)
 	}
 
 	ehci_reset(ehci);
+#ifdef CONFIG_BUFFALO_PLATFORM
+    }
+#endif /* CONFIG_BUFFALO_PLATFORM */
 
 	/* at least the Genesys GL880S needs fixup here */
 	temp = HCS_N_CC(ehci->hcs_params) * HCS_N_PCC(ehci->hcs_params);
@@ -210,6 +216,9 @@ static int ehci_pci_setup(struct usb_hcd *hcd)
 			HCS_N_PCC(ehci->hcs_params),
 			HCS_N_PORTS(ehci->hcs_params));
 
+#ifdef CONFIG_BUFFALO_PLATFORM
+	    if (hcd->self.controller->bus == &pci_bus_type) {
+#endif /* CONFIG_BUFFALO_PLATFORM */
 		switch (pdev->vendor) {
 		case 0x17a0:		/* GENESYS */
 			/* GL880S: should be PORTS=2 */
@@ -220,8 +229,14 @@ static int ehci_pci_setup(struct usb_hcd *hcd)
 			/* NF4: should be PCC=10 */
 			break;
 		}
+#ifdef CONFIG_BUFFALO_PLATFORM
+	    }
+#endif /* CONFIG_BUFFALO_PLATFORM */
 	}
 
+#ifdef CONFIG_BUFFALO_PLATFORM
+    if (hcd->self.controller->bus == &pci_bus_type) {
+#endif /* CONFIG_BUFFALO_PLATFORM */
 	/* Serial Bus Release Number is at PCI 0x60 offset */
 	pci_read_config_byte(pdev, 0x60, &ehci->sbrn);
 
@@ -257,6 +272,9 @@ static int ehci_pci_setup(struct usb_hcd *hcd)
 
 	ehci_port_power(ehci, 1);
 	retval = ehci_pci_reinit(ehci, pdev);
+#ifdef CONFIG_BUFFALO_PLATFORM
+    }
+#endif /* CONFIG_BUFFALO_PLATFORM */
 done:
 	return retval;
 }

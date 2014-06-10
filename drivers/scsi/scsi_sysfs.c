@@ -485,7 +485,7 @@ sdev_store_##field (struct device *dev, struct device_attribute *attr,	\
 {									\
 	struct scsi_device *sdev;					\
 	sdev = to_scsi_device(dev);					\
-	snscanf (buf, 20, format_string, &sdev->field);			\
+	sscanf (buf, format_string, &sdev->field);			\
 	return count;							\
 }									\
 static DEVICE_ATTR(field, S_IRUGO | S_IWUSR, sdev_show_##field, sdev_store_##field);
@@ -543,6 +543,9 @@ sdev_rd_attr (scsi_level, "%d\n");
 sdev_rd_attr (vendor, "%.8s\n");
 sdev_rd_attr (model, "%.16s\n");
 sdev_rd_attr (rev, "%.4s\n");
+#if defined(CONFIG_BUFFALO_PLATFORM)
+sdev_rw_attr (ignore_lun, "%d\n");
+#endif
 
 /*
  * TODO: can we make these symlinks to the block layer ones?
@@ -728,6 +731,9 @@ static struct attribute *scsi_sdev_attrs[] = {
 	&dev_attr_vendor.attr,
 	&dev_attr_model.attr,
 	&dev_attr_rev.attr,
+#if defined(CONFIG_BUFFALO_PLATFORM)
+	&dev_attr_ignore_lun,
+#endif
 	&dev_attr_rescan.attr,
 	&dev_attr_delete.attr,
 	&dev_attr_state.attr,
@@ -925,7 +931,19 @@ int scsi_sysfs_add_sdev(struct scsi_device *sdev)
 void __scsi_remove_device(struct scsi_device *sdev)
 {
 	struct device *dev = &sdev->sdev_gendev;
-
+#ifdef CONFIG_MV_SCATTERED_SPINUP
+	if (scsi_spinup_enabled()) {
+		if (sdev->standby_timeout_secs > 0) {
+			/* if the device had any standby timer */
+			standby_delete_timer(sdev);
+		}
+		if (sdev->spinup_timeout.function) {
+			/* deleting any spinup timer thats may be still there and freeing the semaphore */
+			spinup_delete_timer(sdev);
+			scsi_spinup_up();
+		}
+	}
+#endif
 	if (scsi_device_set_state(sdev, SDEV_CANCEL) != 0)
 		return;
 

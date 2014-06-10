@@ -1614,7 +1614,13 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
 	es = (struct ext3_super_block *) (((char *)bh->b_data) + offset);
 	sbi->s_es = es;
 	sb->s_magic = le16_to_cpu(es->s_magic);
+#ifdef CONFIG_BUFFALO_PLATFORM
+	// __LS_COMMENT__ BUFFALO change 2004.8.30
+	if ((sb->s_magic != EXT3_SUPER_MAGIC) &&
+	    (sb->s_magic != MEL_EXT3_SUPER_MAGIC))
+#else   
 	if (sb->s_magic != EXT3_SUPER_MAGIC)
+#endif
 		goto cantfind_ext3;
 
 	/* Set defaults before we parse the mount options */
@@ -1723,7 +1729,13 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
 		}
 		es = (struct ext3_super_block *)(((char *)bh->b_data) + offset);
 		sbi->s_es = es;
+#ifdef CONFIG_BUFFALO_PLATFORM
+		// __LS_COMMENT__ BUFFALO change 2004.8.30
+		if ((es->s_magic != le16_to_cpu(EXT3_SUPER_MAGIC)) &&
+		    (es->s_magic != le16_to_cpu(MEL_EXT3_SUPER_MAGIC))) {
+#else
 		if (es->s_magic != cpu_to_le16(EXT3_SUPER_MAGIC)) {
+#endif
 			printk (KERN_ERR
 				"EXT3-fs: Magic mismatch, very weird !\n");
 			goto failed_mount;
@@ -2135,7 +2147,13 @@ static journal_t *ext3_get_dev_journal(struct super_block *sb,
 	}
 
 	es = (struct ext3_super_block *) (((char *)bh->b_data) + offset);
+#ifdef CONFIG_BUFFALO_PLATFORM
+	// __LS_COMMENT__ BUFFALO change 2004.8.30
+	if (((le16_to_cpu(es->s_magic) != EXT3_SUPER_MAGIC) &&
+	     (le16_to_cpu(es->s_magic) != MEL_EXT3_SUPER_MAGIC)) ||
+#else   
 	if ((le16_to_cpu(es->s_magic) != EXT3_SUPER_MAGIC) ||
+#endif
 	    !(le32_to_cpu(es->s_feature_incompat) &
 	      EXT3_FEATURE_INCOMPAT_JOURNAL_DEV)) {
 		printk(KERN_ERR "EXT3-fs: external journal has "

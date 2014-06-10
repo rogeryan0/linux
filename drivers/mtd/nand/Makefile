@@ -42,3 +42,21 @@ obj-$(CONFIG_MTD_NAND_SOCRATES)		+= socrates_nand.o
 obj-$(CONFIG_MTD_NAND_TXX9NDFMC)	+= txx9ndfmc.o
 
 nand-objs := nand_base.o nand_bbt.o
+ifeq ($(CONFIG_MV_NAND),y)
+
+ifeq ($(CONFIG_ARCH_FEROCEON_ORION),y)
+include $(srctree)/arch/arm/mach-feroceon-orion/config/mvRules.mk
+nand-objs += ../../../arch/arm/mach-feroceon-orion/nand.o
+endif
+
+ifeq ($(CONFIG_ARCH_FEROCEON_KW),y)
+include $(srctree)/arch/arm/mach-feroceon-kw/config/mvRules.mk
+nand-objs += ../../../arch/arm/mach-feroceon-kw/nand.o
+endif
+
+ifeq ($(CONFIG_ARCH_FEROCEON_MV78XX0),y)
+include $(srctree)/arch/arm/mach-feroceon-mv78xx0/config/mvRules.mk
+nand-objs += ../../../arch/arm/mach-feroceon-mv78xx0/nand.o
+endif
+ 
+endif

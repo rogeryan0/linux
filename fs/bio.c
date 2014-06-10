@@ -1120,7 +1120,14 @@ void bio_unmap_user(struct bio *bio)
 
 static void bio_map_kern_endio(struct bio *bio, int err)
 {
-	bio_put(bio);
+	void *kaddr = bio->bi_private;
+	if (is_vmalloc_addr(kaddr)) {
+		void *addr;
+		for (addr = kaddr; addr < kaddr + bio->bi_size;
+		     addr += PAGE_SIZE)
+			invalidate_kernel_dcache_addr(addr);
+	}
+ 	bio_put(bio);
 }
 
 
@@ -1138,9 +1145,13 @@ static struct bio *__bio_map_kern(struct request_queue *q, void *data,
 	if (!bio)
 		return ERR_PTR(-ENOMEM);
 
+	bio->bi_private = data;
+
 	offset = offset_in_page(kaddr);
 	for (i = 0; i < nr_pages; i++) {
 		unsigned int bytes = PAGE_SIZE - offset;
+
+        struct page *page;
 
 		if (len <= 0)
 			break;
@@ -1148,8 +1159,13 @@ static struct bio *__bio_map_kern(struct request_queue *q, void *data,
 		if (bytes > len)
 			bytes = len;
 
-		if (bio_add_pc_page(q, bio, virt_to_page(data), bytes,
-				    offset) < bytes)
+		if (is_vmalloc_addr(data)) {
+			flush_kernel_dcache_addr(data);
+			page = vmalloc_to_page(data);
+		} else
+			page = virt_to_page(data);
+
+		if (bio_add_pc_page(q, bio, page, bytes, offset) < bytes)
 			break;
 
 		data += bytes;

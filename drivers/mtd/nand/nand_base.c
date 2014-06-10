@@ -52,6 +52,18 @@
 #include <linux/mtd/partitions.h>
 #endif
 
+#if defined(CONFIG_BUFFALO_PLATFORM)
+  #define BIP(x,fmt...) printk(x,##fmt)
+  #if defined(CONFIG_BUFFALO_DEBUG)
+    #define BDP(x,fmt...)       printk(x,##fmt)
+  #else
+    #define BDP(x,fmt...)
+  #endif
+#else
+  #define BIP(x,fmt...)
+  #define BDP(x,fmt...)
+#endif
+
 /* Define default oob placement schemes for large and small page devices */
 static struct nand_ecclayout nand_oob_8 = {
 	.eccbytes = 3,

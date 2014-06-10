@@ -825,6 +825,12 @@ static const struct trans_ctl_table trans_mac_hid_files[] = {
 static const struct trans_ctl_table trans_raid_table[] = {
 	{ DEV_RAID_SPEED_LIMIT_MIN,	"speed_limit_min" },
 	{ DEV_RAID_SPEED_LIMIT_MAX,	"speed_limit_max" },
+#if defined(CONFIG_BUFFALO_PLATFORM)
+	{ DEV_RAID_SKIP_RESYNC,		"skip_resync" },
+#if defined(CONFIG_BUFFALO_USE_MD_KERNEVNT)
+	{ DEV_RAID_USE_KERNELEVENT,	"use_kernevnt" },
+#endif
+#endif
 	{}
 };
 

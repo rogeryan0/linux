@@ -382,6 +382,7 @@ static int __init arm_add_memory(unsigned long start, unsigned long size)
 	 * Ensure that start/size are aligned to a page boundary.
 	 * Size is appropriately rounded down, start is rounded up.
 	 */
+       if(size != 0) /* overcome bug in U-Boot */
 	size -= start & ~PAGE_MASK;
 	bank->start = PAGE_ALIGN(start);
 	bank->size  = size & PAGE_MASK;
@@ -728,6 +729,12 @@ void __init setup_arch(char **cmdline_p)
 	boot_command_line[COMMAND_LINE_SIZE-1] = '\0';
 	parse_cmdline(cmdline_p, from);
 	paging_init(mdesc);
+#ifdef CONFIG_DEBUG_LL
+	{
+		extern int ll_debug;
+		ll_debug=1;
+	}
+#endif
 	request_standard_resources(&meminfo, mdesc);
 
 #ifdef CONFIG_SMP

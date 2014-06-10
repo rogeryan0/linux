@@ -33,6 +33,10 @@
 
 #include "blk.h"
 
+#ifdef CONFIG_BUFFALO_PLATFORM
+#include <buffalo/kernevnt.h>
+#endif
+
 EXPORT_TRACEPOINT_SYMBOL_GPL(block_remap);
 EXPORT_TRACEPOINT_SYMBOL_GPL(block_bio_complete);
 
@@ -1438,6 +1442,16 @@ static inline void __generic_make_request(struct bio *bio)
 			goto end_io;
 		}
 
+#ifdef CONFIG_BUFFALO_PLATFORM
+		if (bio->bi_bdev->bd_disk->limit_io_errors > 0 &&
+		    (bio->bi_bdev->bd_disk->io_errors > bio->bi_bdev->bd_disk->limit_io_errors)){
+			//printk("%s:io error limit\n",bdevname(bio->bi_bdev, b));
+			set_bit(QUEUE_FLAG_DEAD, &q->queue_flags);
+			kernevnt_DriveDead(bdevname(bio->bi_bdev, b));
+			goto end_io;
+		}
+#endif
+
 		if (unlikely(test_bit(QUEUE_FLAG_DEAD, &q->queue_flags)))
 			goto end_io;
 
@@ -1914,6 +1928,18 @@ bool blk_update_request(struct request *req, int error, unsigned int nr_bytes)
 				req->rq_disk ? req->rq_disk->disk_name : "?",
 				(unsigned long long)blk_rq_pos(req));
 	}
+#ifdef CONFIG_BUFFALO_PLATFORM
+	if (error && !blk_pc_request(req) && req->rq_disk) {
+#ifdef CONFIG_BUFFALO_ERRCNT
+		if (atomic_inc_return(&req->rq_disk->nr_errs) < 0)
+			atomic_set(&req->rq_disk->nr_errs, INT_MAX);
+#endif /* CONFIG_BUFFALO_ERRCNT */
+		kernevnt_IOErr(req->rq_disk->disk_name,
+		    (rq_data_dir(req) == WRITE) ? "WRITE" : "READ",
+		    (unsigned long long)blk_rq_pos(req),
+		    ++req->rq_disk->io_errors);
+	}
+#endif /* CONFIG_BUFFALO_PLATFORM */
 
 	blk_account_io_completion(req, nr_bytes);
 

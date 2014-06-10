@@ -144,6 +144,14 @@
 #define M29W160DT	0x22C4
 #define M29W160DB	0x2249
 #define M29W040B	0x00E3
+#ifdef CONFIG_BUFFALO_PLATFORM
+#define M29W320DT	0x00CA
+#define M29W320DB	0x00CB
+#define M29W324DT	0x005C
+#define M29W324DB	0x005D
+#define M29W323DT	0x005E
+#define M29W323DB	0x005F
+#endif
 #define M50FW040	0x002C
 #define M50FW080	0x002D
 #define M50FW016	0x002E
@@ -1647,6 +1655,36 @@ static const struct amd_flash_info jedec_table[] = {
 		.regions	= {
 			ERASEINFO(0x10000,8),
 		}
+#ifdef CONFIG_BUFFALO_PLATFORM
+	}, {
+		/* 2006.2.2 buffalo: add */
+		.mfr_id		= MANUFACTURER_ST,
+		.dev_id		= M29W323DT,
+		.name		= "ST M29W323DT",
+		.devtypes	= CFI_DEVICETYPE_X16|CFI_DEVICETYPE_X8,
+		.uaddr		= MTD_UADDR_0x0555_0x02AA,
+		.dev_size	= SIZE_4MiB,
+		.cmd_set	= P_ID_AMD_STD,
+		.nr_regions	= 2,
+		.regions	= {
+			ERASEINFO(0x10000,63),
+			ERASEINFO(0x02000,8)
+		}
+	}, {
+		/* 2006.2.2 buffalo: add */
+		.mfr_id		= MANUFACTURER_ST,
+		.dev_id		= M29W323DB,
+		.name		= "ST M29W323DB",
+		.devtypes	= CFI_DEVICETYPE_X16|CFI_DEVICETYPE_X8,
+		.uaddr		= MTD_UADDR_0x0AAA_0x0555,
+		.dev_size	= SIZE_4MiB,
+		.cmd_set	= P_ID_AMD_STD,
+		.nr_regions	= 2,
+		.regions	= {
+			ERASEINFO(0x02000,8),
+			ERASEINFO(0x10000,63)
+		}
+#endif
 	}, {
 		.mfr_id		= MANUFACTURER_ST,
 		.dev_id		= M50FW040,

@@ -231,7 +231,12 @@ static void uart_shutdown(struct uart_state *state)
 		 * Turn off DTR and RTS early.
 		 */
 		if (!tty || (tty->termios->c_cflag & HUPCL))
+#if defined(CONFIG_BUFFALO_PLATFORM) && !defined(CONFIG_ARCH_FEROCEON_KW)
+			// don't handle TIOCM_RTS
+			uart_clear_mctrl(port, TIOCM_RTS);
+#else
 			uart_clear_mctrl(port, TIOCM_DTR | TIOCM_RTS);
+#endif
 
 		/*
 		 * clear delta_msr_wait queue to avoid mem leaks: we may free

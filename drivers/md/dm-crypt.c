@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2003 Christophe Saout <christophe@saout.de>
  * Copyright (C) 2004 Clemens Fruhwirth <clemens@endorphin.org>
- * Copyright (C) 2006-2008 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2006 Red Hat, Inc. All rights reserved.
  *
  * This file is released under the GPL.
  */
@@ -25,14 +25,39 @@
 
 #include <linux/device-mapper.h>
 
+#if defined(CONFIG_OCF_DM_CRYPT)
+
+//#define DM_DEBUG
+#undef DM_DEBUG
+#ifdef DM_DEBUG
+#define dmprintk printk
+#else
+#define dmprintk(fmt,args...) 
+#endif
+
+#include <../crypto/ocf/cryptodev.h>
+#endif
+
 #define DM_MSG_PREFIX "crypt"
 #define MESG_STR(x) x, sizeof(x)
+
+extern int crypto_debug;
+/*
+ * per bio private data
+ */
+struct crypt_io {
+	struct dm_target *target;
+	struct bio *base_bio;
+	struct work_struct work;
+	atomic_t pending;
+	int error;
+	int post_process;
+};
 
 /*
  * context holding the current state of a multi-part conversion
  */
 struct convert_context {
-	struct completion restart;
 	struct bio *bio_in;
 	struct bio *bio_out;
 	unsigned int offset_in;
@@ -40,36 +65,14 @@ struct convert_context {
 	unsigned int idx_in;
 	unsigned int idx_out;
 	sector_t sector;
-	atomic_t pending;
-};
-
-/*
- * per bio private data
- */
-struct dm_crypt_io {
-	struct dm_target *target;
-	struct bio *base_bio;
-	struct work_struct work;
-
-	struct convert_context ctx;
-
-	atomic_t pending;
-	int error;
-	sector_t sector;
-	struct dm_crypt_io *base_io;
-};
-
-struct dm_crypt_request {
-	struct convert_context *ctx;
-	struct scatterlist sg_in;
-	struct scatterlist sg_out;
+	int write;
 };
 
 struct crypt_config;
 
 struct crypt_iv_operations {
 	int (*ctr)(struct crypt_config *cc, struct dm_target *ti,
-		   const char *opts);
+	           const char *opts);
 	void (*dtr)(struct crypt_config *cc);
 	const char *(*status)(struct crypt_config *cc);
 	int (*generator)(struct crypt_config *cc, u8 *iv, sector_t sector);
@@ -85,16 +88,12 @@ struct crypt_config {
 	sector_t start;
 
 	/*
-	 * pool for per bio private data, crypto requests and
-	 * encryption requeusts/buffer pages
+	 * pool for per bio private data and
+	 * for encryption buffer pages
 	 */
 	mempool_t *io_pool;
-	mempool_t *req_pool;
 	mempool_t *page_pool;
 	struct bio_set *bs;
-
-	struct workqueue_struct *io_queue;
-	struct workqueue_struct *crypt_queue;
 
 	/*
 	 * crypto related data
@@ -108,44 +107,38 @@ struct crypt_config {
 	sector_t iv_offset;
 	unsigned int iv_size;
 
-	/*
-	 * Layout of each crypto request:
-	 *
-	 *   struct ablkcipher_request
-	 *      context
-	 *      padding
-	 *   struct dm_crypt_request
-	 *      padding
-	 *   IV
-	 *
-	 * The padding is added so that dm_crypt_request and the IV are
-	 * correctly aligned.
-	 */
-	unsigned int dmreq_start;
-	struct ablkcipher_request *req;
-
 	char cipher[CRYPTO_MAX_ALG_NAME];
 	char chainmode[CRYPTO_MAX_ALG_NAME];
-	struct crypto_ablkcipher *tfm;
+#if defined(CONFIG_OCF_DM_CRYPT)
+	struct cryptoini 	cr_dm;    		/* OCF session */
+	uint64_t 	 	ocf_cryptoid;		/* OCF sesssion ID */
+#else
+	struct crypto_blkcipher *tfm;
+#endif
 	unsigned long flags;
 	unsigned int key_size;
 	u8 key[0];
 };
 
-#define MIN_IOS        16
+#define MIN_IOS        256
 #define MIN_POOL_PAGES 32
 #define MIN_BIO_PAGES  8
 
 static struct kmem_cache *_crypt_io_pool;
+wait_queue_head_t   dm_waitq;
+static volatile u32 wake = 0;
+static atomic_t blocked;
+static DEFINE_SPINLOCK(dmcrypt_lock);
+extern int cesaReqResources;
 
-static void clone_init(struct dm_crypt_io *, struct bio *);
-static void kcryptd_queue_crypt(struct dm_crypt_io *io);
+
+static void clone_init(struct crypt_io *, struct bio *);
 
 /*
  * Different IV generation algorithms:
  *
  * plain: the initial vector is the 32-bit little-endian version of the sector
- *        number, padded with zeros if necessary.
+ *        number, padded with zeros if neccessary.
  *
  * essiv: "encrypted sector|salt initial vector", the sector number is
  *        encrypted with the bulk cipher using a salt as key. The salt
@@ -170,7 +163,7 @@ static int crypt_iv_plain_gen(struct crypt_config *cc, u8 *iv, sector_t sector)
 }
 
 static int crypt_iv_essiv_ctr(struct crypt_config *cc, struct dm_target *ti,
-			      const char *opts)
+	                      const char *opts)
 {
 	struct crypto_cipher *essiv_tfm;
 	struct crypto_hash *hash_tfm;
@@ -219,10 +212,14 @@ static int crypt_iv_essiv_ctr(struct crypt_config *cc, struct dm_target *ti,
 		kfree(salt);
 		return PTR_ERR(essiv_tfm);
 	}
+#if  defined(CONFIG_OCF_DM_CRYPT)
+	if (crypto_cipher_blocksize(essiv_tfm) != cc->iv_size) {
+#else
 	if (crypto_cipher_blocksize(essiv_tfm) !=
-	    crypto_ablkcipher_ivsize(cc->tfm)) {
+	    crypto_blkcipher_ivsize(cc->tfm)) {
+#endif
 		ti->error = "Block size of ESSIV cipher does "
-			    "not match IV size of block cipher";
+			        "not match IV size of block cipher";
 		crypto_free_cipher(essiv_tfm);
 		kfree(salt);
 		return -EINVAL;
@@ -254,10 +251,11 @@ static int crypt_iv_essiv_gen(struct crypt_config *cc, u8 *iv, sector_t sector)
 	return 0;
 }
 
+#if !defined(CONFIG_OCF_DM_CRYPT)
 static int crypt_iv_benbi_ctr(struct crypt_config *cc, struct dm_target *ti,
 			      const char *opts)
 {
-	unsigned bs = crypto_ablkcipher_blocksize(cc->tfm);
+	unsigned int bs = crypto_blkcipher_blocksize(cc->tfm);
 	int log = ilog2(bs);
 
 	/* we need to calculate how far we must shift the sector count
@@ -293,6 +291,7 @@ static int crypt_iv_benbi_gen(struct crypt_config *cc, u8 *iv, sector_t sector)
 
 	return 0;
 }
+#endif
 
 static int crypt_iv_null_gen(struct crypt_config *cc, u8 *iv, sector_t sector)
 {
@@ -311,20 +310,295 @@ static struct crypt_iv_operations crypt_iv_essiv_ops = {
 	.generator = crypt_iv_essiv_gen
 };
 
+#if !defined(CONFIG_OCF_DM_CRYPT)
 static struct crypt_iv_operations crypt_iv_benbi_ops = {
 	.ctr	   = crypt_iv_benbi_ctr,
 	.dtr	   = crypt_iv_benbi_dtr,
 	.generator = crypt_iv_benbi_gen
 };
+#endif
 
 static struct crypt_iv_operations crypt_iv_null_ops = {
 	.generator = crypt_iv_null_gen
 };
 
-static void crypt_convert_init(struct crypt_config *cc,
-			       struct convert_context *ctx,
-			       struct bio *bio_out, struct bio *bio_in,
-			       sector_t sector)
+#if defined(CONFIG_OCF_DM_CRYPT)
+static void dec_pending(struct crypt_io *io, int error);
+
+struct ocf_wr_priv {
+	u32 		 	dm_ocf_wr_completed;	/* Num of wr completions */
+	u32 		 	dm_ocf_wr_pending;	/* Num of wr pendings */
+	wait_queue_head_t	dm_ocf_wr_queue;	/* waiting Q, for wr completion */
+};
+
+/* WARN: ordering between processes is not guaranteed due to 'wake' handling */
+static int dm_ocf_wr_cb(struct cryptop *crp)
+{
+	struct ocf_wr_priv *ocf_wr_priv;
+	if(atomic_read(&blocked) > 0) {
+		atomic_dec(&blocked);
+		wake = 1;
+		wake_up(&dm_waitq);
+	}
+
+	if(crp == NULL) {
+		printk("dm_ocf_wr_cb: crp is NULL!! \n");
+		return 0;
+	}
+
+	ocf_wr_priv = (struct ocf_wr_priv*)crp->crp_opaque;
+
+	ocf_wr_priv->dm_ocf_wr_completed++;
+	
+	/* if no more pending for read, wake up the read task. */
+	if(ocf_wr_priv->dm_ocf_wr_completed == ocf_wr_priv->dm_ocf_wr_pending)
+		wake_up(&ocf_wr_priv->dm_ocf_wr_queue);
+
+	crypto_freereq(crp);
+	return 0;
+}
+
+static int dm_ocf_rd_cb(struct cryptop *crp)
+{
+	struct crypt_io *io;
+	if(atomic_read(&blocked) > 0) {
+		atomic_dec(&blocked);
+		wake = 1;
+		wake_up(&dm_waitq);
+	}
+
+	if(crp == NULL) {
+		printk("dm_ocf_rd_cb: crp is NULL!! \n");
+		return 0;
+	}
+
+	io = (struct crypt_io *)crp->crp_opaque;
+
+	crypto_freereq(crp);
+
+	if(io != NULL)
+		dec_pending(io, 0);
+
+	return 0;
+}
+
+static inline int dm_ocf_process(struct crypt_config *cc, struct scatterlist *out, 
+		struct scatterlist *in, unsigned int len, u8 *iv, int iv_size, int write, void *priv)
+{
+	struct cryptop *crp;
+	struct cryptodesc *crda = NULL;
+	u32 err;
+	unsigned long flags;
+	if(!iv) {
+		printk("dm_ocf_process: only CBC mode is supported\n");
+		return -EPERM;	
+	}
+
+	crp = crypto_getreq(1);	 /* only encryption/decryption */
+	if (!crp) {
+		printk("dm_ocf_process: crypto_getreq failed!!\n");
+		return -ENOMEM;
+	}
+	
+	crda = crp->crp_desc;
+
+	crda->crd_flags  = (write)? CRD_F_ENCRYPT: 0;
+	crda->crd_alg    = cc->cr_dm.cri_alg;
+	crda->crd_skip   = 0;
+	crda->crd_len    = len;
+	crda->crd_inject = 0; /* NA */
+	crda->crd_klen   = cc->cr_dm.cri_klen;
+	crda->crd_key    = cc->cr_dm.cri_key;
+
+	if (iv) {
+		crda->crd_flags |= (CRD_F_IV_EXPLICIT | CRD_F_IV_PRESENT);
+		if( iv_size > EALG_MAX_BLOCK_LEN ) {
+			printk("dm_ocf_process: iv is too big!!\n");
+		}
+		memcpy(&crda->crd_iv, iv, iv_size);		
+	}
+
+	/* according to the current implementation the in and the out are the same buffer for read, and different for write*/
+	if ((page_address(sg_page(out)) + out->offset) != (page_address(sg_page(in)) + in->offset)) {
+		memcpy((page_address(sg_page(out)) + out->offset) , (page_address(sg_page(in)) + in->offset) , len);
+		dmprintk("dm_ocf_process: copy buffers!! \n");
+	}
+
+	dmprintk("len: %d\n",len);
+	crp->crp_ilen = len; /* Total input length */
+	crp->crp_flags = CRYPTO_F_CBIMM | CRYPTO_F_BATCH;
+	crp->crp_buf = page_address(sg_page(out)) + out->offset;
+	crp->crp_opaque = priv;
+	if (write) {
+       crp->crp_callback = dm_ocf_wr_cb;
+	}
+	else {
+		crp->crp_callback = dm_ocf_rd_cb;
+	}
+	crp->crp_sid = cc->ocf_cryptoid;
+
+	while (crypto_dispatch(crp) != 0) {
+               spin_lock_irqsave(&dmcrypt_lock, flags);
+	       /* Make sure CESA queue was not turned empty */
+               if(cesaReqResources > 1) {
+                       spin_unlock_irqrestore(&dmcrypt_lock, flags);
+                       continue;
+               }
+               else {
+		       /* CESA queue is full, wait a bit */
+		wake = 0;
+		atomic_inc(&blocked);
+                       spin_unlock_irqrestore(&dmcrypt_lock, flags);
+                       err = wait_event_timeout(dm_waitq, (wake == 1),msecs_to_jiffies(20000));
+                       if(!err) {
+                               printk("dm_ocf_process: timeout elapsed, request preempted more than 20sec\n ");
+		return -ENOMEM;
+	}
+	}
+	}
+		return 0;
+}
+
+static inline int
+ocf_crypt_convert_scatterlist(struct crypt_config *cc, struct scatterlist *out,
+                          struct scatterlist *in, unsigned int length,
+                          int write, sector_t sector, void *priv)
+{
+	u8 iv[cc->iv_size];
+	int r;
+	if (cc->iv_gen_ops) {
+		r = cc->iv_gen_ops->generator(cc, iv, sector);
+		if (r < 0)
+			return r;
+		r = dm_ocf_process(cc, out, in, length, iv, cc->iv_size, write, priv);
+	} else {
+		r = dm_ocf_process(cc, out, in, length, NULL, 0, write, priv);
+	}
+
+	return r;
+}
+
+/*
+ * Encrypt / decrypt data from one bio to another one (can be the same one)
+ */
+static int ocf_crypt_convert(struct crypt_config *cc,
+                         struct convert_context *ctx, struct crypt_io *io)
+{
+	int r = 0;
+	long wr_timeout = 30000;
+	long wr_tm;
+	int num = 0;
+	void *priv = NULL;
+	struct ocf_wr_priv *ocf_wr_priv = NULL;
+	if (ctx->write) {
+		ocf_wr_priv = kmalloc(sizeof(struct ocf_wr_priv),GFP_KERNEL);
+		if(!ocf_wr_priv) {
+			printk("ocf_crypt_convert: out of memory \n");
+			return -ENOMEM;
+		}
+		ocf_wr_priv->dm_ocf_wr_pending = 0;
+		ocf_wr_priv->dm_ocf_wr_completed = 0;
+		init_waitqueue_head(&ocf_wr_priv->dm_ocf_wr_queue);
+		priv = ocf_wr_priv;
+	}
+
+	while(ctx->idx_in < ctx->bio_in->bi_vcnt &&
+	      ctx->idx_out < ctx->bio_out->bi_vcnt) {
+		struct bio_vec *bv_in = bio_iovec_idx(ctx->bio_in, ctx->idx_in);
+		struct bio_vec *bv_out = bio_iovec_idx(ctx->bio_out, ctx->idx_out);
+		struct scatterlist sg_in, sg_out;
+		sg_init_table(&sg_in, 1);
+		sg_set_page(&sg_in, bv_in->bv_page, 1 << SECTOR_SHIFT,
+				bv_in->bv_offset + ctx->offset_in);
+
+		sg_init_table(&sg_out, 1);
+		sg_set_page(&sg_out, bv_out->bv_page, 1 << SECTOR_SHIFT,
+				bv_out->bv_offset + ctx->offset_out);
+
+		ctx->offset_in += sg_in.length;
+		if (ctx->offset_in >= bv_in->bv_len) {
+			ctx->offset_in = 0;
+			ctx->idx_in++;
+		}
+
+		ctx->offset_out += sg_out.length;
+		if (ctx->offset_out >= bv_out->bv_len) {
+			ctx->offset_out = 0;
+			ctx->idx_out++;
+		}
+
+		if(ctx->write) {
+			num++;
+		}
+		/* if last read in the context - send the io, so the OCF read callback will release the IO. */
+		else if(!(ctx->idx_in < ctx->bio_in->bi_vcnt && ctx->idx_out < ctx->bio_out->bi_vcnt)) {
+			priv = io;
+		}
+
+		r = ocf_crypt_convert_scatterlist(cc, &sg_out, &sg_in, sg_in.length,
+		                              ctx->write, ctx->sector, priv);
+		if (r < 0){
+			printk("ocf_crypt_convert: ocf_crypt_convert_scatterlist failed \n");
+			break;
+		}
+
+		ctx->sector++;
+	}
+
+	if (ctx->write) {
+		ocf_wr_priv->dm_ocf_wr_pending += num;
+		wr_tm = wait_event_timeout(ocf_wr_priv->dm_ocf_wr_queue, 
+				(ocf_wr_priv->dm_ocf_wr_pending == ocf_wr_priv->dm_ocf_wr_completed)
+									, msecs_to_jiffies(wr_timeout) );
+		if (!wr_tm) {
+			printk("ocf_crypt_convert: wr work was not finished in %ld msecs, %d pending %d completed.\n", 
+				wr_timeout, ocf_wr_priv->dm_ocf_wr_pending, ocf_wr_priv->dm_ocf_wr_completed);
+		}
+		kfree(ocf_wr_priv);
+	}
+
+	return r;
+}
+
+#else /* CONFIG_OCF_DM_CRYPT */
+
+static int
+crypt_convert_scatterlist(struct crypt_config *cc, struct scatterlist *out,
+                          struct scatterlist *in, unsigned int length,
+                          int write, sector_t sector)
+{
+	u8 iv[cc->iv_size] __attribute__ ((aligned(__alignof__(u64))));
+	struct blkcipher_desc desc = {
+		.tfm = cc->tfm,
+		.info = iv,
+		.flags = CRYPTO_TFM_REQ_MAY_SLEEP,
+	};
+	int r;
+	if (cc->iv_gen_ops) {
+		r = cc->iv_gen_ops->generator(cc, iv, sector);
+		if (r < 0)
+			return r;
+
+		if (write)
+			r = crypto_blkcipher_encrypt_iv(&desc, out, in, length);
+		else
+			r = crypto_blkcipher_decrypt_iv(&desc, out, in, length);
+	} else {
+		if (write)
+			r = crypto_blkcipher_encrypt(&desc, out, in, length);
+		else
+			r = crypto_blkcipher_decrypt(&desc, out, in, length);
+	}
+
+	return r;
+}
+
+#endif
+
+static void
+crypt_convert_init(struct crypt_config *cc, struct convert_context *ctx,
+                   struct bio *bio_out, struct bio *bio_in,
+                   sector_t sector, int write)
 {
 	ctx->bio_in = bio_in;
 	ctx->bio_out = bio_out;
@@ -333,171 +607,85 @@ static void crypt_convert_init(struct crypt_config *cc,
 	ctx->idx_in = bio_in ? bio_in->bi_idx : 0;
 	ctx->idx_out = bio_out ? bio_out->bi_idx : 0;
 	ctx->sector = sector + cc->iv_offset;
-	init_completion(&ctx->restart);
+	ctx->write = write;
 }
 
-static struct dm_crypt_request *dmreq_of_req(struct crypt_config *cc,
-					     struct ablkcipher_request *req)
-{
-	return (struct dm_crypt_request *)((char *)req + cc->dmreq_start);
-}
-
-static struct ablkcipher_request *req_of_dmreq(struct crypt_config *cc,
-					       struct dm_crypt_request *dmreq)
-{
-	return (struct ablkcipher_request *)((char *)dmreq - cc->dmreq_start);
-}
-
-static int crypt_convert_block(struct crypt_config *cc,
-			       struct convert_context *ctx,
-			       struct ablkcipher_request *req)
-{
-	struct bio_vec *bv_in = bio_iovec_idx(ctx->bio_in, ctx->idx_in);
-	struct bio_vec *bv_out = bio_iovec_idx(ctx->bio_out, ctx->idx_out);
-	struct dm_crypt_request *dmreq;
-	u8 *iv;
-	int r = 0;
-
-	dmreq = dmreq_of_req(cc, req);
-	iv = (u8 *)ALIGN((unsigned long)(dmreq + 1),
-			 crypto_ablkcipher_alignmask(cc->tfm) + 1);
-
-	dmreq->ctx = ctx;
-	sg_init_table(&dmreq->sg_in, 1);
-	sg_set_page(&dmreq->sg_in, bv_in->bv_page, 1 << SECTOR_SHIFT,
-		    bv_in->bv_offset + ctx->offset_in);
-
-	sg_init_table(&dmreq->sg_out, 1);
-	sg_set_page(&dmreq->sg_out, bv_out->bv_page, 1 << SECTOR_SHIFT,
-		    bv_out->bv_offset + ctx->offset_out);
-
-	ctx->offset_in += 1 << SECTOR_SHIFT;
-	if (ctx->offset_in >= bv_in->bv_len) {
-		ctx->offset_in = 0;
-		ctx->idx_in++;
-	}
-
-	ctx->offset_out += 1 << SECTOR_SHIFT;
-	if (ctx->offset_out >= bv_out->bv_len) {
-		ctx->offset_out = 0;
-		ctx->idx_out++;
-	}
-
-	if (cc->iv_gen_ops) {
-		r = cc->iv_gen_ops->generator(cc, iv, ctx->sector);
-		if (r < 0)
-			return r;
-	}
-
-	ablkcipher_request_set_crypt(req, &dmreq->sg_in, &dmreq->sg_out,
-				     1 << SECTOR_SHIFT, iv);
-
-	if (bio_data_dir(ctx->bio_in) == WRITE)
-		r = crypto_ablkcipher_encrypt(req);
-	else
-		r = crypto_ablkcipher_decrypt(req);
-
-	return r;
-}
-
-static void kcryptd_async_done(struct crypto_async_request *async_req,
-			       int error);
-static void crypt_alloc_req(struct crypt_config *cc,
-			    struct convert_context *ctx)
-{
-	if (!cc->req)
-		cc->req = mempool_alloc(cc->req_pool, GFP_NOIO);
-	ablkcipher_request_set_tfm(cc->req, cc->tfm);
-	ablkcipher_request_set_callback(cc->req, CRYPTO_TFM_REQ_MAY_BACKLOG |
-					CRYPTO_TFM_REQ_MAY_SLEEP,
-					kcryptd_async_done,
-					dmreq_of_req(cc, cc->req));
-}
-
+#if !defined(CONFIG_OCF_DM_CRYPT)
 /*
  * Encrypt / decrypt data from one bio to another one (can be the same one)
  */
 static int crypt_convert(struct crypt_config *cc,
-			 struct convert_context *ctx)
+                         struct convert_context *ctx)
 {
-	int r;
-
-	atomic_set(&ctx->pending, 1);
-
+	int r = 0;
 	while(ctx->idx_in < ctx->bio_in->bi_vcnt &&
 	      ctx->idx_out < ctx->bio_out->bi_vcnt) {
+		struct bio_vec *bv_in = bio_iovec_idx(ctx->bio_in, ctx->idx_in);
+		struct bio_vec *bv_out = bio_iovec_idx(ctx->bio_out, ctx->idx_out);
+		struct scatterlist sg_in, sg_out;
+		sg_init_table(&sg_in, 1);
+		sg_set_page(&sg_in, bv_in->bv_page, 1 << SECTOR_SHIFT,
+				bv_in->bv_offset + ctx->offset_in);
+		sg_init_table(&sg_out, 1);
+		sg_set_page(&sg_out, bv_out->bv_page, 1 << SECTOR_SHIFT,
+				bv_out->bv_offset + ctx->offset_out);
 
-		crypt_alloc_req(cc, ctx);
-
-		atomic_inc(&ctx->pending);
-
-		r = crypt_convert_block(cc, ctx, cc->req);
-
-		switch (r) {
-		/* async */
-		case -EBUSY:
-			wait_for_completion(&ctx->restart);
-			INIT_COMPLETION(ctx->restart);
-			/* fall through*/
-		case -EINPROGRESS:
-			cc->req = NULL;
-			ctx->sector++;
-			continue;
-
-		/* sync */
-		case 0:
-			atomic_dec(&ctx->pending);
-			ctx->sector++;
-			cond_resched();
-			continue;
-
-		/* error */
-		default:
-			atomic_dec(&ctx->pending);
-			return r;
+		ctx->offset_in += sg_in.length;
+		if (ctx->offset_in >= bv_in->bv_len) {
+			ctx->offset_in = 0;
+			ctx->idx_in++;
 		}
+
+		ctx->offset_out += sg_out.length;
+		if (ctx->offset_out >= bv_out->bv_len) {
+			ctx->offset_out = 0;
+			ctx->idx_out++;
+		}
+
+		r = crypt_convert_scatterlist(cc, &sg_out, &sg_in, sg_in.length,
+		                              ctx->write, ctx->sector);
+		if (r < 0)
+			break;
+
+		ctx->sector++;
 	}
 
-	return 0;
+	return r;
 }
+#endif
 
-static void dm_crypt_bio_destructor(struct bio *bio)
-{
-	struct dm_crypt_io *io = bio->bi_private;
+ static void dm_crypt_bio_destructor(struct bio *bio)
+ {
+	struct crypt_io *io = bio->bi_private;
 	struct crypt_config *cc = io->target->private;
 
 	bio_free(bio, cc->bs);
-}
+ }
 
 /*
  * Generate a new unfragmented bio with the given size
  * This should never violate the device limitations
- * May return a smaller bio when running out of pages, indicated by
- * *out_of_pages set to 1.
+ * May return a smaller bio when running out of pages
  */
-static struct bio *crypt_alloc_buffer(struct dm_crypt_io *io, unsigned size,
-				      unsigned *out_of_pages)
+static struct bio *crypt_alloc_buffer(struct crypt_io *io, unsigned int size)
 {
 	struct crypt_config *cc = io->target->private;
 	struct bio *clone;
 	unsigned int nr_iovecs = (size + PAGE_SIZE - 1) >> PAGE_SHIFT;
 	gfp_t gfp_mask = GFP_NOIO | __GFP_HIGHMEM;
-	unsigned i, len;
-	struct page *page;
-
+	unsigned int i;
 	clone = bio_alloc_bioset(GFP_NOIO, nr_iovecs, cc->bs);
 	if (!clone)
 		return NULL;
 
 	clone_init(io, clone);
-	*out_of_pages = 0;
 
 	for (i = 0; i < nr_iovecs; i++) {
-		page = mempool_alloc(cc->page_pool, gfp_mask);
-		if (!page) {
-			*out_of_pages = 1;
+		struct bio_vec *bv = bio_iovec_idx(clone, i);
+
+		bv->bv_page = mempool_alloc(cc->page_pool, gfp_mask);
+		if (!bv->bv_page)
 			break;
-		}
 
 		/*
 		 * if additional pages cannot be allocated without waiting,
@@ -507,14 +695,15 @@ static struct bio *crypt_alloc_buffer(struct dm_crypt_io *io, unsigned size,
 		if (i == (MIN_BIO_PAGES - 1))
 			gfp_mask = (gfp_mask | __GFP_NOWARN) & ~__GFP_WAIT;
 
-		len = (size > PAGE_SIZE) ? PAGE_SIZE : size;
+		bv->bv_offset = 0;
+		if (size > PAGE_SIZE)
+			bv->bv_len = PAGE_SIZE;
+		else
+			bv->bv_len = size;
 
-		if (!bio_add_page(clone, page, len, 0)) {
-			mempool_free(page, cc->page_pool);
-			break;
-		}
-
-		size -= len;
+		clone->bi_size += bv->bv_len;
+		clone->bi_vcnt++;
+		size -= bv->bv_len;
 	}
 
 	if (!clone->bi_size) {
@@ -525,11 +714,11 @@ static struct bio *crypt_alloc_buffer(struct dm_crypt_io *io, unsigned size,
 	return clone;
 }
 
-static void crypt_free_buffer_pages(struct crypt_config *cc, struct bio *clone)
+static void crypt_free_buffer_pages(struct crypt_config *cc,
+                                    struct bio *clone)
 {
 	unsigned int i;
 	struct bio_vec *bv;
-
 	for (i = 0; i < clone->bi_vcnt; i++) {
 		bv = bio_iovec_idx(clone, i);
 		BUG_ON(!bv->bv_page);
@@ -538,97 +727,69 @@ static void crypt_free_buffer_pages(struct crypt_config *cc, struct bio *clone)
 	}
 }
 
-static struct dm_crypt_io *crypt_io_alloc(struct dm_target *ti,
-					  struct bio *bio, sector_t sector)
-{
-	struct crypt_config *cc = ti->private;
-	struct dm_crypt_io *io;
-
-	io = mempool_alloc(cc->io_pool, GFP_NOIO);
-	io->target = ti;
-	io->base_bio = bio;
-	io->sector = sector;
-	io->error = 0;
-	io->base_io = NULL;
-	atomic_set(&io->pending, 0);
-
-	return io;
-}
-
-static void crypt_inc_pending(struct dm_crypt_io *io)
-{
-	atomic_inc(&io->pending);
-}
-
 /*
  * One of the bios was finished. Check for completion of
  * the whole request and correctly clean up the buffer.
- * If base_io is set, wait for the last fragment to complete.
  */
-static void crypt_dec_pending(struct dm_crypt_io *io)
+static void dec_pending(struct crypt_io *io, int error)
 {
-	struct crypt_config *cc = io->target->private;
-	struct bio *base_bio = io->base_bio;
-	struct dm_crypt_io *base_io = io->base_io;
-	int error = io->error;
+	struct crypt_config *cc = (struct crypt_config *) io->target->private;
+	if (error < 0)
+		io->error = error;
 
 	if (!atomic_dec_and_test(&io->pending))
 		return;
 
-	mempool_free(io, cc->io_pool);
+	bio_endio(io->base_bio, io->error);
 
-	if (likely(!base_io))
-		bio_endio(base_bio, error);
-	else {
-		if (error && !base_io->error)
-			base_io->error = error;
-		crypt_dec_pending(base_io);
-	}
+	mempool_free(io, cc->io_pool);
 }
 
 /*
- * kcryptd/kcryptd_io:
+ * kcryptd:
  *
  * Needed because it would be very unwise to do decryption in an
  * interrupt context.
- *
- * kcryptd performs the actual encryption or decryption.
- *
- * kcryptd_io performs the IO submission.
- *
- * They must be separated as otherwise the final stages could be
- * starved by new requests which can block in the first stages due
- * to memory allocation.
  */
-static void crypt_endio(struct bio *clone, int error)
+static struct workqueue_struct *_kcryptd_workqueue;
+static void kcryptd_do_work(struct work_struct *work);
+
+static void kcryptd_queue_io(struct crypt_io *io)
 {
-	struct dm_crypt_io *io = clone->bi_private;
-	struct crypt_config *cc = io->target->private;
-	unsigned rw = bio_data_dir(clone);
-
-	if (unlikely(!bio_flagged(clone, BIO_UPTODATE) && !error))
-		error = -EIO;
-
-	/*
-	 * free the processed pages
-	 */
-	if (rw == WRITE)
-		crypt_free_buffer_pages(cc, clone);
-
-	bio_put(clone);
-
-	if (rw == READ && !error) {
-		kcryptd_queue_crypt(io);
-		return;
-	}
-
-	if (unlikely(error))
-		io->error = error;
-
-	crypt_dec_pending(io);
+	INIT_WORK(&io->work, kcryptd_do_work);
+	queue_work(_kcryptd_workqueue, &io->work);
 }
 
-static void clone_init(struct dm_crypt_io *io, struct bio *clone)
+static void crypt_endio(struct bio *clone, int error)
+{
+	struct crypt_io *io = clone->bi_private;
+	struct crypt_config *cc = io->target->private;
+	unsigned read_io = bio_data_dir(clone) == READ;
+	/*
+	 * free the processed pages, even if
+	 * it's only a partially completed write
+	 */
+	if (!read_io)
+		crypt_free_buffer_pages(cc, clone);
+
+	if (!read_io) {
+		goto out;
+	}
+	if (unlikely(!bio_flagged(clone, BIO_UPTODATE))) {
+		error = -EIO;
+		goto out;
+	}
+	bio_put(clone);
+	io->post_process = 1;
+	kcryptd_queue_io(io);
+	return;
+
+out:
+	bio_put(clone);
+	dec_pending(io, error);
+}
+
+static void clone_init(struct crypt_io *io, struct bio *clone)
 {
 	struct crypt_config *cc = io->target->private;
 
@@ -639,13 +800,13 @@ static void clone_init(struct dm_crypt_io *io, struct bio *clone)
 	clone->bi_destructor = dm_crypt_bio_destructor;
 }
 
-static void kcryptd_io_read(struct dm_crypt_io *io)
+static void process_read(struct crypt_io *io)
 {
 	struct crypt_config *cc = io->target->private;
 	struct bio *base_bio = io->base_bio;
 	struct bio *clone;
-
-	crypt_inc_pending(io);
+	sector_t sector = base_bio->bi_sector - io->target->begin;
+	atomic_inc(&io->pending);
 
 	/*
 	 * The block layer might modify the bvec array, so always
@@ -654,8 +815,7 @@ static void kcryptd_io_read(struct dm_crypt_io *io)
 	 */
 	clone = bio_alloc_bioset(GFP_NOIO, bio_segments(base_bio), cc->bs);
 	if (unlikely(!clone)) {
-		io->error = -ENOMEM;
-		crypt_dec_pending(io);
+		dec_pending(io, -ENOMEM);
 		return;
 	}
 
@@ -663,219 +823,109 @@ static void kcryptd_io_read(struct dm_crypt_io *io)
 	clone->bi_idx = 0;
 	clone->bi_vcnt = bio_segments(base_bio);
 	clone->bi_size = base_bio->bi_size;
-	clone->bi_sector = cc->start + io->sector;
+	clone->bi_sector = cc->start + sector;
 	memcpy(clone->bi_io_vec, bio_iovec(base_bio),
 	       sizeof(struct bio_vec) * clone->bi_vcnt);
 
 	generic_make_request(clone);
 }
 
-static void kcryptd_io_write(struct dm_crypt_io *io)
-{
-	struct bio *clone = io->ctx.bio_out;
-	generic_make_request(clone);
-}
-
-static void kcryptd_io(struct work_struct *work)
-{
-	struct dm_crypt_io *io = container_of(work, struct dm_crypt_io, work);
-
-	if (bio_data_dir(io->base_bio) == READ)
-		kcryptd_io_read(io);
-	else
-		kcryptd_io_write(io);
-}
-
-static void kcryptd_queue_io(struct dm_crypt_io *io)
+static void process_write(struct crypt_io *io)
 {
 	struct crypt_config *cc = io->target->private;
-
-	INIT_WORK(&io->work, kcryptd_io);
-	queue_work(cc->io_queue, &io->work);
-}
-
-static void kcryptd_crypt_write_io_submit(struct dm_crypt_io *io,
-					  int error, int async)
-{
-	struct bio *clone = io->ctx.bio_out;
-	struct crypt_config *cc = io->target->private;
-
-	if (unlikely(error < 0)) {
-		crypt_free_buffer_pages(cc, clone);
-		bio_put(clone);
-		io->error = -EIO;
-		crypt_dec_pending(io);
-		return;
-	}
-
-	/* crypt_convert should have filled the clone bio */
-	BUG_ON(io->ctx.idx_out < clone->bi_vcnt);
-
-	clone->bi_sector = cc->start + io->sector;
-
-	if (async)
-		kcryptd_queue_io(io);
-	else
-		generic_make_request(clone);
-}
-
-static void kcryptd_crypt_write_convert(struct dm_crypt_io *io)
-{
-	struct crypt_config *cc = io->target->private;
+	struct bio *base_bio = io->base_bio;
 	struct bio *clone;
-	struct dm_crypt_io *new_io;
-	int crypt_finished;
-	unsigned out_of_pages = 0;
-	unsigned remaining = io->base_bio->bi_size;
-	sector_t sector = io->sector;
-	int r;
+	struct convert_context ctx;
+	unsigned remaining = base_bio->bi_size;
+	sector_t sector = base_bio->bi_sector - io->target->begin;
+	atomic_inc(&io->pending);
 
-	/*
-	 * Prevent io from disappearing until this function completes.
-	 */
-	crypt_inc_pending(io);
-	crypt_convert_init(cc, &io->ctx, NULL, io->base_bio, sector);
+	crypt_convert_init(cc, &ctx, NULL, base_bio, sector, 1);
 
 	/*
 	 * The allocated buffers can be smaller than the whole bio,
 	 * so repeat the whole process until all the data can be handled.
 	 */
 	while (remaining) {
-		clone = crypt_alloc_buffer(io, remaining, &out_of_pages);
+		clone = crypt_alloc_buffer(io, remaining);
 		if (unlikely(!clone)) {
-			io->error = -ENOMEM;
-			break;
+			dec_pending(io, -ENOMEM);
+			return;
 		}
 
-		io->ctx.bio_out = clone;
-		io->ctx.idx_out = 0;
+		ctx.bio_out = clone;
+		ctx.idx_out = 0;
+#if defined(CONFIG_OCF_DM_CRYPT)
+	if (unlikely(ocf_crypt_convert(cc, &ctx, io)< 0)) {
+#else
+		if (unlikely(crypt_convert(cc, &ctx) < 0)) {
+#endif
+			crypt_free_buffer_pages(cc, clone);
+			bio_put(clone);
+			dec_pending(io, -EIO);
+			return;
+		}
 
+		/* crypt_convert should have filled the clone bio */
+		BUG_ON(ctx.idx_out < clone->bi_vcnt);
+
+		clone->bi_sector = cc->start + sector;
 		remaining -= clone->bi_size;
 		sector += bio_sectors(clone);
 
-		crypt_inc_pending(io);
-		r = crypt_convert(cc, &io->ctx);
-		crypt_finished = atomic_dec_and_test(&io->ctx.pending);
+		/* Grab another reference to the io struct
+		 * before we kick off the request */
+		if (remaining)
+			atomic_inc(&io->pending);
 
-		/* Encryption was already finished, submit io now */
-		if (crypt_finished) {
-			kcryptd_crypt_write_io_submit(io, r, 0);
+		generic_make_request(clone);
 
-			/*
-			 * If there was an error, do not try next fragments.
-			 * For async, error is processed in async handler.
-			 */
-			if (unlikely(r < 0))
-				break;
+		/* Do not reference clone after this - it
+		 * may be gone already. */
 
-			io->sector = sector;
-		}
-
-		/*
-		 * Out of memory -> run queues
-		 * But don't wait if split was due to the io size restriction
-		 */
-		if (unlikely(out_of_pages))
-			congestion_wait(BLK_RW_ASYNC, HZ/100);
-
-		/*
-		 * With async crypto it is unsafe to share the crypto context
-		 * between fragments, so switch to a new dm_crypt_io structure.
-		 */
-		if (unlikely(!crypt_finished && remaining)) {
-			new_io = crypt_io_alloc(io->target, io->base_bio,
-						sector);
-			crypt_inc_pending(new_io);
-			crypt_convert_init(cc, &new_io->ctx, NULL,
-					   io->base_bio, sector);
-			new_io->ctx.idx_in = io->ctx.idx_in;
-			new_io->ctx.offset_in = io->ctx.offset_in;
-
-			/*
-			 * Fragments after the first use the base_io
-			 * pending count.
-			 */
-			if (!io->base_io)
-				new_io->base_io = io;
-			else {
-				new_io->base_io = io->base_io;
-				crypt_inc_pending(io->base_io);
-				crypt_dec_pending(io);
-			}
-
-			io = new_io;
-		}
+		/* out of memory -> run queues */
+		if (remaining)
+			congestion_wait(WRITE, HZ/100);
 	}
-
-	crypt_dec_pending(io);
 }
 
-static void kcryptd_crypt_read_done(struct dm_crypt_io *io, int error)
-{
-	if (unlikely(error < 0))
-		io->error = -EIO;
-
-	crypt_dec_pending(io);
-}
-
-static void kcryptd_crypt_read_convert(struct dm_crypt_io *io)
+static void process_read_endio(struct crypt_io *io)
 {
 	struct crypt_config *cc = io->target->private;
-	int r = 0;
+	struct convert_context ctx;
+	u32 r;
+	crypt_convert_init(cc, &ctx, io->base_bio, io->base_bio,
+			   io->base_bio->bi_sector - io->target->begin, 0);
+#if defined(CONFIG_OCF_DM_CRYPT)
+	r = ocf_crypt_convert(cc, &ctx, io);
+	if(r < 0) {
+		u32 rd_failed_timeout = 500;
+		wait_queue_head_t dm_ocf_rd_failed_queu;
 
-	crypt_inc_pending(io);
+		init_waitqueue_head(&dm_ocf_rd_failed_queu);
 
-	crypt_convert_init(cc, &io->ctx, io->base_bio, io->base_bio,
-			   io->sector);
+		/* wait a bit before freeing the io, maybe few requests are still in process */
+		wait_event_timeout(dm_ocf_rd_failed_queu, 0, msecs_to_jiffies(rd_failed_timeout) );
 
-	r = crypt_convert(cc, &io->ctx);
+		dec_pending(io, r); 
 
-	if (atomic_dec_and_test(&io->ctx.pending))
-		kcryptd_crypt_read_done(io, r);
-
-	crypt_dec_pending(io);
-}
-
-static void kcryptd_async_done(struct crypto_async_request *async_req,
-			       int error)
-{
-	struct dm_crypt_request *dmreq = async_req->data;
-	struct convert_context *ctx = dmreq->ctx;
-	struct dm_crypt_io *io = container_of(ctx, struct dm_crypt_io, ctx);
-	struct crypt_config *cc = io->target->private;
-
-	if (error == -EINPROGRESS) {
-		complete(&ctx->restart);
-		return;
 	}
-
-	mempool_free(req_of_dmreq(cc, dmreq), cc->req_pool);
-
-	if (!atomic_dec_and_test(&ctx->pending))
-		return;
-
-	if (bio_data_dir(io->base_bio) == READ)
-		kcryptd_crypt_read_done(io, error);
-	else
-		kcryptd_crypt_write_io_submit(io, error, 1);
+#else
+	dec_pending(io, crypt_convert(cc, &ctx));
+#endif
 }
 
-static void kcryptd_crypt(struct work_struct *work)
+static void kcryptd_do_work(struct work_struct *work)
 {
-	struct dm_crypt_io *io = container_of(work, struct dm_crypt_io, work);
-
-	if (bio_data_dir(io->base_bio) == READ)
-		kcryptd_crypt_read_convert(io);
+	struct crypt_io *io = container_of(work, struct crypt_io, work);
+	if (io->post_process) {	
+		process_read_endio(io);
+	}	
+	else if (bio_data_dir(io->base_bio) == READ) {			
+		process_read(io);
+	}
 	else
-		kcryptd_crypt_write_convert(io);
-}
-
-static void kcryptd_queue_crypt(struct dm_crypt_io *io)
-{
-	struct crypt_config *cc = io->target->private;
-
-	INIT_WORK(&io->work, kcryptd_crypt);
-	queue_work(cc->crypt_queue, &io->work);
+		process_write(io);
 }
 
 /*
@@ -886,7 +936,6 @@ static int crypt_decode_key(u8 *key, char *hex, unsigned int size)
 	char buffer[3];
 	char *endp;
 	unsigned int i;
-
 	buffer[2] = '\0';
 
 	for (i = 0; i < size; i++) {
@@ -911,7 +960,6 @@ static int crypt_decode_key(u8 *key, char *hex, unsigned int size)
 static void crypt_encode_key(char *hex, u8 *key, unsigned int size)
 {
 	unsigned int i;
-
 	for (i = 0; i < size; i++) {
 		sprintf(hex, "%02x", *key);
 		hex += 2;
@@ -922,14 +970,13 @@ static void crypt_encode_key(char *hex, u8 *key, unsigned int size)
 static int crypt_set_key(struct crypt_config *cc, char *key)
 {
 	unsigned key_size = strlen(key) >> 1;
-
 	if (cc->key_size && cc->key_size != key_size)
 		return -EINVAL;
 
 	cc->key_size = key_size; /* initial settings */
 
 	if ((!key_size && strcmp(key, "-")) ||
-	   (key_size && crypt_decode_key(cc->key, key, key_size) < 0))
+	    (key_size && crypt_decode_key(cc->key, key, key_size) < 0))
 		return -EINVAL;
 
 	set_bit(DM_CRYPT_KEY_VALID, &cc->flags);
@@ -951,7 +998,9 @@ static int crypt_wipe_key(struct crypt_config *cc)
 static int crypt_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 {
 	struct crypt_config *cc;
-	struct crypto_ablkcipher *tfm;
+#ifndef CONFIG_OCF_DM_CRYPT
+	struct crypto_blkcipher *tfm;
+#endif
 	char *tmp;
 	char *cipher;
 	char *chainmode;
@@ -959,7 +1008,6 @@ static int crypt_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 	char *ivopts;
 	unsigned int key_size;
 	unsigned long long tmpll;
-
 	if (argc != 5) {
 		ti->error = "Not enough arguments";
 		return -EINVAL;
@@ -985,7 +1033,7 @@ static int crypt_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 
  	if (crypt_set_key(cc, argv[1])) {
 		ti->error = "Error decoding key";
-		goto bad_cipher;
+		goto bad1;
 	}
 
 	/* Compatiblity mode for old dm-crypt cipher strings */
@@ -996,24 +1044,55 @@ static int crypt_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 
 	if (strcmp(chainmode, "ecb") && !ivmode) {
 		ti->error = "This chaining mode requires an IV mechanism";
-		goto bad_cipher;
+		goto bad1;
 	}
 
-	if (snprintf(cc->cipher, CRYPTO_MAX_ALG_NAME, "%s(%s)",
-		     chainmode, cipher) >= CRYPTO_MAX_ALG_NAME) {
+	if (snprintf(cc->cipher, CRYPTO_MAX_ALG_NAME, "%s(%s)", chainmode, 
+		     cipher) >= CRYPTO_MAX_ALG_NAME) {
 		ti->error = "Chain mode + cipher name is too long";
-		goto bad_cipher;
+		goto bad1;
 	}
 
-	tfm = crypto_alloc_ablkcipher(cc->cipher, 0, 0);
+#if defined(CONFIG_OCF_DM_CRYPT)
+	/* prepare a new OCF session */
+        memset(&cc->cr_dm, 0, sizeof(struct cryptoini));
+
+	if((strcmp(cipher,"aes") == 0) && (strcmp(chainmode, "cbc") == 0))
+        	cc->cr_dm.cri_alg  = CRYPTO_AES_CBC;
+	else if((strcmp(cipher,"des") == 0) && (strcmp(chainmode, "cbc") == 0))
+        	cc->cr_dm.cri_alg  = CRYPTO_DES_CBC;
+	else if((strcmp(cipher,"des3_ede") == 0) && (strcmp(chainmode, "cbc") == 0))
+        	cc->cr_dm.cri_alg  = CRYPTO_3DES_CBC; 
+	else {
+		ti->error = DM_MSG_PREFIX "using OCF: unknown cipher or bad chain mode";
+		goto bad1;
+	}
+
+	/*strcpy(cc->cipher, cipher);*/
+	dmprintk("key size is %d\n",cc->key_size);
+        cc->cr_dm.cri_klen = cc->key_size*8;
+        cc->cr_dm.cri_key  = cc->key;
+        cc->cr_dm.cri_next = NULL;
+
+        if(crypto_newsession(&cc->ocf_cryptoid, &cc->cr_dm, 0)){
+		dmprintk("crypt_ctr: crypto_newsession failed\n");
+                ti->error = DM_MSG_PREFIX "crypto_newsession failed";
+                goto bad2;
+        }
+
+#else
+
+	tfm = crypto_alloc_blkcipher(cc->cipher, 0, CRYPTO_ALG_ASYNC);
 	if (IS_ERR(tfm)) {
 		ti->error = "Error allocating crypto tfm";
-		goto bad_cipher;
+		goto bad1;
 	}
-
+#endif
 	strcpy(cc->cipher, cipher);
 	strcpy(cc->chainmode, chainmode);
+#if !defined(CONFIG_OCF_DM_CRYPT)
 	cc->tfm = tfm;
+#endif
 
 	/*
 	 * Choose ivmode. Valid modes: "plain", "essiv:<esshash>", "benbi".
@@ -1026,24 +1105,41 @@ static int crypt_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 		cc->iv_gen_ops = &crypt_iv_plain_ops;
 	else if (strcmp(ivmode, "essiv") == 0)
 		cc->iv_gen_ops = &crypt_iv_essiv_ops;
+#if !defined(CONFIG_OCF_DM_CRYPT)
 	else if (strcmp(ivmode, "benbi") == 0)
 		cc->iv_gen_ops = &crypt_iv_benbi_ops;
+#endif
 	else if (strcmp(ivmode, "null") == 0)
 		cc->iv_gen_ops = &crypt_iv_null_ops;
 	else {
 		ti->error = "Invalid IV mode";
-		goto bad_ivmode;
+		goto bad2;
+	}
+
+#if defined(CONFIG_OCF_DM_CRYPT)
+	switch (cc->cr_dm.cri_alg) {
+		case CRYPTO_AES_CBC:
+			cc->iv_size = 16;
+			break;
+		default:
+			cc->iv_size = 8;
+			break;
 	}
 
 	if (cc->iv_gen_ops && cc->iv_gen_ops->ctr &&
 	    cc->iv_gen_ops->ctr(cc, ti, ivopts) < 0)
-		goto bad_ivmode;
+		goto bad2;
+#else
 
-	cc->iv_size = crypto_ablkcipher_ivsize(tfm);
+	if (cc->iv_gen_ops && cc->iv_gen_ops->ctr &&
+	    cc->iv_gen_ops->ctr(cc, ti, ivopts) < 0)
+		goto bad2;
+
+	cc->iv_size = crypto_blkcipher_ivsize(tfm);
 	if (cc->iv_size)
 		/* at least a 64 bit sector number should fit in our buffer */
 		cc->iv_size = max(cc->iv_size,
-				  (unsigned int)(sizeof(u64) / sizeof(u8)));
+		                  (unsigned int)(sizeof(u64) / sizeof(u8)));
 	else {
 		if (cc->iv_gen_ops) {
 			DMWARN("Selected cipher does not support IVs");
@@ -1052,60 +1148,47 @@ static int crypt_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 			cc->iv_gen_ops = NULL;
 		}
 	}
-
+#endif
 	cc->io_pool = mempool_create_slab_pool(MIN_IOS, _crypt_io_pool);
 	if (!cc->io_pool) {
 		ti->error = "Cannot allocate crypt io mempool";
-		goto bad_slab_pool;
+		goto bad3;
 	}
-
-	cc->dmreq_start = sizeof(struct ablkcipher_request);
-	cc->dmreq_start += crypto_ablkcipher_reqsize(tfm);
-	cc->dmreq_start = ALIGN(cc->dmreq_start, crypto_tfm_ctx_alignment());
-	cc->dmreq_start += crypto_ablkcipher_alignmask(tfm) &
-			   ~(crypto_tfm_ctx_alignment() - 1);
-
-	cc->req_pool = mempool_create_kmalloc_pool(MIN_IOS, cc->dmreq_start +
-			sizeof(struct dm_crypt_request) + cc->iv_size);
-	if (!cc->req_pool) {
-		ti->error = "Cannot allocate crypt request mempool";
-		goto bad_req_pool;
-	}
-	cc->req = NULL;
 
 	cc->page_pool = mempool_create_page_pool(MIN_POOL_PAGES, 0);
 	if (!cc->page_pool) {
 		ti->error = "Cannot allocate page mempool";
-		goto bad_page_pool;
+		goto bad4;
 	}
 
-	cc->bs = bioset_create(MIN_IOS, 0);
+	cc->bs = bioset_create(MIN_IOS, MIN_IOS);
 	if (!cc->bs) {
 		ti->error = "Cannot allocate crypt bioset";
 		goto bad_bs;
 	}
-
-	if (crypto_ablkcipher_setkey(tfm, cc->key, key_size) < 0) {
+#if !defined(CONFIG_OCF_DM_CRYPT)
+	if (crypto_blkcipher_setkey(tfm, cc->key, key_size) < 0) {
 		ti->error = "Error setting key";
-		goto bad_device;
+		goto bad5;
 	}
+#endif
 
 	if (sscanf(argv[2], "%llu", &tmpll) != 1) {
 		ti->error = "Invalid iv_offset sector";
-		goto bad_device;
+		goto bad5;
 	}
 	cc->iv_offset = tmpll;
 
 	if (sscanf(argv[4], "%llu", &tmpll) != 1) {
 		ti->error = "Invalid device sector";
-		goto bad_device;
+		goto bad5;
 	}
 	cc->start = tmpll;
 
 	if (dm_get_device(ti, argv[3], cc->start, ti->len,
-			  dm_table_get_mode(ti->table), &cc->dev)) {
+	                  dm_table_get_mode(ti->table), &cc->dev)) {
 		ti->error = "Device lookup failed";
-		goto bad_device;
+		goto bad5;
 	}
 
 	if (ivmode && cc->iv_gen_ops) {
@@ -1114,96 +1197,72 @@ static int crypt_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 		cc->iv_mode = kmalloc(strlen(ivmode) + 1, GFP_KERNEL);
 		if (!cc->iv_mode) {
 			ti->error = "Error kmallocing iv_mode string";
-			goto bad_ivmode_string;
+			goto bad5;
 		}
 		strcpy(cc->iv_mode, ivmode);
 	} else
 		cc->iv_mode = NULL;
 
-	cc->io_queue = create_singlethread_workqueue("kcryptd_io");
-	if (!cc->io_queue) {
-		ti->error = "Couldn't create kcryptd io queue";
-		goto bad_io_queue;
-	}
-
-	cc->crypt_queue = create_singlethread_workqueue("kcryptd");
-	if (!cc->crypt_queue) {
-		ti->error = "Couldn't create kcryptd queue";
-		goto bad_crypt_queue;
-	}
-
-	ti->num_flush_requests = 1;
 	ti->private = cc;
 	return 0;
 
-bad_crypt_queue:
-	destroy_workqueue(cc->io_queue);
-bad_io_queue:
-	kfree(cc->iv_mode);
-bad_ivmode_string:
-	dm_put_device(ti, cc->dev);
-bad_device:
+bad5:
 	bioset_free(cc->bs);
 bad_bs:
 	mempool_destroy(cc->page_pool);
-bad_page_pool:
-	mempool_destroy(cc->req_pool);
-bad_req_pool:
+bad4:
 	mempool_destroy(cc->io_pool);
-bad_slab_pool:
+bad3:
 	if (cc->iv_gen_ops && cc->iv_gen_ops->dtr)
 		cc->iv_gen_ops->dtr(cc);
-bad_ivmode:
-	crypto_free_ablkcipher(tfm);
-bad_cipher:
+bad2:
+#if defined(CONFIG_OCF_DM_CRYPT)
+	crypto_freesession(cc->ocf_cryptoid);
+#else
+	crypto_free_blkcipher(tfm);
+#endif
+bad1:
 	/* Must zero key material before freeing */
-	kzfree(cc);
+	memset(cc, 0, sizeof(*cc) + cc->key_size * sizeof(u8));
+	kfree(cc);
 	return -EINVAL;
 }
 
 static void crypt_dtr(struct dm_target *ti)
 {
 	struct crypt_config *cc = (struct crypt_config *) ti->private;
-
-	destroy_workqueue(cc->io_queue);
-	destroy_workqueue(cc->crypt_queue);
-
-	if (cc->req)
-		mempool_free(cc->req, cc->req_pool);
+	flush_workqueue(_kcryptd_workqueue);
 
 	bioset_free(cc->bs);
 	mempool_destroy(cc->page_pool);
-	mempool_destroy(cc->req_pool);
 	mempool_destroy(cc->io_pool);
 
 	kfree(cc->iv_mode);
 	if (cc->iv_gen_ops && cc->iv_gen_ops->dtr)
 		cc->iv_gen_ops->dtr(cc);
-	crypto_free_ablkcipher(cc->tfm);
+#if defined(CONFIG_OCF_DM_CRYPT)
+	crypto_freesession(cc->ocf_cryptoid);
+#else
+	crypto_free_blkcipher(cc->tfm);
+#endif
 	dm_put_device(ti, cc->dev);
 
 	/* Must zero key material before freeing */
-	kzfree(cc);
+	memset(cc, 0, sizeof(*cc) + cc->key_size * sizeof(u8));
+	kfree(cc);
 }
 
 static int crypt_map(struct dm_target *ti, struct bio *bio,
 		     union map_info *map_context)
 {
-	struct dm_crypt_io *io;
-	struct crypt_config *cc;
-
-	if (unlikely(bio_empty_barrier(bio))) {
-		cc = ti->private;
-		bio->bi_bdev = cc->dev->bdev;
-		return DM_MAPIO_REMAPPED;
-	}
-
-	io = crypt_io_alloc(ti, bio, bio->bi_sector - ti->begin);
-
-	if (bio_data_dir(io->base_bio) == READ)
-		kcryptd_queue_io(io);
-	else
-		kcryptd_queue_crypt(io);
+	struct crypt_config *cc = ti->private;
+	struct crypt_io *io;
+	io = mempool_alloc(cc->io_pool, GFP_NOIO);
+	io->target = ti;
+	io->base_bio = bio;
+	io->error = io->post_process = 0;
+	atomic_set(&io->pending, 0);
+	kcryptd_queue_io(io);
 
 	return DM_MAPIO_SUBMITTED;
 }
@@ -1213,7 +1272,6 @@ static int crypt_status(struct dm_target *ti, status_type_t type,
 {
 	struct crypt_config *cc = (struct crypt_config *) ti->private;
 	unsigned int sz = 0;
-
 	switch (type) {
 	case STATUSTYPE_INFO:
 		result[0] = '\0';
@@ -1248,14 +1306,12 @@ static int crypt_status(struct dm_target *ti, status_type_t type,
 static void crypt_postsuspend(struct dm_target *ti)
 {
 	struct crypt_config *cc = ti->private;
-
 	set_bit(DM_CRYPT_SUSPENDED, &cc->flags);
 }
 
 static int crypt_preresume(struct dm_target *ti)
 {
 	struct crypt_config *cc = ti->private;
-
 	if (!test_bit(DM_CRYPT_KEY_VALID, &cc->flags)) {
 		DMERR("aborting resume - crypt key is not set.");
 		return -EAGAIN;
@@ -1278,7 +1334,6 @@ static void crypt_resume(struct dm_target *ti)
 static int crypt_message(struct dm_target *ti, unsigned argc, char **argv)
 {
 	struct crypt_config *cc = ti->private;
-
 	if (argc < 2)
 		goto error;
 
@@ -1303,7 +1358,6 @@ static int crypt_merge(struct dm_target *ti, struct bvec_merge_data *bvm,
 {
 	struct crypt_config *cc = ti->private;
 	struct request_queue *q = bdev_get_queue(cc->dev->bdev);
-
 	if (!q->merge_bvec_fn)
 		return max_size;
 
@@ -1317,13 +1371,13 @@ static int crypt_iterate_devices(struct dm_target *ti,
 				 iterate_devices_callout_fn fn, void *data)
 {
 	struct crypt_config *cc = ti->private;
-
 	return fn(ti, cc->dev, cc->start, ti->len, data);
 }
 
+
 static struct target_type crypt_target = {
 	.name   = "crypt",
-	.version = {1, 7, 0},
+	.version= {1, 5, 1},
 	.module = THIS_MODULE,
 	.ctr    = crypt_ctr,
 	.dtr    = crypt_dtr,
@@ -1340,23 +1394,44 @@ static struct target_type crypt_target = {
 static int __init dm_crypt_init(void)
 {
 	int r;
-
-	_crypt_io_pool = KMEM_CACHE(dm_crypt_io, 0);
+	_crypt_io_pool = KMEM_CACHE(crypt_io, 0);
 	if (!_crypt_io_pool)
 		return -ENOMEM;
+
+	_kcryptd_workqueue = create_workqueue("kcryptd");
+	if (!_kcryptd_workqueue) {
+		r = -ENOMEM;
+		DMERR("couldn't create kcryptd");
+		goto bad1;
+	}
 
 	r = dm_register_target(&crypt_target);
 	if (r < 0) {
 		DMERR("register failed %d", r);
-		kmem_cache_destroy(_crypt_io_pool);
+		goto bad2;
 	}
 
+	init_waitqueue_head(&dm_waitq);
+
+	atomic_set(&blocked, 0);
+
+#ifdef CONFIG_OCF_DM_CRYPT
+	printk("dm_crypt using the OCF package.\n");
+#endif
+
+	return 0;
+
+bad2:
+	destroy_workqueue(_kcryptd_workqueue);
+bad1:
+	kmem_cache_destroy(_crypt_io_pool);
 	return r;
 }
 
 static void __exit dm_crypt_exit(void)
 {
 	dm_unregister_target(&crypt_target);
+	destroy_workqueue(_kcryptd_workqueue);
 	kmem_cache_destroy(_crypt_io_pool);
 }
 

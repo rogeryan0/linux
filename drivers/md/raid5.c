@@ -1121,6 +1121,17 @@ static void raid5_end_read_request(struct bio * bi, int error)
 		return;
 	}
 
+#ifdef CONFIG_BUFFALO_ERRCNT
+	if (!(conf->mddev->degraded)) {
+		int maxerr_cnt = atomic_read(&conf->mddev->maxerr_cnt);
+
+		rdev = conf->disks[i].rdev;
+		if (atomic_read(&rdev->bdev->bd_disk->nr_errs) > maxerr_cnt &&
+		    maxerr_cnt != -1)
+			uptodate=0;
+	}
+#endif /* CONFIG_BUFFALO_ERRCNT */
+
 	if (uptodate) {
 		set_bit(R5_UPTODATE, &sh->dev[i].flags);
 		if (test_bit(R5_ReadError, &sh->dev[i].flags)) {
@@ -1167,8 +1178,29 @@ static void raid5_end_read_request(struct bio * bi, int error)
 			       mdname(conf->mddev), bdn);
 		else
 			retry = 1;
+#ifdef CONFIG_BUFFALO_ERRCNT
+		if (retry) {
+			int maxerr_cnt;
+
+			set_bit(R5_ReadError, &sh->dev[i].flags);
+
+			printk("debug: Read Error dev[%d]: sector %llu(sh->sector=%llu)\n",
+			    i, sh->dev[i].sector, sh->sector);
+			/*
+			 * Don't forget the bracket {} put in the outside of
+			 * this macro, if you port this code to another
+			 * version of Linux.
+			 */
+			maxerr_cnt = atomic_read(&conf->mddev->maxerr_cnt);
+			rdev = conf->disks[i].rdev;
+			if (atomic_read(&rdev->bdev->bd_disk->nr_errs) > maxerr_cnt &&
+			    maxerr_cnt != -1)
+				md_error(conf->mddev, conf->disks[i].rdev);
+		}
+#else
 		if (retry)
 			set_bit(R5_ReadError, &sh->dev[i].flags);
+#endif /* CONFIG_BUFFALO_ERRCNT */
 		else {
 			clear_bit(R5_ReadError, &sh->dev[i].flags);
 			clear_bit(R5_ReWrite, &sh->dev[i].flags);

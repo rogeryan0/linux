@@ -37,6 +37,24 @@
 #include <asm/stacktrace.h>
 #include <asm/mach/time.h>
 
+#if defined(CONFIG_BUFFALO_USE_GPIO_DRIVER)
+ #include "buffalo/kernevnt.h"
+void BuffaloGpio_CpuReset(void);
+int bfIsSupportMicon(void);
+#if defined(CONFIG_ARCH_FEROCEON_KW)
+extern u32 bfGetMagicKey(void);
+extern void bfSetMagicKey(u32);
+#else
+extern uint8_t BuffaloGpio_ChangePowerStatus(uint8_t);
+#endif
+
+void BuffaloChangePowerStatusBeforeHalt(void);
+#endif
+
+#ifdef CONFIG_BUFFALO_USE_MICON
+#include "buffalo/miconcntl.h"
+#endif
+
 static const char *processor_modes[] = {
   "USER_26", "FIQ_26" , "IRQ_26" , "SVC_26" , "UK4_26" , "UK5_26" , "UK6_26" , "UK7_26" ,
   "UK8_26" , "UK9_26" , "UK10_26", "UK11_26", "UK12_26", "UK13_26", "UK14_26", "UK15_26",
@@ -96,6 +114,22 @@ void arm_machine_restart(char mode, const char *cmd)
 	 * soft boot works.
 	 */
 	setup_mm_for_reboot(mode);
+
+#if defined(CONFIG_BUFFALO_USE_GPIO_DRIVER)
+ #if defined(CONFIG_ARCH_FEROCEON_ORION) || defined(CONFIG_ARCH_FEROCEON_MV78XX0)
+	BuffaloGpio_ChangePowerStatus(POWER_STATUS_REBOOTING);
+ #else
+	printk("Set reboot flag in force.\n");
+	bfSetMagicKey(MagicKeyRebootReachedHalt);
+  #ifndef CONFIG_ARCH_FEROCEON_KW
+	if(!bfIsSupportMicon())
+		BuffaloGpio_CpuReset();
+  #endif
+ #endif
+#endif
+#ifdef CONFIG_BUFFALO_USE_MICON
+	miconCntl_Reboot();
+#endif
 
 	/*
 	 * Now call the architecture specific reboot code.
@@ -190,8 +224,69 @@ int __init reboot_setup(char *str)
 
 __setup("reboot=", reboot_setup);
 
+#if defined(CONFIG_BUFFALO_USE_GPIO_DRIVER)
+void
+BuffaloChangePowerStatusBeforeHalt(void)
+{
+	uint32_t MagicKey;
+
+#if defined(CONFIG_ARCH_FEROCEON_KW)
+	MagicKey = bfGetMagicKey();
+#else
+	MagicKey = BuffaloGpio_ChangePowerStatus(0);
+#endif
+	printk("%s > Check power status. MagicKey = 0x%02x\n", __FUNCTION__, MagicKey);
+
+	switch(MagicKey) {
+	case MagicKeyReboot:
+#if defined(CONFIG_ARCH_FEROCEON_KW)
+		bfSetMagicKey(MagicKeyRebootReachedHalt);
+#else
+		BuffaloGpio_ChangePowerStatus(POWER_STATUS_REBOOT_REACHED_HALT);
+		printk("%s > Changed to 0x%02x from 0x%02x\n", __FUNCTION__, MagicKeyRebootReachedHalt, MagicKey);
+#endif
+		break;
+	case MagicKeySwPoff:
+#if defined(CONFIG_ARCH_FEROCEON_KW)
+		bfSetMagicKey(MagicKeySWPoffReachedHalt);
+		extern void bfWolInterruptPinDisable(uint32_t ethPortNum);
+		bfWolInterruptPinDisable(0);
+#else
+		BuffaloGpio_ChangePowerStatus(POWER_STATUS_SW_POFF_REACHED_HALT);
+		printk("%s > Changed to 0x%02x from 0x%02x\n", __FUNCTION__, MagicKeySWPoffReachedHalt, MagicKey);
+#endif
+		break;
+	case MagicKeyUpsShutdown:
+#if defined(CONFIG_ARCH_FEROCEON_KW)
+		bfSetMagicKey(MagicKeyUpsShutdownReachedHalt);
+#else
+		BuffaloGpio_ChangePowerStatus(POWER_STATUS_UPS_SHUTDOWN_REACHED_HALT);
+		printk("%s > Changed to 0x%02x from 0x%02x\n", __FUNCTION__, MagicKeyUpsShutdownReachedHalt, MagicKey);
+#endif
+		break;
+	}
+}
+#endif
+
 void machine_halt(void)
 {
+#if defined(CONFIG_BUFFALO_USE_GPIO_DRIVER)
+	BuffaloChangePowerStatusBeforeHalt();
+ #ifdef CONFIG_ARCH_FEROCEON_KW
+	if(!bfIsSupportMicon())
+ #endif
+		BuffaloGpio_CpuReset();
+#endif
+#if !defined(CONFIG_ARCH_FEROCEON_KW) && defined(CONFIG_BUFFALO_USE_UPS)
+	{
+		extern void BuffaloUps_ShutdownUps(void);
+
+		BuffaloUps_ShutdownUps();
+	}
+#endif
+#ifdef CONFIG_BUFFALO_USE_MICON
+	miconCntl_PowerOff();
+#endif
 }
 
 

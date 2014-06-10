@@ -138,6 +138,11 @@ ifeq ($(CONFIG_X86_32),y)
 drivers-$(CONFIG_FB) += arch/x86/video/
 endif
 
+ifeq ($(CONFIG_BUFFALO_PLATFORM),y)
+drivers-$(CONFIG_BUFFALO_PLATFORM) += arch/x86/buffalo/
+drivers-$(CONFIG_BUFFALO_MATSU_PLATFORM) += arch/x86/plat-matsu/
+endif
+
 ####
 # boot loader support. Several targets are kept for legacy purposes
 

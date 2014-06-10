@@ -256,7 +256,11 @@ ENTRY(vfp_put_double)
 	add	pc, pc, r2, lsl #3
 	mov	r0, r0
 	.irp	dr,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
+ #ifdef __ARMEB__
+ 	fmdrr	d\dr, r1, r0
+ #else
 	fmdrr	d\dr, r0, r1
+#endif
 	mov	pc, lr
 	.endr
 #ifdef CONFIG_VFPv3
