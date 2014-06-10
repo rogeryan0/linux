@@ -224,6 +224,12 @@ static void init_stripe(struct stripe_head *sh, sector_t sector, int pd_idx, int
 
 	BUG_ON(atomic_read(&sh->count) != 0);
 	BUG_ON(test_bit(STRIPE_HANDLE, &sh->state));
+#ifdef CONFIG_BUFFALO_SCAN
+        if (test_bit(STRIPE_SCANING,&sh->state))
+                BUG();
+        if (test_bit(STRIPE_INSCAN,&sh->state))
+                BUG();
+#endif
 	
 	CHECK_DEVLOCK();
 	PRINTK("init_stripe called, stripe %llu\n", 
@@ -545,6 +551,15 @@ static int raid5_end_read_request(struct bio * bi, unsigned int bytes_done,
 		return 0;
 	}
 
+#ifdef CONFIG_BUFFALO_ERRCNT
+	if (!(conf->mddev->degraded)){
+        	if((atomic_read(&conf->disks[i].rdev->bdev->bd_disk->nr_errs) >
+                	atomic_read(&conf->mddev->maxerr_cnt)) && (atomic_read(&conf->mddev->maxerr_cnt)!= -1)){
+                        uptodate=0;
+        	}
+        }
+#endif /* CONFIG_BUFFALO_ERRCNT */
+
 	if (uptodate) {
 		set_bit(R5_UPTODATE, &sh->dev[i].flags);
 		if (test_bit(R5_ReadError, &sh->dev[i].flags)) {
@@ -565,7 +580,14 @@ static int raid5_end_read_request(struct bio * bi, unsigned int bytes_done,
 
 		clear_bit(R5_UPTODATE, &sh->dev[i].flags);
 		atomic_inc(&rdev->read_errors);
+#ifdef CONFIG_BUFFALO_DEGRADEKEEP
+		/*
+		 * For degrade-keep case, retry to I/O if degraded.
+		 */
+		if (!conf->mddev->degradekeep && conf->mddev->degraded)
+#else
 		if (conf->mddev->degraded)
+#endif
 			printk(KERN_WARNING "raid5:%s: read error not correctable (sector %llu on %s).\n",
 			       mdname(conf->mddev),
 			       (unsigned long long)sh->sector + rdev->data_offset,
@@ -583,9 +605,18 @@ static int raid5_end_read_request(struct bio * bi, unsigned int bytes_done,
 			       mdname(conf->mddev), bdn);
 		else
 			retry = 1;
-		if (retry)
+		if (retry){
 			set_bit(R5_ReadError, &sh->dev[i].flags);
-		else {
+#ifdef CONFIG_BUFFALO_ERRCNT
+                        printk("debug: Read Error dev[%d]: sector %llu(sh->sector=%llu)\n", i,sh->dev[i].sector, sh->sector);
+                /* Don't forget the bracket {} put in the outside of this macro,
+                 * if you port this code to another version of Linux. */
+                        if((atomic_read(&conf->disks[i].rdev->bdev->bd_disk->nr_errs) >
+                           atomic_read(&conf->mddev->maxerr_cnt)) && (atomic_read(&conf->mddev->maxerr_cnt)!= -1)){
+                           md_error(conf->mddev, conf->disks[i].rdev);
+                        };
+#endif /* CONFIG_BUFFALO_ERRCNT */
+		} else {
 			clear_bit(R5_ReadError, &sh->dev[i].flags);
 			clear_bit(R5_ReWrite, &sh->dev[i].flags);
 			md_error(conf->mddev, rdev);
@@ -1249,6 +1280,13 @@ static int add_stripe_bio(struct stripe_head *sh, struct bio *bi, int dd_idx, in
 
 	spin_lock(&sh->lock);
 	spin_lock_irq(&conf->device_lock);
+
+#ifdef CONFIG_BUFFALO_SCAN
+        if(test_bit(STRIPE_SCANING,&sh->state)){
+            goto overlap;
+        }
+#endif
+
 	if (forwrite) {
 		bip = &sh->dev[dd_idx].towrite;
 		if (*bip == NULL && sh->dev[dd_idx].written == NULL)
@@ -1356,6 +1394,13 @@ static void handle_stripe5(struct stripe_head *sh)
 	int locked=0, uptodate=0, to_read=0, to_write=0, failed=0, written=0;
 	int non_overwrite = 0;
 	int failed_num=0;
+#ifdef CONFIG_BUFFALO_SCAN
+        sector_t tmp_sector;
+        int scaning;
+#endif /* CONFIG_BUFFALO_SCAN */
+#ifdef CONFIG_BUFFALO_DEGRADEKEEP
+	int removed = 0, removed_num = 0;
+#endif
 	struct r5dev *dev;
 
 	PRINTK("handling stripe %llu, cnt=%d, pd_idx=%d\n",
@@ -1371,6 +1416,152 @@ static void handle_stripe5(struct stripe_head *sh)
 	expanded = test_bit(STRIPE_EXPAND_READY, &sh->state);
 	/* Now to look around and see what can be done */
 
+#ifdef CONFIG_BUFFALO_SCAN
+
+        tmp_sector = sh->sector;
+
+        if (sector_div(tmp_sector,STRIPE_SECTORS)){
+            printk("handle_stripe(): sh->sector = %llu\n",sh->sector);
+            BUG();
+        }
+
+        scaning = test_bit(STRIPE_SCANING, &sh->state);
+        if (scaning) {
+            for (i=disks; i--; ) {
+                if(test_bit(R5_ReadError,&sh->dev[i].flags) &&
+                   test_bit(R5_ReWrite,&sh->dev[i].flags)) {
+                   /* end repair write */
+                   clear_bit(R5_ReadError,&sh->dev[i].flags);
+                   clear_bit(R5_ReWrite,&sh->dev[i].flags);
+                } else if(test_bit(R5_ReadError,&sh->dev[i].flags) &&
+                   !test_bit(R5_ReWrite,&sh->dev[i].flags)) {
+                   /* end scan read */
+                    failed++;
+                    failed_num=i;
+                }
+
+                if(test_bit(R5_UPTODATE,&sh->dev[i].flags)){
+                    uptodate++;
+                }
+
+                if(test_bit(R5_LOCKED,&sh->dev[i].flags)) locked++;
+                if(sh->dev[i].toread) to_read++;
+                if(sh->dev[i].towrite) to_write++;
+                if(sh->dev[i].written) written++;
+            }
+
+            PRINTK("%llu: locked=%d uptodate=%d to_read=%d"
+                " to_write=%d failed=%d failed_num=%d disks=%d\n",sh->sector,
+                locked, uptodate, to_read, to_write, failed, failed_num,
+                disks);
+
+            if(locked){
+                 printk("%llu: locked=%d uptodate=%d to_read=%d"
+                   " to_write=%d written=%d failed=%d failed_num=%d disks=%d\n"
+                   ,sh->sector,locked, uptodate, to_read, to_write, written,
+                    failed, failed_num, disks);
+                BUG();
+            }
+
+            if(!test_bit(STRIPE_INSCAN, &sh->state)){
+		if (conf->mddev->degraded) {
+                    atomic_sub(STRIPE_SECTORS*(disks-1),&conf->mddev->nr_scanning);
+                    clear_bit(STRIPE_SCANING,&sh->state);
+	            spin_unlock(&sh->lock);
+                    goto end_scan;
+                }
+                if(to_read==0 && to_write==0 && locked==0){
+	            for (i=disks; i--; ) {
+		        dev = &sh->dev[i];
+	                set_bit(R5_LOCKED, &sh->dev[i].flags);
+                        set_bit(R5_Wantread, &sh->dev[i].flags);
+                    }
+                    set_bit(STRIPE_INSCAN, &sh->state);
+	            spin_unlock(&sh->lock);
+                    goto do_scan_io;
+                } else {
+	            spin_unlock(&sh->lock);
+                    printk("%llu: locked=%d uptodate=%d to_read=%d"
+                   " to_write=%d failed=%d failed_num=%d disks=%d\n",sh->sector,
+                    locked, uptodate, to_read, to_write, failed, failed_num,
+                disks);
+                    BUG();
+                }
+            } else { /* STRIPE_INSCAN. Checking read request is failed or not */
+                if(uptodate==disks){ /* success */
+                    atomic_sub(STRIPE_SECTORS*(disks-1),&conf->mddev->nr_scanning);
+                    clear_bit(STRIPE_INSCAN, &sh->state);
+                    clear_bit(STRIPE_SCANING,&sh->state);
+                    for (i=disks; i--; ) {
+                        clear_bit(R5_UPTODATE,&sh->dev[i].flags);
+                        if (test_and_clear_bit(R5_Overlap, &sh->dev[i].flags)){
+                            wake_up(&conf->wait_for_overlap);
+                        }
+                    }
+	            spin_unlock(&sh->lock);
+                    goto end_scan;
+                } else if(failed > 1) {
+                    printk("handle_stripe(): too many disk is failed.\n");
+                    /* clean flags and needs recheck */
+                    atomic_sub(STRIPE_SECTORS*(disks-1),&conf->mddev->nr_scanning);
+                    clear_bit(STRIPE_INSCAN, &sh->state);
+                    clear_bit(STRIPE_SCANING,&sh->state);
+                    for (i=disks; i--; ) {
+                        clear_bit(R5_UPTODATE,&sh->dev[i].flags);
+                        if (test_and_clear_bit(R5_Overlap, &sh->dev[i].flags)){
+                            wake_up(&conf->wait_for_overlap);
+                        }
+                    }
+	            spin_unlock(&sh->lock);
+                    goto end_scan;
+                } else if (failed==1 && (failed+uptodate)==disks) {
+                    printk("raid5: repair sector error(disk=%d, sector %llu).\n"
+                           ,failed_num,sh->dev[failed_num].sector);
+                    compute_block(sh,failed_num);
+                    if(!test_bit(R5_UPTODATE,&sh->dev[failed_num].flags))
+                         BUG();
+                    clear_bit(R5_UPTODATE,&sh->dev[failed_num].flags);
+	            set_bit(R5_LOCKED, &sh->dev[failed_num].flags);
+                    set_bit(R5_Wantwrite,&sh->dev[failed_num].flags);
+                    set_bit(R5_ReWrite,&sh->dev[failed_num].flags);
+	            spin_unlock(&sh->lock);
+                    goto do_scan_io;
+                } else if (test_bit(STRIPE_DEGRADED,&sh->state)){
+                    /* Tried repair or scan, but degrade did occur
+                       during handle. */
+                    clear_bit(STRIPE_DEGRADED,&sh->state);
+                    atomic_sub(STRIPE_SECTORS*(disks-1),&conf->mddev->nr_scanning);
+                    clear_bit(STRIPE_INSCAN, &sh->state);
+                    clear_bit(STRIPE_SCANING,&sh->state);
+                    for (i=disks; i--; ) {
+                        clear_bit(R5_ReWrite,&sh->dev[i].flags);
+                        clear_bit(R5_UPTODATE,&sh->dev[i].flags);
+                        if (test_and_clear_bit(R5_Overlap, &sh->dev[i].flags)){
+                            wake_up(&conf->wait_for_overlap);
+                        }
+                    }
+	            spin_unlock(&sh->lock);
+                    goto end_scan;
+                } else if (locked==0) {
+                    /* success repair write */
+                    atomic_sub(STRIPE_SECTORS*(disks-1),&conf->mddev->nr_scanning);
+                    clear_bit(STRIPE_INSCAN, &sh->state);
+                    clear_bit(STRIPE_SCANING,&sh->state);
+                    for (i=disks; i--; ) {
+                        clear_bit(R5_UPTODATE,&sh->dev[i].flags);
+                        if (test_and_clear_bit(R5_Overlap, &sh->dev[i].flags)){
+                            wake_up(&conf->wait_for_overlap);
+                        }
+                    }
+	            spin_unlock(&sh->lock);
+                    goto end_scan;
+                } else {
+	            spin_unlock(&sh->lock);
+                    BUG();
+                }
+            }
+        } /* if(scaning) */
+#endif /* CONFIG_BUFFALO_SCAN */
 	rcu_read_lock();
 	for (i=disks; i--; ) {
 		mdk_rdev_t *rdev;
@@ -1415,14 +1606,65 @@ static void handle_stripe5(struct stripe_head *sh)
 		}
 		if (dev->written) written++;
 		rdev = rcu_dereference(conf->disks[i].rdev);
+#ifdef CONFIG_BUFFALO_DEGRADEKEEP
+		/*
+		 * For degrade-keep-ing case, reading is continued also to
+		 * faulty HDD.
+		 */
+		if (!rdev || (!test_bit(In_sync, &rdev->flags) &&
+						!conf->mddev->degradekeeping)) {
+#else
 		if (!rdev || !test_bit(In_sync, &rdev->flags)) {
+#endif
 			/* The ReadError flag will just be confusing now */
 			clear_bit(R5_ReadError, &dev->flags);
 			clear_bit(R5_ReWrite, &dev->flags);
 		}
+#ifdef CONFIG_BUFFALO_DEGRADEKEEP
+		if (!rdev || (!test_bit(In_sync, &rdev->flags) &&
+						!conf->mddev->degradekeeping)
+#else
 		if (!rdev || !test_bit(In_sync, &rdev->flags)
+#endif
 		    || test_bit(R5_ReadError, &dev->flags)) {
+#ifdef CONFIG_BUFFALO_DEGRADEKEEP
+			/* We want to know whether it just degrade it. */
+			if (!rdev) {
+				removed++;
+				removed_num = i;
+			}
+#endif
 			failed++;
+#ifdef CONFIG_BUFFALO_DEGRADEKEEP
+			if (failed > 1 && removed < 2 &&
+			    conf->mddev->degradekeep &&
+			    !conf->mddev->degradekeeping) {
+
+				conf->mddev->degradekeeping = 1;
+				printk(KERN_INFO
+				    "%s: raid5: start degrade-keeping\n",
+				    mdname(conf->mddev));
+
+				/*
+				 * To continue as a state of degrade-keep,
+				 * the parameter is reset again.
+				 */
+				if (removed == 0) {
+					set_bit(R5_Insync, &dev->flags);
+					set_bit(R5_Insync,
+					&sh->dev[failed_num].flags);
+				} else {
+					if (removed_num != i)
+						set_bit(R5_Insync, &dev->flags);
+					else
+						set_bit(R5_Insync,
+						    &sh->dev[failed_num].flags);
+					failed_num = removed_num;
+				}
+				failed = removed;
+				continue;
+			}
+#endif
 			failed_num = i;
 		} else
 			set_bit(R5_Insync, &dev->flags);
@@ -1470,6 +1712,10 @@ static void handle_stripe5(struct stripe_head *sh)
 			/* and fail all 'written' */
 			bi = sh->dev[i].written;
 			sh->dev[i].written = NULL;
+#ifdef CONFIG_BUFFALO_SCAN
+			if (test_and_clear_bit(R5_Overlap, &sh->dev[i].flags))
+                            wake_up(&conf->wait_for_overlap);
+#endif
 			if (bi) bitmap_end = 1;
 			while (bi && bi->bi_sector < sh->dev[i].sector + STRIPE_SECTORS) {
 				struct bio *bi2 = r5_next_bio(bi, sh->dev[i].sector);
@@ -1537,6 +1783,10 @@ static void handle_stripe5(struct stripe_head *sh)
 			    spin_lock_irq(&conf->device_lock);
 			    wbi = dev->written;
 			    dev->written = NULL;
+#ifdef CONFIG_BUFFALO_SCAN
+                         if (test_and_clear_bit(R5_Overlap, &sh->dev[i].flags))
+                            wake_up(&conf->wait_for_overlap);
+#endif
 			    while (wbi && wbi->bi_sector < dev->sector + STRIPE_SECTORS) {
 				    wbi2 = r5_next_bio(wbi, dev->sector);
 				    if (--wbi->bi_phys_segments == 0) {
@@ -1822,6 +2072,9 @@ static void handle_stripe5(struct stripe_head *sh)
 			      test_bit(BIO_UPTODATE, &bi->bi_flags)
 			        ? 0 : -EIO);
 	}
+#ifdef CONFIG_BUFFALO_SCAN
+do_scan_io:
+#endif /* CONFIG_BUFFALO_SCAN */
 	for (i=disks; i-- ;) {
 		int rw;
 		struct bio *bi;
@@ -1843,14 +2096,26 @@ static void handle_stripe5(struct stripe_head *sh)
  
 		rcu_read_lock();
 		rdev = rcu_dereference(conf->disks[i].rdev);
+#ifdef CONFIG_BUFFALO_DEGRADEKEEP
+		/*
+		 * For degrade-keep case, I/O is executed even if Faulty.
+		 */
+		if (!conf->mddev->degradekeep &&
+		    rdev && test_bit(Faulty, &rdev->flags))
+#else
 		if (rdev && test_bit(Faulty, &rdev->flags))
+#endif
 			rdev = NULL;
 		if (rdev)
 			atomic_inc(&rdev->nr_pending);
 		rcu_read_unlock();
  
 		if (rdev) {
+#ifdef CONFIG_BUFFALO_SCAN
+			if (syncing || expanding || expanded || scaning)
+#else
 			if (syncing || expanding || expanded)
+#endif /* CONFIG_BUFFALO_SCAN */
 				md_sync_acct(rdev->bdev, STRIPE_SECTORS);
 
 			bi->bi_bdev = rdev->bdev;
@@ -1880,6 +2145,10 @@ static void handle_stripe5(struct stripe_head *sh)
 			set_bit(STRIPE_HANDLE, &sh->state);
 		}
 	}
+#ifdef CONFIG_BUFFALO_SCAN
+end_scan:
+    return;
+#endif /* CONFIG_BUFFALO_SCAN */
 }
 
 static void handle_stripe6(struct stripe_head *sh, struct page *tmp_page)
@@ -3260,6 +3529,117 @@ static int  retry_aligned_read(raid5_conf_t *conf, struct bio *raid_bio)
 
 
 
+#ifdef CONFIG_BUFFALO_SCAN
+static int make_scan_request(mddev_t *mddev, sector_t s_from, int nr_secrs, int dest_dsk) {
+	raid5_conf_t *conf = mddev_to_conf(mddev);
+	const unsigned int raid_disks = conf->raid_disks;
+	const unsigned int data_disks = raid_disks - 1;
+	unsigned int dd_idx, pd_idx;
+	struct stripe_head *sh;
+        sector_t   stripe=s_from;
+        int overlap;
+        int i;
+
+	DEFINE_WAIT(w);
+
+        if(mddev->degraded){
+            printk("make_scan_request(): degrading state.\n");
+            return -1;
+        }
+
+	rcu_read_lock();
+	for (i=0; i<mddev->raid_disks; i++) {
+		mdk_rdev_t *rdev = rcu_dereference(conf->disks[i].rdev);
+                if (rdev == NULL){
+	            rcu_read_unlock();
+                    return -1;
+                }
+		if (!( test_bit(Faulty, &rdev->flags) ||
+                       test_bit(In_sync, &rdev->flags))) {
+	            rcu_read_unlock();
+                    return -1;
+                }
+        }
+	rcu_read_unlock();
+
+        /* In some architecture, calculation of u_int64-div is not supported
+         * by the hardware and Linux kernel have no available u_int64-div
+         * software routine, so much so that we cannot use operator `/' for
+         * type u_int64.
+         * Thus, instead of usual operator, we have to use special function
+         * sector_div() defined by include/linux/blkdev.h. */
+
+        /* Following statement means ``stripe /= data_disks;'' */
+        sector_div(stripe,data_disks);
+
+	raid5_compute_sector(
+            s_from, raid_disks, data_disks, &dd_idx, &pd_idx, conf);
+
+        PRINTK("sector %10llu stripe %10llu(PD:%d, DD:%d)\n",
+                s_from, stripe, pd_idx, dd_idx);
+
+retry:
+        overlap=0;
+        prepare_to_wait(&conf->wait_for_overlap, &w, TASK_UNINTERRUPTIBLE);
+        sh = get_active_stripe(conf, stripe, conf->raid_disks, pd_idx, (READ));
+	if (sh) {
+	    spin_lock(&sh->lock);
+	    spin_lock_irq(&conf->device_lock);
+            for (i=raid_disks; i--; ) {
+                if(sh->dev[i].toread || sh->dev[i].towrite
+                   || sh->dev[i].written) {
+                    set_bit(R5_Overlap,&sh->dev[i].flags);
+                    overlap=1;
+/*                    printk("make_scan_request(): Overlap"
+                           "toread:%x, towrite:%x, written:%x\n",
+                           (int)sh->dev[i].toread, (int)sh->dev[i].towrite,
+                           (int)sh->dev[i].written);
+*/
+                    break;
+                }
+            }
+	    spin_unlock(&sh->lock);
+	    spin_unlock_irq(&conf->device_lock);
+            if(overlap){
+                 raid5_unplug_device(mddev->queue);
+                 release_stripe(sh);
+                 schedule();
+                 goto retry;
+            }
+            finish_wait(&conf->wait_for_overlap, &w);
+
+	    spin_lock(&sh->lock);
+
+            if(test_bit(STRIPE_SCANING,&sh->state)){
+                printk("raid5: make_scan_request(): STRIPE_SCANING:1\n");
+                printk("raid5: make_scan_request(): sector %llu, stripe %llu\n",
+                       s_from, stripe);
+                BUG();
+            }
+
+            if(test_bit(STRIPE_INSCAN,&sh->state)){
+                printk("raid5: make_scan_request(): STRIPE_INSCAN:1\n");
+                printk("raid5: make_scan_request(): sector %llu, stripe %llu\n",
+                       s_from, stripe);
+                BUG();
+            }
+
+            set_bit(STRIPE_SCANING,&sh->state);
+            clear_bit(STRIPE_INSCAN,&sh->state);
+	    spin_unlock(&sh->lock);
+
+            handle_stripe(sh, conf->spare_page);
+            release_stripe(sh);
+            return (STRIPE_SECTORS*data_disks);
+        } else {
+            /* cannot get stripe for read-ahead, just give-up */
+            finish_wait(&conf->wait_for_overlap, &w);
+            return -1;
+        }
+        BUG();
+}
+#endif /* CONFIG_BUFFALO_SCAN */
+
 /*
  * This is our raid5 kernel thread.
  *
@@ -3562,7 +3942,11 @@ static int run(mddev_t *mddev)
 			conf->algorithm, mdname(mddev));
 		goto abort;
 	}
+#ifdef CONFIG_BUFFALO_DEGRADEKEEP
+	if (!mddev->degradekeep && mddev->degraded > conf->max_degraded) {
+#else
 	if (mddev->degraded > conf->max_degraded) {
+#endif
 		printk(KERN_ERR "raid5: not enough operational devices for %s"
 			" (%d/%d failed)\n",
 			mdname(mddev), mddev->degraded, conf->raid_disks);
@@ -3582,6 +3966,13 @@ static int run(mddev_t *mddev)
 			       mdname(mddev));
 			goto abort;
 		}
+#ifdef CONFIG_BUFFALO_DEGRADEKEEP
+	} else if (mddev->degraded > 1 && mddev->recovery_cp != MaxSector) {
+		printk(KERN_WARNING
+		    "raid5: starting dirty degrade-keeping array: %s"
+		    "- data corruption possible.\n",
+		    mdname(mddev));
+#endif
 	}
 
 	{
@@ -3737,6 +4128,15 @@ static void status (struct seq_file *seq, mddev_t *mddev)
 			       conf->disks[i].rdev &&
 			       test_bit(In_sync, &conf->disks[i].rdev->flags) ? "U" : "_");
 	seq_printf (seq, "]");
+/*
+#ifdef CONFIG_BUFFALO_PLATFORM
+	seq_printf (seq, " [");
+	for (i = 0; i < conf->raid_disks; i++){
+		seq_printf (seq, "%d ", conf->recovery_count[i]);
+	}
+	seq_printf (seq, "]");
+#endif
+*/
 #if RAID5_DEBUG
 	seq_printf (seq, "\n");
 	printall(seq, conf);
@@ -3847,6 +4247,16 @@ static int raid5_add_disk(mddev_t *mddev, mdk_rdev_t *rdev)
 			break;
 		}
 	print_raid5_conf(conf);
+#ifdef CONFIG_BUFFALO_SCAN
+        spin_lock(&mddev->scan_thr_ops);
+        if(mddev->scan_thr_started==1){
+                init_completion(&mddev->scan_thr_complete);
+                mddev->scan_thr_interrupt_reason=5;
+                mddev->scan_thr_interruption=1;
+                wait_for_completion(&mddev->scan_thr_complete);
+        }
+        spin_unlock(&mddev->scan_thr_ops);
+#endif /* CONFIG_BUFFALO_SCAN */
 	return found;
 }
 
@@ -4082,6 +4492,9 @@ static struct mdk_personality raid5_personality =
 	.level		= 5,
 	.owner		= THIS_MODULE,
 	.make_request	= make_request,
+#ifdef CONFIG_BUFFALO_SCAN
+        .make_scan_request = make_scan_request,
+#endif /* CONFIG_BUFFALO_SCAN */
 	.run		= run,
 	.stop		= stop,
 	.status		= status,

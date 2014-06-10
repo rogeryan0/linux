@@ -44,6 +44,9 @@
 #include <linux/mutex.h>
 #include <linux/ctype.h>
 #include <linux/freezer.h>
+#ifdef CONFIG_BUFFALO_PLATFORM
+ #include <buffalo/kernevnt.h>		/* 2005.5.10 BUFFALO */
+#endif
 
 #include <linux/init.h>
 
@@ -90,7 +93,14 @@ static void md_print_devices(void);
  */
 
 static int sysctl_speed_limit_min = 1000;
+#ifdef CONFIG_BUFFALO_PLATFORM
+static int sysctl_speed_limit_max = 50000;
+#else
 static int sysctl_speed_limit_max = 200000;
+#endif
+#ifdef CONFIG_BUFFALO_PLATFORM
+static int sysctl_skip_resync=0;
+#endif
 static inline int speed_min(mddev_t *mddev)
 {
 	return mddev->sync_speed_min ?
@@ -102,6 +112,23 @@ static inline int speed_max(mddev_t *mddev)
 	return mddev->sync_speed_max ?
 		mddev->sync_speed_max : sysctl_speed_limit_max;
 }
+
+#ifdef CONFIG_BUFFALO_SCAN
+static int sysctl_scan_speed_limit_min = 1000;
+static int sysctl_scan_speed_limit_max = 50000;
+
+static inline int scan_speed_max(mddev_t *mddev)
+{
+        return mddev->scan_speed_max ?
+                mddev->scan_speed_max : sysctl_scan_speed_limit_max;
+}
+
+static inline int scan_speed_min(mddev_t *mddev)
+{
+        return mddev->scan_speed_min ?
+                mddev->scan_speed_min : sysctl_scan_speed_limit_min;
+}
+#endif /* CONFIG_BUFFALO_SCAN */
 
 static struct ctl_table_header *raid_table_header;
 
@@ -122,6 +149,34 @@ static ctl_table raid_table[] = {
 		.mode		= S_IRUGO|S_IWUSR,
 		.proc_handler	= &proc_dointvec,
 	},
+#ifdef CONFIG_BUFFALO_PLATFORM
+	{
+		.ctl_name	= DEV_RAID_SKIP_RESYNC,
+		.procname	= "skip_resync",
+		.data		= &sysctl_skip_resync,
+		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= &proc_dointvec,
+	},
+#endif
+#ifdef CONFIG_BUFFALO_SCAN
+        {
+                .ctl_name       = DEV_RAID_SPEED_LIMIT_MIN,
+                .procname       = "scan_speed_limit_min",
+                .data           = &sysctl_scan_speed_limit_min,
+                .maxlen         = sizeof(int),
+                .mode           = 0644,
+                .proc_handler   = &proc_dointvec,
+        },
+        {
+                .ctl_name       = DEV_RAID_SPEED_LIMIT_MAX,
+                .procname       = "scan_speed_limit_max",
+                .data           = &sysctl_scan_speed_limit_max,
+                .maxlen         = sizeof(int),
+                .mode           = 0644,
+                .proc_handler   = &proc_dointvec,
+        },
+#endif /* CONFIG_BUFFALO_SCAN */
 	{ .ctl_name = 0 }
 };
 
@@ -290,6 +345,9 @@ static mddev_t * mddev_find(dev_t unit)
 
 static inline int mddev_lock(mddev_t * mddev)
 {
+#ifdef BUFFALO_TRACE_SEM
+	printk("%s:%s %d\n",__FUNCTION__,mdname(mddev),current->pid);
+#endif
 	return mutex_lock_interruptible(&mddev->reconfig_mutex);
 }
 
@@ -300,6 +358,9 @@ static inline int mddev_trylock(mddev_t * mddev)
 
 static inline void mddev_unlock(mddev_t * mddev)
 {
+#ifdef BUFFALO_TRACE_SEM
+	printk("%s:%s %d\n",__FUNCTION__,mdname(mddev),current->pid);
+#endif
 	mutex_unlock(&mddev->reconfig_mutex);
 
 	md_wakeup_thread(mddev->thread);
@@ -829,6 +890,14 @@ static int super_90_validate(mddev_t *mddev, mdk_rdev_t *rdev)
 		memcpy(mddev->uuid+8, &sb->set_uuid2, 4);
 		memcpy(mddev->uuid+12,&sb->set_uuid3, 4);
 
+#ifdef CONFIG_BUFFALO_PLATFORM
+#ifdef CONFIG_BUFFALO_DEGRADEKEEP
+		/* Restore degrade-keep statuses. */
+		mddev->degradekeep = sb->degradekeep;
+		mddev->degradekeeping = sb->degradekeeping;
+#endif
+#endif
+
 		mddev->max_disks = MD_SB_DISKS;
 
 		if (sb->state & (1<<MD_SB_BITMAP_PRESENT) &&
@@ -856,7 +925,19 @@ static int super_90_validate(mddev_t *mddev, mdk_rdev_t *rdev)
 		desc = sb->disks + rdev->desc_nr;
 
 		if (desc->state & (1<<MD_DISK_FAULTY))
+#ifdef CONFIG_BUFFALO_DEGRADEKEEP
+		{
+#endif
 			set_bit(Faulty, &rdev->flags);
+#ifdef CONFIG_BUFFALO_DEGRADEKEEP
+			if (mddev->degradekeep)
+				/*
+				 * For degrade-keep case, faulty HDD should
+				 * also add to RAID.
+				 */
+				rdev->raid_disk = desc->raid_disk;
+		}
+#endif
 		else if (desc->state & (1<<MD_DISK_SYNC) /* &&
 			    desc->raid_disk < mddev->raid_disks */) {
 			set_bit(In_sync, &rdev->flags);
@@ -919,6 +1000,14 @@ static void super_90_sync(mddev_t *mddev, mdk_rdev_t *rdev)
 	sb->events_hi = (mddev->events>>32);
 	sb->events_lo = (u32)mddev->events;
 
+#ifdef CONFIG_BUFFALO_PLATFORM
+#ifdef CONFIG_BUFFALO_DEGRADEKEEP
+	/* Store degrade-keep statuses. */
+	sb->degradekeep = mddev->degradekeep;
+	sb->degradekeeping = mddev->degradekeeping;
+#endif
+#endif
+
 	if (mddev->reshape_position == MaxSector)
 		sb->minor_version = 90;
 	else {
@@ -953,6 +1042,15 @@ static void super_90_sync(mddev_t *mddev, mdk_rdev_t *rdev)
 		if (rdev2->raid_disk >= 0 && test_bit(In_sync, &rdev2->flags)
 		    && !test_bit(Faulty, &rdev2->flags))
 			desc_nr = rdev2->raid_disk;
+#ifdef CONFIG_BUFFALO_DEGRADEKEEP
+		else if (rdev2->raid_disk >= 0
+		    && test_bit(Faulty, &rdev2->flags) && mddev->degradekeep)
+			/*
+			 * For degrade-keep case, faulty HDD should also keep
+			 * the super block.
+			 */
+			desc_nr = rdev2->raid_disk;
+#endif
 		else
 			desc_nr = next_spare++;
 		rdev2->desc_nr = desc_nr;
@@ -964,6 +1062,15 @@ static void super_90_sync(mddev_t *mddev, mdk_rdev_t *rdev)
 		if (rdev2->raid_disk >= 0 && test_bit(In_sync, &rdev2->flags)
 		    && !test_bit(Faulty, &rdev2->flags))
 			d->raid_disk = rdev2->raid_disk;
+#ifdef CONFIG_BUFFALO_DEGRADEKEEP
+		else if (rdev2->raid_disk >= 0
+		    && test_bit(Faulty, &rdev2->flags) && mddev->degradekeep)
+			/*
+			 * For degrade-keep case, faulty HDD should also keep
+			 * the super block.
+			 */
+			d->raid_disk = rdev2->raid_disk;
+#endif
 		else
 			d->raid_disk = rdev2->desc_nr; /* compatibility */
 		if (test_bit(Faulty, &rdev2->flags))
@@ -1729,15 +1836,36 @@ repeat:
 
 	err = bitmap_update_sb(mddev->bitmap);
 	ITERATE_RDEV(mddev,rdev,tmp) {
+#ifdef CONFIG_BUFFALO_DEGRADEKEEP
+		int skipping = 0;
+#endif
 		char b[BDEVNAME_SIZE];
 		dprintk(KERN_INFO "md: ");
 		if (rdev->sb_loaded != 1)
 			continue; /* no noise on spare devices */
+#ifdef CONFIG_BUFFALO_DEGRADEKEEP
+		/*
+		 * For degrade-keep case, faulty HDD should also add to RAID.
+		 */
+		if (!mddev->degradekeep && test_bit(Faulty, &rdev->flags)) {
+			skipping = 1;
+			dprintk("(skipping faulty ");
+		}
+#else
 		if (test_bit(Faulty, &rdev->flags))
 			dprintk("(skipping faulty ");
+#endif
 
 		dprintk("%s ", bdevname(rdev->bdev,b));
+#ifdef CONFIG_BUFFALO_DEGRADEKEEP
+		if (!skipping) {
+			/*
+			 * For degrade-keep case, faulty HDD should also keep
+			 * the super block.
+			 */
+#else
 		if (!test_bit(Faulty, &rdev->flags)) {
+#endif
 			md_super_write(mddev,rdev,
 				       rdev->sb_offset<<1, rdev->sb_size,
 				       rdev->sb_page);
@@ -2277,6 +2405,197 @@ layout_store(mddev_t *mddev, const char *buf, size_t len)
 }
 static struct md_sysfs_entry md_layout =
 __ATTR(layout, S_IRUGO|S_IWUSR, layout_show, layout_store);
+
+#ifdef CONFIG_BUFFALO_ERRCNT
+/* ----------------------------------------------------------------------- */
+static ssize_t maxerr_cnt_show(mddev_t *mddev, char *page)
+{
+        return sprintf(page, "%d\n", atomic_read(&mddev->maxerr_cnt));
+}
+static ssize_t maxerr_cnt_store(mddev_t *mddev, const char *buf, size_t len)
+{
+        char *e;
+        unsigned long n = simple_strtol(buf, &e, 10);
+        if (*buf && (*e == 0 || *e == '\n') && (n == -1 || ((signed int)n) >= 0)) {
+                atomic_set(&mddev->maxerr_cnt, n);
+                return len;
+        }
+        return -EINVAL;
+}
+static struct md_sysfs_entry md_maxerr_cnt =
+__ATTR(maxerr_cnt, 0644, maxerr_cnt_show, maxerr_cnt_store);
+#endif /* CONFIG_BUFFALO_ERRCNT */
+/* ----------------------------------------------------------------------- */
+
+#ifdef CONFIG_BUFFALO_SCAN
+/* ----------------------------------------------------------------------- */
+static ssize_t do_scan_show(mddev_t *mddev, char *page)
+{
+        unsigned long max_blocks, scan, dt, db, rt;
+        scan = (mddev->scan_cursor - atomic_read(&mddev->nr_scanning))/2;
+
+        max_blocks = mddev->array_size;
+
+	if (!mddev->pers){
+		return -EINVAL;
+        }
+
+	if (!mddev->pers->make_scan_request){
+            printk("%s: RAID maintenance function is not supported.\n",
+                    mdname(mddev));
+	    return -EINVAL;
+        }
+
+        scan = (mddev->scan_cursor - atomic_read(&mddev->nr_scanning))/2;
+
+        dt = ((jiffies - mddev->scan_mark) / HZ);
+        if (!dt) dt++;
+
+        db = mddev->scan_speed;
+        rt = (((max_blocks-scan) / (db/100+1)))/100;
+
+        if(!(mddev->scan_thr_started)){
+            rt=0;
+            mddev->scan_speed=0;
+        }
+
+        return sprintf(page, "%d (sector:%llu/%llu,"
+                             " finish=%lu.%lumin, speed=%uK/sec)\n",
+                        mddev->scan_thr_started,
+                       (unsigned long long int)(mddev->scan_cursor),
+                       (unsigned long long int)((mddev->array_size)<<1),
+                       rt/60,
+                       (rt % 60)/6,
+                       mddev->scan_speed
+                       );
+}
+
+static void md_do_scan(mddev_t *mddev);
+
+static ssize_t do_scan_store(mddev_t *mddev, const char *buf, size_t len)
+{
+        char *e;
+        unsigned long n = simple_strtoul(buf, &e, 10);
+
+#ifdef CONFIG_BUFFALO_DEGRADEKEEP
+	if (mddev->degradekeeping) {
+		printk("%s: is don't start in degrade-keeping.\n",
+		    mdname(mddev));
+		return -EINVAL;
+	}
+#endif
+
+	if (!mddev->pers || ! mddev->thread ){
+            printk("%s: is not started.\n",mdname(mddev));
+            return -EINVAL;
+        }
+
+	if (!mddev->pers->make_scan_request){
+            printk("%s: RAID maintenance function is not supported.\n",
+                   mdname(mddev));
+	    return -EINVAL;
+        }
+
+        if (*buf && (*e == 0 || *e == '\n')) {
+            spin_lock(&mddev->scan_thr_ops);
+            if ( n == 1 && !(mddev->scan_thr_started)){
+                 if (mddev->curr_resync){
+                        printk("%s: scan has canceled. md is busy.\n",mdname(mddev));
+                        goto error;
+                 }
+                 mddev->scan_thr_started=1;
+                 if(!(mddev->scan_thread)){
+                     mddev->scan_thread=md_register_thread(
+                                          md_do_scan, mddev, "%s_scan");
+                 }
+                 md_wakeup_thread(mddev->scan_thread);
+                 goto success;
+            } else if ( n == 0 && mddev->scan_thr_started) {
+                 mddev->scan_thr_interrupt_reason=1;
+                 init_completion(&mddev->scan_thr_complete);
+                 mddev->scan_thr_interruption=1;
+                 wait_for_completion(&mddev->scan_thr_complete);
+                 goto success;
+            } else {
+                 goto error;
+            }
+success:
+            spin_unlock(&mddev->scan_thr_ops);
+//            printk("md: md_do_scan_store() exitting, successfully.\n");
+            return len;
+error:
+            spin_unlock(&mddev->scan_thr_ops);
+        }
+        return -EINVAL;
+}
+
+static struct md_sysfs_entry md_do_scan_ctl =
+__ATTR(do_scan_ctl, 0644, do_scan_show, do_scan_store);
+
+static ssize_t scan_min_show(mddev_t *mddev, char *page)
+{
+        return sprintf(page, "%d (%s)\n", scan_speed_min(mddev),
+                       mddev->scan_speed_min ? "local": "system");
+}
+
+static ssize_t scan_min_store(mddev_t *mddev, const char *buf, size_t len)
+{
+        int min;
+        char *e;
+        if (strncmp(buf, "system", 6)==0) {
+                mddev->scan_speed_min = 0;
+                return len;
+        }
+        min = simple_strtoul(buf, &e, 10);
+        if (buf == e || (*e && *e != '\n') || min <= 0)
+                return -EINVAL;
+        mddev->scan_speed_min = min;
+        return len;
+}
+
+static struct md_sysfs_entry md_scan_min =
+__ATTR(scan_speed_min, S_IRUGO|S_IWUSR, scan_min_show, scan_min_store);
+
+static ssize_t scan_max_show(mddev_t *mddev, char *page)
+{
+        return sprintf(page, "%d (%s)\n", scan_speed_max(mddev),
+                       mddev->scan_speed_max ? "local": "system");
+}
+
+static ssize_t scan_max_store(mddev_t *mddev, const char *buf, size_t len)
+{
+        int max;
+        char *e;
+        if (strncmp(buf, "system", 6)==0) {
+                mddev->scan_speed_max = 0;
+                return len;
+        }
+        max = simple_strtoul(buf, &e, 10);
+        if (buf == e || (*e && *e != '\n') || max <= 0)
+                return -EINVAL;
+        mddev->scan_speed_max = max;
+        return len;
+}
+
+static struct md_sysfs_entry md_scan_max =
+__ATTR(scan_speed_max, S_IRUGO|S_IWUSR, scan_max_show, scan_max_store);
+
+static ssize_t
+scan_speed_show(mddev_t *mddev, char *page)
+{
+        unsigned long scan, dt, db;
+        scan = (mddev->scan_cursor - atomic_read(&mddev->nr_scanning));
+        dt = ((jiffies - mddev->scan_mark) / HZ);
+        if (!dt) dt++;
+        db = scan - (mddev->scan_mark_cnt);
+        return sprintf(page, "%ld\n", db/dt/2); /* K/sec */
+}
+
+static struct md_sysfs_entry
+md_scan_speed = __ATTR_RO(scan_speed); 
+
+#endif /* CONFIG_BUFFALO_SCAN */
+/* ----------------------------------------------------------------------- */
 
 
 static ssize_t
@@ -2958,6 +3277,49 @@ static struct md_sysfs_entry md_reshape_position =
 __ATTR(reshape_position, S_IRUGO|S_IWUSR, reshape_position_show,
        reshape_position_store);
 
+#ifdef CONFIG_BUFFALO_DEGRADEKEEP
+static ssize_t
+degradekeep_show(mddev_t *mddev, char *page)
+{
+
+	return sprintf(page, "%d (%s)\n", mddev->degradekeep,
+	    mddev->degradekeep ? "enable": "disable");
+}
+
+static ssize_t
+degradekeep_store(mddev_t *mddev, const char *buf, size_t len)
+{
+	char *e;
+	unsigned long n = simple_strtoul(buf, &e, 10);
+
+	if (*buf && (*e == 0 || *e == '\n')) {
+		if (n == 0 && mddev->degradekeeping) {
+			printk(KERN_ERR "can't set un-degrade-keep. "
+			    " you must first rebuild\n");
+			return -EINVAL;
+		} else {
+			mddev->degradekeep = (n == 0) ? 0 : 1;
+			return len;
+		}
+	}
+	return -EINVAL;
+}
+
+static struct md_sysfs_entry md_degradekeep =
+    __ATTR(degradekeep, S_IRUGO|S_IWUSR, degradekeep_show, degradekeep_store);
+
+static ssize_t
+degradekeeping_show(mddev_t *mddev, char *page)
+{
+
+	return sprintf(page, "%d (%s)\n",
+	    mddev->degradekeeping, mddev->degradekeeping ? "yes": "no");
+}
+
+static struct md_sysfs_entry
+md_degradekeeping = __ATTR_RO(degradekeeping);
+#endif
+
 
 static struct attribute *md_default_attrs[] = {
 	&md_level.attr,
@@ -2971,6 +3333,13 @@ static struct attribute *md_default_attrs[] = {
 	&md_safe_delay.attr,
 	&md_array_state.attr,
 	&md_reshape_position.attr,
+#ifdef CONFIG_BUFFALO_ERRCNT
+        &md_maxerr_cnt.attr,
+#endif /* CONFIG_BUFFALO_ERRCNT */
+#ifdef CONFIG_BUFFALO_DEGRADEKEEP
+	&md_degradekeep.attr,
+	&md_degradekeeping.attr,
+#endif
 	NULL,
 };
 
@@ -2984,6 +3353,12 @@ static struct attribute *md_redundancy_attrs[] = {
 	&md_suspend_lo.attr,
 	&md_suspend_hi.attr,
 	&md_bitmap.attr,
+#ifdef CONFIG_BUFFALO_SCAN
+        &md_do_scan_ctl.attr,
+        &md_scan_min.attr,
+        &md_scan_max.attr,
+        &md_scan_speed.attr,
+#endif /* CONFIG_BUFFALO_SCAN */
 	NULL,
 };
 static struct attribute_group md_redundancy_group = {
@@ -3340,6 +3715,21 @@ static int do_md_run(mddev_t * mddev)
 	md_wakeup_thread(mddev->sync_thread); /* possibly kick off a reshape */
 
 	mddev->changed = 1;
+#ifdef CONFIG_BUFFALO_ERRCNT
+       /* MAXERR_CNT_DEFAULT is defined on include/linux/raid/md_k.h */
+       atomic_set(&mddev->maxerr_cnt,MAXERR_CNT_DEFAULT);
+#endif
+
+#ifdef CONFIG_BUFFALO_SCAN
+       spin_lock_init(&mddev->scan_thr_ops);
+       spin_lock(&mddev->scan_thr_ops);
+       mddev->scan_thr_started=0;
+       mddev->scan_thread=NULL;
+       spin_unlock(&mddev->scan_thr_ops);
+       mddev->scan_speed = 0;
+
+#endif
+
 	md_new_event(mddev);
 	kobject_uevent(&mddev->gendisk->kobj, KOBJ_CHANGE);
 	return 0;
@@ -3419,6 +3809,16 @@ static int do_md_stop(mddev_t * mddev, int mode)
 	struct gendisk *disk = mddev->gendisk;
 
 	if (mddev->pers) {
+#ifdef CONFIG_BUFFALO_SCAN
+            spin_lock(&mddev->scan_thr_ops);
+            if(mddev->scan_thr_started==1){
+                init_completion(&mddev->scan_thr_complete);
+                mddev->scan_thr_interrupt_reason=2;
+                mddev->scan_thr_interruption=1;
+                wait_for_completion(&mddev->scan_thr_complete);
+            }
+        spin_unlock(&mddev->scan_thr_ops);
+#endif /* CONFIG_BUFFALO_SCAN */
 		if (atomic_read(&mddev->active)>2) {
 			printk("md: %s still in use.\n",mdname(mddev));
 			return -EBUSY;
@@ -3890,7 +4290,14 @@ static int add_new_disk(mddev_t * mddev, mdu_disk_info_t *info)
 		return -EINVAL;
 	}
 
+#ifdef CONFIG_BUFFALO_DEGRADEKEEP
+	/*
+	 * For degrade-keep case, faulty HDD should also add to RAID.
+	 */
+	if (mddev->degradekeep || !(info->state & (1 << MD_DISK_FAULTY))) {
+#else
 	if (!(info->state & (1<<MD_DISK_FAULTY))) {
+#endif
 		int err;
 		rdev = md_import_device (dev, -1, 0);
 		if (IS_ERR(rdev)) {
@@ -3942,6 +4349,21 @@ static int hot_remove_disk(mddev_t * mddev, dev_t dev)
 	rdev = find_rdev(mddev, dev);
 	if (!rdev)
 		return -ENXIO;
+
+#ifdef CONFIG_BUFFALO_DEGRADEKEEP
+	if (rdev->raid_disk >= 0 &&
+	    (test_bit(Faulty, &rdev->flags) ||
+					!test_bit(In_sync, &rdev->flags)) &&
+	    atomic_read(&rdev->nr_pending) == 0) {
+		if (mddev->degradekeep &&
+		    mddev->pers->hot_remove_disk(mddev, rdev->raid_disk) == 0) {
+			char nm[20];
+			sprintf(nm,"rd%d", rdev->raid_disk);
+			sysfs_remove_link(&mddev->kobj, nm);
+			rdev->raid_disk = -1;
+		}
+	}
+#endif
 
 	if (rdev->raid_disk >= 0)
 		goto busy;
@@ -4723,6 +5145,9 @@ void md_error(mddev_t *mddev, mdk_rdev_t *rdev)
 		__builtin_return_address(0),__builtin_return_address(1),
 		__builtin_return_address(2),__builtin_return_address(3));
 */
+#ifdef CONFIG_BUFFALO_PLATFORM
+	kernevnt_RadiDegraded(mddev->md_minor,MAJOR(rdev->bdev->bd_dev),MINOR(rdev->bdev->bd_dev));
+#endif
 	if (!mddev->pers)
 		return;
 	if (!mddev->pers->error_handler)
@@ -4824,13 +5249,22 @@ static void status_resync(struct seq_file *seq, mddev_t * mddev)
 	 */
 	dt = ((jiffies - mddev->resync_mark) / HZ);
 	if (!dt) dt++;
+#ifdef CONFIG_BUFFALO_PLATFORM
+	db = mddev->currspeed;
+	rt = (((unsigned long)(max_blocks-resync) / (db/100+1)))/100;
+#else
 	db = (mddev->curr_mark_cnt - atomic_read(&mddev->recovery_active))
 		- mddev->resync_mark_cnt;
 	rt = (dt * ((unsigned long)(max_blocks-resync) / (db/2/100+1)))/100;
+#endif
 
 	seq_printf(seq, " finish=%lu.%lumin", rt / 60, (rt % 60)/6);
 
+#ifdef CONFIG_BUFFALO_PLATFORM
+	seq_printf(seq, " speed=%uK/sec", mddev->currspeed);
+#else
 	seq_printf(seq, " speed=%ldK/sec", db/2/dt);
+#endif
 }
 
 static void *md_seq_start(struct seq_file *seq, loff_t *pos)
@@ -5218,6 +5652,13 @@ void md_do_sync(mddev_t *mddev)
 	struct list_head *rtmp;
 	mdk_rdev_t *rdev;
 	char *desc;
+#ifdef CONFIG_BUFFALO_PLATFORM
+	int isRecovery,major=0,minor=0;
+#endif
+
+#ifdef CONFIG_BUFFALO_PLATFORM
+	set_user_nice(current, 4);
+#endif
 
 	/* just incase thread restarts... */
 	if (test_bit(MD_RECOVERY_DONE, &mddev->recovery))
@@ -5319,6 +5760,28 @@ void md_do_sync(mddev_t *mddev)
 				j = rdev->recovery_offset;
 	}
 
+#ifdef CONFIG_BUFFALO_PLATFORM
+	{
+		mdk_rdev_t *rdev;
+		struct list_head *rtmp;
+		ITERATE_RDEV(mddev,rdev,rtmp){
+			/*
+			printk("** major=%d minor=%d  %d %d %d %d %d\n"
+				,MAJOR(rdev->bdev->bd_dev),MINOR(rdev->bdev->bd_dev)
+				,rdev->raid_disk, rdev->faulty, rdev->in_sync, rdev->desc_nr, rdev->raid_disk
+				);
+			*/
+//			if (!rdev->in_sync){
+			if (rdev->flags != In_sync){  // Changed by Hara 2006/10/3
+				major=MAJOR(rdev->bdev->bd_dev);
+				minor=MINOR(rdev->bdev->bd_dev);
+				break;
+			}
+		}
+		isRecovery=!test_bit(MD_RECOVERY_SYNC, &mddev->recovery);
+		kernevnt_RadiRecovery(mddev->md_minor,1,isRecovery,major,minor);
+	}
+#endif
 	printk(KERN_INFO "md: %s of RAID array %s\n", desc, mdname(mddev));
 	printk(KERN_INFO "md: minimum _guaranteed_  speed:"
 		" %d KB/sec/disk.\n", speed_min(mddev));
@@ -5358,6 +5821,11 @@ void md_do_sync(mddev_t *mddev)
 	while (j < max_sectors) {
 		sector_t sectors;
 
+	#ifdef CONFIG_BUFFALO_PLATFORM
+		if (sysctl_skip_resync){
+			break;
+		}
+	#endif
 		skipped = 0;
 		sectors = mddev->pers->sync_request(mddev, j, &skipped,
 					    currspeed < speed_min(mddev));
@@ -5425,6 +5893,9 @@ void md_do_sync(mddev_t *mddev)
 
 		currspeed = ((unsigned long)(io_sectors-mddev->resync_mark_cnt))/2
 			/((jiffies-mddev->resync_mark)/HZ +1) +1;
+#ifdef CONFIG_BUFFALO_PLATFORM
+		mddev->currspeed = currspeed;
+#endif
 
 		if (currspeed > speed_min(mddev)) {
 			if ((currspeed > speed_max(mddev)) ||
@@ -5442,6 +5913,9 @@ void md_do_sync(mddev_t *mddev)
 	mddev->queue->unplug_fn(mddev->queue);
 
 	wait_event(mddev->recovery_wait, !atomic_read(&mddev->recovery_active));
+#ifdef CONFIG_BUFFALO_PLATFORM
+	kernevnt_RadiRecovery(mddev->md_minor,0,isRecovery,major,minor);
+#endif
 
 	/* tell personality that we are finished */
 	mddev->pers->sync_request(mddev, max_sectors, &skipped, 1);
@@ -5487,6 +5961,28 @@ static int remove_and_add_spares(mddev_t *mddev)
 	struct list_head *rtmp;
 	int spares = 0;
 
+#ifdef CONFIG_BUFFALO_DEGRADEKEEP
+	/*
+	 * For degrade-keeping case, can't remove faulty HDD, because
+	 * must keeping valid file-system.
+	 */
+	if (mddev->degradekeeping)
+		return 0;
+	/*
+	 * For degrade-keep case, if md has spare HDD then remove faulty HDD.
+	 */
+	if (mddev->degradekeep && mddev->degraded) {
+		int remove_and_add = 0;
+
+		ITERATE_RDEV(mddev,rdev,rtmp)
+			if (rdev->raid_disk < 0 &&
+			    !test_bit(Faulty, &rdev->flags))
+				remove_and_add = 1;
+		if (!remove_and_add)
+			return 0;
+	}
+#endif
+
 	ITERATE_RDEV(mddev,rdev,rtmp)
 		if (rdev->raid_disk >= 0 &&
 		    (test_bit(Faulty, &rdev->flags) ||
@@ -5523,6 +6019,150 @@ static int remove_and_add_spares(mddev_t *mddev)
 	}
 	return spares;
 }
+#ifdef CONFIG_BUFFALO_SCAN
+
+static void md_do_scan(mddev_t *mddev)
+{
+#define SCAN_MARKS      10
+#define SCAN_MARK_STEP  (3*HZ)
+#define SCAN_MAX_INFLIGHT_SECTR 1024*64
+        unsigned int currspeed = 0,
+                 window;
+        sector_t max_sectors,j, io_sectors;
+        sector_t mark_cnt[SCAN_MARKS];
+        unsigned long mark[SCAN_MARKS];
+        int last_mark, m;
+        sector_t last_check=0;
+
+        mddev->scan_cursor=0;
+        mddev->scan_thr_interruption=0;
+        mddev->scan_thr_started=1;
+
+        max_sectors = (mddev->array_size << 1);
+
+        window = 32*(PAGE_SIZE/512);
+
+	is_mddev_idle(mddev); /* this also initializes IO event counters */
+
+        atomic_set(&mddev->nr_scanning,0);
+
+        j = 0;
+
+        io_sectors = 0;
+        for (m = 0; m < SYNC_MARKS; m++) {
+                mark[m] = jiffies;
+                mark_cnt[m] = io_sectors;
+        }
+
+        last_mark = 0;
+        mddev->scan_mark = mark[last_mark];
+        mddev->scan_mark_cnt = mark_cnt[last_mark];
+
+#ifdef CONFIG_BUFFALO_PLATFORM
+    kernevnt_RadiScan(mddev->md_minor,1);
+#endif
+
+        set_user_nice(current, 4);
+
+        while (j < max_sectors) {
+                int sectors;
+
+                sectors = mddev->pers->make_scan_request(mddev, j, 8, -1);
+
+                if (sectors <= 0) {
+                        printk("raid: scan has been canceled.\n");
+                        goto normal_end;
+                }
+
+                io_sectors += sectors;
+                atomic_add(sectors, &mddev->nr_scanning);
+ 
+                j += sectors;
+
+                mddev->scan_cursor = j;
+
+                if (last_check + window > io_sectors || j == max_sectors)
+                        continue;
+
+                last_check = io_sectors;
+
+        repeat:
+                if (time_after_eq(jiffies, mark[last_mark] + SCAN_MARK_STEP )) {
+                        /* step marks */
+                        int next = (last_mark+1) % SCAN_MARKS;
+
+                        mddev->scan_mark = mark[next];
+                        mddev->scan_mark_cnt = mark_cnt[next];
+                        mark[next] = jiffies;
+                        mark_cnt[next] = io_sectors - atomic_read(&mddev->nr_scanning);
+                        last_mark = next;
+                }
+
+               if(mddev->scan_thr_interruption==1){
+                   mddev->scan_thr_interruption=0;
+                   goto interrupted_end;
+               }
+
+                mddev->queue->unplug_fn(mddev->queue);
+                cond_resched();
+
+                currspeed = ((unsigned long)(io_sectors-mddev->scan_mark_cnt))/2
+                        /((jiffies-mddev->scan_mark)/HZ +1) +1;
+
+                mddev->scan_speed = currspeed;
+
+                if (currspeed > scan_speed_min(mddev)) {
+			if ((currspeed > scan_speed_max(mddev)) ||
+					!is_mddev_idle(mddev) ||
+                         SCAN_MAX_INFLIGHT_SECTR < atomic_read(&mddev->nr_scanning)) {
+				msleep(500);
+				goto repeat;
+                        }
+                }
+        }
+
+normal_end:
+
+    while(atomic_read(&mddev->nr_scanning)){
+        md_wakeup_thread(mddev->thread);
+        msleep(1000);
+    }
+
+    if(!spin_trylock(&mddev->scan_thr_ops)){
+        if(mddev->scan_thr_interruption==1)
+            goto interrupted_end;
+    };
+
+    mddev->scan_cursor=0;
+    mddev->scan_thread=NULL;
+    mddev->scan_thr_started=0;
+
+    spin_unlock(&mddev->scan_thr_ops);
+#ifdef CONFIG_BUFFALO_PLATFORM
+    kernevnt_RadiScan(mddev->md_minor,0);
+#endif
+    do_exit(0);
+
+interrupted_end:
+    /* This area is protected by exclusion by scan_thr_ops. */
+    while(atomic_read(&mddev->nr_scanning)){
+        md_wakeup_thread(mddev->thread);
+        msleep(1000);
+    }
+
+    mddev->scan_cursor=0;
+    mddev->scan_thr_started=0;
+    mddev->scan_thread=NULL;
+    mddev->scan_thr_interruption=0;
+#ifdef CONFIG_BUFFALO_PLATFORM
+    kernevnt_RadiScan(mddev->md_minor,0);
+#endif
+    complete_and_exit(
+        &mddev->scan_thr_complete, mddev->scan_thr_interrupt_reason);
+
+}
+#endif /* CONFIG_BUFFALO_SCAN */
+
 /*
  * This routine is regularly called by all per-raid-array threads to
  * deal with generic issues like resync and super-block update.

@@ -254,6 +254,12 @@ extern atomic_t nf_conntrack_count;
 extern int nf_conntrack_max;
 
 DECLARE_PER_CPU(struct ip_conntrack_stat, nf_conntrack_stat);
+#ifdef CONFIG_MV_LINUX_COUNTERS_DISABLE
+
+#define NF_CT_STAT_INC(count)
+#define NF_CT_STAT_INC_ATOMIC(count)
+
+#else 
 #define NF_CT_STAT_INC(count) (__get_cpu_var(nf_conntrack_stat).count++)
 #define NF_CT_STAT_INC_ATOMIC(count)			\
 do {							\
@@ -261,6 +267,7 @@ do {							\
 	__get_cpu_var(nf_conntrack_stat).count++;	\
 	local_bh_enable();				\
 } while (0)
+#endif /* CONFIG_MV_LINUX_COUNTERS_DISABLE */
 
 /* no helper, no nat */
 #define	NF_CT_F_BASIC	0

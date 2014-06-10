@@ -1,0 +1,16 @@
+
+config  ETH_0_MACADDR
+	string "Ethernet port MAC address"
+	depends on MV_ETHERNET
+	default "000000000051"
+	---help---
+	  Set the Ethernet port MAC address.
+
+config  EGIGA_PROC
+	bool "egiga proc FS (for mvEgigaTool)"
+	depends on MV_ETHERNET && !MV_INCLUDE_UNM_ETH
+	---help---
+	  Use mvEgigaTool proc FS.
+
+
+

@@ -1,0 +1,24 @@
+
+config  MV_NET_CONFIG
+	string "Network interface configuration"
+	depends on MV_GATEWAY
+	default "(eth0,00:11:66:11:66:11,0)(eth1,00:22:77:22:77:22,1:2:3:4)"
+	---help---
+	 Set the network interface configuration. For each interface, define the interface 
+	 name, MAC address and participating ports. For example, the default configuration 
+	 defines two interfaces, eth0 and eth1.
+
+config  MV_GTW_PROC
+        bool "mv_gateway /proc API support (for mvGtwTool)"
+        depends on MV_GATEWAY
+        ---help---
+
+config  HAVE_ARCH_DEV_ALLOC_SKB
+        bool "Customize SKB headroom size"
+        depends on MV_GATEWAY
+        default n
+        ---help---
+          Customize SKB headroom size used in dev_alloc_skb() kernel function.
+
+
+

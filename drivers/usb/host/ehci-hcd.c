@@ -33,6 +33,7 @@
 #include <linux/usb.h>
 #include <linux/moduleparam.h>
 #include <linux/dma-mapping.h>
+#include <linux/platform_device.h>
 
 #include "../core/hcd.h"
 
@@ -204,6 +205,19 @@ static void tdi_reset (struct ehci_hcd *ehci)
 	reg_ptr = (u32 __iomem *)(((u8 __iomem *)ehci->regs) + 0x68);
 	tmp = ehci_readl(ehci, reg_ptr);
 	tmp |= 0x3;
+
+    if(ehci_to_hcd(ehci)->self.controller->bus == &platform_bus_type)
+    {
+        struct platform_device  *pdev = to_platform_device(ehci_to_hcd(ehci)->self.controller); 
+#if defined(CONFIG_ARCH_FEROCEON) || defined(CONFIG_MARVELL)
+        if( ((pdev->id & 0x0000ffff) == PCI_VENDOR_ID_MARVELL) &&
+            (((pdev->id & 0x00ff0000) >> 16) == 0) )
+        {
+            /* Streaming disable for all USB rev0 */
+            tmp |= (1 << 4);
+        }
+#endif /* CONFIG_ARCH_FEROCEON || CONFIG_MARVELL */
+    }
 	ehci_writel(ehci, tmp, reg_ptr);
 }
 
@@ -643,7 +657,7 @@ static irqreturn_t ehci_irq (struct usb_hcd *hcd)
 		if (likely ((status & STS_ERR) == 0))
 			COUNT (ehci->stats.normal);
 		else
-			COUNT (ehci->stats.error);
+            COUNT (ehci->stats.error);
 		bh = 1;
 	}
 
@@ -741,6 +755,7 @@ static int ehci_urb_enqueue (
 	default:
 		if (!qh_urb_transaction (ehci, urb, &qtd_list, mem_flags))
 			return -ENOMEM;
+
 		return submit_async (ehci, ep, urb, &qtd_list, mem_flags);
 
 	case PIPE_INTERRUPT:
@@ -949,6 +964,11 @@ MODULE_LICENSE ("GPL");
 #ifdef CONFIG_PPC_PS3
 #include "ehci-ps3.c"
 #define	PS3_SYSTEM_BUS_DRIVER	ps3_ehci_sb_driver
+#endif
+
+#if defined(CONFIG_ARCH_FEROCEON) || defined(CONFIG_MARVELL)
+#include "ehci_marvell.c"
+#define PLATFORM_DRIVER         ehci_marvell_driver
 #endif
 
 #if !defined(PCI_DRIVER) && !defined(PLATFORM_DRIVER) && \

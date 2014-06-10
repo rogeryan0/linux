@@ -945,6 +945,19 @@ struct page *follow_page(struct vm_area_struct *vma, unsigned long address,
 		goto unlock;
 	if ((flags & FOLL_WRITE) && !pte_write(pte))
 		goto unlock;
+
+	/* x86 has an 'accessed' bit in the page table, which the OS uses to do page aging
+	 * when the page is accessed, the processor sets that bit to 1
+	 * that way, the OS can see which pages are being accessed
+	 * ARM doesn't have an accessed bit (well, there is one, but it is only defined in ARMv7 and later)
+	 * so ARM emulates it by marking the page invalid if pte_young() is false
+	 * so that an access generates a page fault
+	 * check proc-arm926.S and look for L_PTE_YOUNG
+	 * if L_PTE_PRESENT and L_PTE_YOUNG are not both set, the HW pte is set to zero.
+	 * in case we have L2 we will get page fault for flushing this pages!!!! */
+	if (!pte_young(pte) && (flags & FOLL_PTE_EXIST))
+		goto unlock;
+
 	page = vm_normal_page(vma, address, pte);
 	if (unlikely(!page))
 		goto unlock;

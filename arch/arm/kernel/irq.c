@@ -47,6 +47,10 @@
 #define irq_finish(irq) do { } while (0)
 #endif
 
+#ifdef CONFIG_BUFFALO_PLATFORM
+//#define TRACE_GPIOIRQ
+#endif
+
 void (*init_arch_irq)(void) __initdata = NULL;
 unsigned long irq_err_count;
 

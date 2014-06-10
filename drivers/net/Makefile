@@ -1,7 +1,11 @@
 #
 # Makefile for the Linux network (ethercard) device drivers.
 #
-
+ifeq ($(CONFIG_ARCH_FEROCEON_KW), y)
+obj-$(CONFIG_MV_INCLUDE_GIG_ETH) += ../../arch/arm/plat-feroceon-kw/mv_drivers_lsp/mv_network/mv_ethernet/
+else
+obj-$(CONFIG_MV_INCLUDE_GIG_ETH) += ../../arch/arm/plat-feroceon/mv_drivers_lsp/mv_network/mv_ethernet/
+endif
 obj-$(CONFIG_E1000) += e1000/
 obj-$(CONFIG_IBM_EMAC) += ibm_emac/
 obj-$(CONFIG_IXGB) += ixgb/
@@ -227,3 +231,4 @@ obj-$(CONFIG_NETCONSOLE) += netconsole.o
 obj-$(CONFIG_FS_ENET) += fs_enet/
 
 obj-$(CONFIG_NETXEN_NIC) += netxen/
+

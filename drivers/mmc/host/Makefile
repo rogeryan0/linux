@@ -10,9 +10,16 @@ obj-$(CONFIG_MMC_ARMMMCI)	+= mmci.o
 obj-$(CONFIG_MMC_PXA)		+= pxamci.o
 obj-$(CONFIG_MMC_IMX)		+= imxmmc.o
 obj-$(CONFIG_MMC_SDHCI)		+= sdhci.o
+obj-$(CONFIG_MMC_RICOH_MMC)	+= ricoh_mmc.o
 obj-$(CONFIG_MMC_WBSD)		+= wbsd.o
 obj-$(CONFIG_MMC_AU1X)		+= au1xmmc.o
 obj-$(CONFIG_MMC_OMAP)		+= omap.o
 obj-$(CONFIG_MMC_AT91)		+= at91_mci.o
 obj-$(CONFIG_MMC_TIFM_SD)	+= tifm_sd.o
+obj-$(CONFIG_MMC_SPI)		+= mmc_spi.o
+ifeq ($(CONFIG_ARCH_FEROCEON_KW), y)
+obj-$(CONFIG_MMC_MVSDMMC) += ../../../arch/arm/plat-feroceon-kw/mv_drivers_lsp/mv_sdio/
+else
+obj-$(CONFIG_MMC_MVSDMMC) += ../../../arch/arm/plat-feroceon/mv_drivers_lsp/mv_sdio/
+endif
 

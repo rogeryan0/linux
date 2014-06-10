@@ -138,6 +138,14 @@
 #define M50FW080	0x002D
 #define M50FW016	0x002E
 #define M50LPW080       0x002F
+#ifdef CONFIG_BUFFALO_PLATFORM
+#define M29W320DT	0x00CA
+#define M29W320DB	0x00CB
+#define M29W324DT	0x005C
+#define M29W324DB	0x005D
+#define M29W323DT	0x005E
+#define M29W323DB	0x005F
+#endif
 
 /* SST */
 #define SST29EE020	0x0010
@@ -1643,6 +1651,40 @@ static const struct amd_flash_info jedec_table[] = {
 		.regions	= {
 			ERASEINFO(0x10000,16),
 		}
+#ifdef CONFIG_BUFFALO_PLATFORM
+	}, {
+		/* 2006.2.2 buffalo: add */
+		.mfr_id		= MANUFACTURER_ST,
+		.dev_id		= M29W323DT,
+		.name		= "ST M29W323DT",
+		.uaddr		= {
+			[0] = MTD_UADDR_0x0AAA_0x0555, /* x8 */
+			[1] = MTD_UADDR_0x0555_0x02AA  /* x16 */
+		},
+		.DevSize	= SIZE_4MiB,
+		.CmdSet		= P_ID_AMD_STD,
+		.NumEraseRegions= 2,
+		.regions	= {
+			ERASEINFO(0x10000,63),
+			ERASEINFO(0x02000,8)
+		}
+	}, {
+		/* 2006.2.2 buffalo: add */
+		.mfr_id		= MANUFACTURER_ST,
+		.dev_id		= M29W323DB,
+		.name		= "ST M29W323DB",
+		.uaddr		= {
+			[0] = MTD_UADDR_0x0AAA_0x0555, /* x8 */
+			[1] = MTD_UADDR_0x0555_0x02AA  /* x16 */
+		},
+		.DevSize	= SIZE_4MiB,
+		.CmdSet		= P_ID_AMD_STD,
+		.NumEraseRegions= 2,
+		.regions	= {
+			ERASEINFO(0x02000,8),
+			ERASEINFO(0x10000,63)
+		}
+#endif
 	}, {
 		.mfr_id		= MANUFACTURER_TOSHIBA,
 		.dev_id		= TC58FVT160,

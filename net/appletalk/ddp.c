@@ -66,6 +66,16 @@
 struct datalink_proto *ddp_dl, *aarp_dl;
 static const struct proto_ops atalk_dgram_ops;
 
+//#define BUFFALO_TEST_CODE
+
+#ifdef BUFFALO_TEST_CODE
+	#define TEST_CODE(x)	x
+	#define ORG_CODE(x)
+#else
+	#define TEST_CODE(x)
+	#define ORG_CODE(x)	x
+#endif
+
 /**************************************************************************\
 *                                                                          *
 * Handlers for the socket list.                                            *

@@ -730,7 +730,7 @@ static int qh_schedule (struct ehci_hcd *ehci, struct ehci_qh *qh)
 {
 	int		status;
 	unsigned	uframe;
-	__le32		c_mask;
+	__le32		c_mask, s_mask = 0;
 	unsigned	frame;		/* 0..(qh->period - 1), or NO_FRAME */
 
 	qh_refresh(ehci, qh);
@@ -765,10 +765,19 @@ static int qh_schedule (struct ehci_hcd *ehci, struct ehci_qh *qh)
 				}
 			} while (status && frame--);
 
+			s_mask = (1 << uframe);
+
 		/* qh->period == 0 means every uframe */
 		} else {
-			frame = 0;
+			uframe = 0;
+			frame = 0;			
 			status = check_intr_schedule (ehci, 0, 0, qh, &c_mask);
+
+			/* set s_mask */
+			while(uframe < 8) {
+				s_mask |= (1 << uframe);
+				uframe += qh->u_period;
+			}	
 		}
 		if (status)
 			goto done;
@@ -776,9 +785,7 @@ static int qh_schedule (struct ehci_hcd *ehci, struct ehci_qh *qh)
 
 		/* reset S-frame and (maybe) C-frame masks */
 		qh->hw_info2 &= __constant_cpu_to_le32(~(QH_CMASK | QH_SMASK));
-		qh->hw_info2 |= qh->period
-			? cpu_to_le32 (1 << uframe)
-			: __constant_cpu_to_le32 (QH_SMASK);
+		qh->hw_info2 |= cpu_to_le32 (s_mask);
 		qh->hw_info2 |= c_mask;
 	} else
 		ehci_dbg (ehci, "reused qh %p schedule\n", qh);
@@ -907,7 +914,7 @@ iso_stream_init (
 		 */
 		stream->usecs = HS_USECS_ISO (maxp);
 		bandwidth = stream->usecs * 8;
-		bandwidth /= 1 << (interval - 1);
+		bandwidth /= interval;
 
 	} else {
 		u32		addr;
@@ -940,7 +947,7 @@ iso_stream_init (
 		} else
 			stream->raw_mask = smask_out [hs_transfers - 1];
 		bandwidth = stream->usecs + stream->c_usecs;
-		bandwidth /= 1 << (interval + 2);
+		bandwidth /= (interval << 3);
 
 		/* stream->splits gets created from raw_mask later */
 		stream->address = cpu_to_le32 (addr);
@@ -1159,7 +1166,7 @@ itd_urb_transaction (
 	/* allocate/init ITDs */
 	spin_lock_irqsave (&ehci->lock, flags);
 	for (i = 0; i < num_itds; i++) {
-
+		unsigned now = readl (&ehci->regs->frame_index) % (ehci->periodic_size << 3);
 		/* free_list.next might be cache-hot ... but maybe
 		 * the HC caches it too. avoid that issue for now.
 		 */
@@ -1168,8 +1175,15 @@ itd_urb_transaction (
 		if (likely (!list_empty(&stream->free_list))) {
 			itd = list_entry (stream->free_list.prev,
 					 struct ehci_itd, itd_list);
-			list_del (&itd->itd_list);
-			itd_dma = itd->itd_dma;
+			if( (now >> 3) == itd->frame)
+			{
+				itd = NULL;
+			}
+			else
+			{			
+				list_del (&itd->itd_list);
+				itd_dma = itd->itd_dma;
+			}
 		} else
 			itd = NULL;
 
@@ -1258,14 +1272,14 @@ sitd_slot_ok (
 		 */
 		if (!tt_available (ehci, period_uframes << 3,
 				stream->udev, frame, uf, stream->tt_usecs))
-			return 0;
+			goto next;
 #else
 		/* tt must be idle for start(s), any gap, and csplit.
 		 * assume scheduling slop leaves 10+% for control/bulk.
 		 */
 		if (!tt_no_collision (ehci, period_uframes << 3,
 				stream->udev, frame, mask))
-			return 0;
+			goto next;
 #endif
 
 		/* check starts (OUT uses more than one) */
@@ -1291,7 +1305,7 @@ sitd_slot_ok (
 		}
 
 		/* we know urb->interval is 2^N uframes */
-		uframe += period_uframes;
+next:		uframe += period_uframes;
 	} while (uframe < mod);
 
 	stream->splits = cpu_to_le32(stream->raw_mask << (uframe & 7));
@@ -2077,7 +2091,8 @@ static void
 scan_periodic (struct ehci_hcd *ehci)
 {
 	unsigned	frame, clock, now_uframe, mod;
-	unsigned	modified;
+	unsigned	modified, restarted;
+	u8		    uncompleted_td = 0;
 
 	mod = ehci->periodic_size << 3;
 
@@ -2107,6 +2122,7 @@ scan_periodic (struct ehci_hcd *ehci)
 			now_uframe |= 0x07;
 			uframes = 8;
 		}
+        restarted = 0;
 
 restart:
 		/* scan each element in frame's queue for completions */
@@ -2132,6 +2148,13 @@ restart:
 				if (unlikely (list_empty (&temp.qh->qtd_list)))
 					intr_deschedule (ehci, temp.qh);
 				qh_put (temp.qh);
+                if( (modified == 0) && (restarted == 0) ){
+                    ehci->next_uframe = now_uframe;
+                    uncompleted_td = 1;
+                }
+                else {
+                    uncompleted_td = 0;
+                }
 				break;
 			case Q_TYPE_FSTN:
 				/* for "save place" FSTNs, look at QH entries
@@ -2156,9 +2179,10 @@ restart:
 					q = *q_p;
 					break;
 				}
-				if (uf != 8)
+				if (uf != 8){
+					uncompleted_td = 1;
 					break;
-
+				}
 				/* this one's ready ... HC won't cache the
 				 * pointer for much longer, if at all.
 				 */
@@ -2176,6 +2200,7 @@ restart:
 					hw_p = &q.sitd->hw_next;
 					type = Q_NEXT_TYPE (q.sitd->hw_next);
 					q = *q_p;
+					uncompleted_td = 1;
 					break;
 				}
 				*q_p = q.sitd->sitd_next;
@@ -2193,8 +2218,10 @@ restart:
 			}
 
 			/* assume completion callbacks modify the queue */
-			if (unlikely (modified))
+            if (unlikely (modified)) {
+                restarted = 1;
 				goto restart;
+            }
 		}
 
 		/* stop when we catch up to the HC */
@@ -2207,12 +2234,14 @@ restart:
 
 		// FIXME:  likewise assumes HC doesn't halt mid-scan
 
+		if ((!uncompleted_td) && (HC_IS_RUNNING (ehci_to_hcd(ehci)->state)))
+			ehci->next_uframe = now_uframe;
+
 		if (now_uframe == clock) {
 			unsigned	now;
 
 			if (!HC_IS_RUNNING (ehci_to_hcd(ehci)->state))
 				break;
-			ehci->next_uframe = now_uframe;
 			now = ehci_readl(ehci, &ehci->regs->frame_index) % mod;
 			if (now_uframe == now)
 				break;

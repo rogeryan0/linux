@@ -168,4 +168,6 @@
 
 #define VIOTAPE_MAJOR		230
 
+#define MV_TS_MAJOR		231	/* Marvell Transport Stream driver */
+
 #endif

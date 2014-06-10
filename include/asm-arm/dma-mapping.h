@@ -164,7 +164,7 @@ static inline dma_addr_t
 dma_map_single(struct device *dev, void *cpu_addr, size_t size,
 	       enum dma_data_direction dir)
 {
-	if (!arch_is_coherent())
+	if (!arch_is_coherent() && size)
 		consistent_sync(cpu_addr, size, dir);
 
 	return virt_to_dma(dev, (unsigned long)cpu_addr);

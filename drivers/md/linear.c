@@ -326,6 +326,10 @@ static int linear_stop (mddev_t *mddev)
 		kfree(conf);
 		conf = t;
 	} while (conf);
+#ifdef CONFIG_BUFFALO_PLATFORM
+	// to delete bvec function
+	blk_queue_merge_bvec(mddev->queue, NULL);
+#endif
 
 	return 0;
 }

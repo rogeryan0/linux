@@ -163,6 +163,9 @@ struct mddev_s
 							    * parity/replica mismatch found
 							    */
 
+#ifdef CONFIG_BUFFALO_PLATFORM
+	unsigned int currspeed;
+#endif
 	/* allow user-space to request suspension of IO to regions of the array */
 	sector_t			suspend_lo;
 	sector_t			suspend_hi;
@@ -244,6 +247,36 @@ struct mddev_s
 								*/
 
 	struct list_head		all_mddevs;
+#ifdef CONFIG_BUFFALO_ERRCNT
+        #define                         MAXERR_CNT_DEFAULT 20
+        atomic_t                        maxerr_cnt; /* If rdev->bdev->bd_disk->
+                                                     * nr_err reaches to
+                                                     * maxerr_cnt excepting
+                                                     * maxerr_cnt is -1,
+                                                     * disk will be faulty.
+                                                     */
+#endif /* CONFIG_BUFFALO_ERRCNT */
+#ifdef CONFIG_BUFFALO_SCAN
+        spinlock_t                      scan_thr_ops;
+        int                             scan_thr_started;
+        struct mdk_thread_s             *scan_thread;
+        int                             scan_thr_interruption;
+        atomic_t                        nr_scanning;
+        sector_t                        scan_cursor;
+        int                             scan_thr_interrupt_reason;
+        struct completion               scan_thr_complete;
+        unsigned int                    scan_speed;
+        int                             scan_speed_min;
+        int                             scan_speed_max;
+        unsigned long                   scan_mark;    /* a recent timestamp */
+        sector_t                        scan_mark_cnt;/* blocks written at scan_mark */
+        sector_t                        scan_max_sectors; /* may be set by personality */
+#endif /* CONFIG_BUFFALO_SCAN */
+#ifdef CONFIG_BUFFALO_DEGRADEKEEP
+	int				degradekeep;
+	int				degradekeeping;
+#endif /* CONFIG_BUFFALO_DEGRADEKEEP */
+
 };
 
 
@@ -287,6 +320,9 @@ struct mdk_personality
 	 * others - reserved
 	 */
 	void (*quiesce) (mddev_t *mddev, int state);
+#ifdef CONFIG_BUFFALO_SCAN
+        int (*make_scan_request) (mddev_t *mddev, sector_t s_from,int nr_secrs, int dest_dsk);
+#endif /* CONFIG_BUFFALO_SCAN */
 };
 
 

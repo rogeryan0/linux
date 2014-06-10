@@ -121,6 +121,19 @@ struct linux_mib {
 #define SNMP_STAT_BHPTR(name)	(name[0])
 #define SNMP_STAT_USRPTR(name)	(name[1])
 
+
+#ifdef CONFIG_MV_LINUX_COUNTERS_DISABLE 
+
+#define SNMP_INC_STATS_BH(mib, field)
+#define SNMP_INC_STATS_OFFSET_BH(mib, field, offset)
+#define SNMP_INC_STATS_USER(mib, field)
+#define SNMP_INC_STATS(mib, field)
+#define SNMP_DEC_STATS(mib, field)
+#define SNMP_ADD_STATS_BH(mib, field, addend)
+#define SNMP_ADD_STATS_USER(mib, field, addend)
+
+#else 
+ 
 #define SNMP_INC_STATS_BH(mib, field) 	\
 	(per_cpu_ptr(mib[0], raw_smp_processor_id())->mibs[field]++)
 #define SNMP_INC_STATS_OFFSET_BH(mib, field, offset)	\
@@ -135,5 +148,7 @@ struct linux_mib {
 	(per_cpu_ptr(mib[0], raw_smp_processor_id())->mibs[field] += addend)
 #define SNMP_ADD_STATS_USER(mib, field, addend) 	\
 	(per_cpu_ptr(mib[1], raw_smp_processor_id())->mibs[field] += addend)
+
+#endif /* CONFIG_MV_LINUX_COUNTERS_DISABLE */ 
 
 #endif

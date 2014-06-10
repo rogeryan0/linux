@@ -1644,6 +1644,10 @@ static int sd_probe(struct device *dev)
 	gd->first_minor = ((index & 0xf) << 4) | (index & 0xfff00);
 	gd->minors = 16;
 	gd->fops = &sd_fops;
+#ifdef CONFIG_BUFFALO_PLATFORM
+	gd->io_errors = 0;
+	gd->limit_io_errors = 20;		/* default limit */
+#endif
 
 	if (index < 26) {
 		sprintf(gd->disk_name, "sd%c", 'a' + index % 26);

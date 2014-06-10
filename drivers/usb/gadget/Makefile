@@ -9,6 +9,11 @@ obj-$(CONFIG_USB_OMAP)		+= omap_udc.o
 obj-$(CONFIG_USB_LH7A40X)	+= lh7a40x_udc.o
 obj-$(CONFIG_USB_AT91)		+= at91_udc.o
 obj-$(CONFIG_USB_FSL_USB2)	+= fsl_usb2_udc.o
+ifeq ($(CONFIG_ARCH_FEROCEON_KW), y)
+obj-$(CONFIG_USB_MRVL)       	+= ../../../arch/arm/plat-feroceon-kw/mv_drivers_lsp/mv_udc/
+else
+obj-$(CONFIG_USB_MRVL)       	+= ../../../arch/arm/plat-feroceon/mv_drivers_lsp/mv_udc/
+endif
 
 #
 # USB gadget drivers

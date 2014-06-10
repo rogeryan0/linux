@@ -202,7 +202,13 @@ EXPORT_SYMBOL(local_bh_enable_ip);
  * we want to handle softirqs as soon as possible, but they
  * should not be able to lock up the box.
  */
+#if defined(CONFIG_ARCH_FEROCEON_KW) && defined(CONFIG_MV_REAL_TIME)
+#define MAX_SOFTIRQ_RESTART 2
+#elif !defined(CONFIG_ARCH_FEROCEON_KW) && defined(CONFIG_MV_GTW_QOS)
+int MAX_SOFTIRQ_RESTART = 10;
+#else
 #define MAX_SOFTIRQ_RESTART 10
+#endif
 
 asmlinkage void __do_softirq(void)
 {
@@ -216,6 +222,11 @@ asmlinkage void __do_softirq(void)
 
 	__local_bh_disable((unsigned long)__builtin_return_address(0));
 	trace_softirq_enter();
+
+#if defined(CONFIG_MV_REAL_TIME) && defined(CONFIG_ARCH_FEROCEON_KW)
+	if (has_rt_policy(current))
+		goto out;
+#endif /* CONFIG_MV_REAL_TIME */
 
 	cpu = smp_processor_id();
 restart:
@@ -241,6 +252,9 @@ restart:
 	if (pending && --max_restart)
 		goto restart;
 
+#if defined(CONFIG_MV_REAL_TIME) && defined(CONFIG_ARCH_FEROCEON_KW)
+out:
+#endif
 	if (pending)
 		wakeup_softirqd();
 

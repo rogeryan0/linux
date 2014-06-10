@@ -37,6 +37,14 @@
 #include <asm/uaccess.h>
 #include <asm/mach/time.h>
 
+#if defined(CONFIG_BUFFALO_USE_GPIO_DRIVER)
+ #include "buffalo/kernevnt.h"
+#endif
+
+#ifdef CONFIG_BUFFALO_USE_MICON
+#include "buffalo/miconcntl.h"
+#endif
+
 static const char *processor_modes[] = {
   "USER_26", "FIQ_26" , "IRQ_26" , "SVC_26" , "UK4_26" , "UK5_26" , "UK6_26" , "UK7_26" ,
   "UK8_26" , "UK9_26" , "UK10_26", "UK11_26", "UK12_26", "UK13_26", "UK14_26", "UK15_26",
@@ -92,6 +100,13 @@ void arm_machine_restart(char mode)
 	 * soft boot works.
 	 */
 	setup_mm_for_reboot(mode);
+
+#if defined(CONFIG_BUFFALO_USE_GPIO_DRIVER)
+	BuffaloChangePowerStatusBeforeHalt();
+#endif
+#ifdef CONFIG_BUFFALO_USE_MICON
+	miconCntl_Reboot();
+#endif
 
 	/*
 	 * Now call the architecture specific reboot code.
@@ -182,8 +197,37 @@ int __init reboot_setup(char *str)
 
 __setup("reboot=", reboot_setup);
 
+#if defined(CONFIG_BUFFALO_USE_GPIO_DRIVER)
+void
+BuffaloChangePowerStatusBeforeHalt(void)
+{
+	uint32_t MagicKey = bfGetMagicKey();
+	printk("%s > Check power status. MagicKey = 0x%02x\n", __FUNCTION__, MagicKey);
+
+	switch(MagicKey)
+	{
+	case MagicKeyReboot:
+		bfSetMagicKey(MagicKeyRebootReachedHalt);
+		break;
+	case MagicKeySwPoff:
+		bfSetMagicKey(MagicKeySWPoffReachedHalt);
+		break;
+	case MagicKeyUpsShutdown:
+		bfSetMagicKey(MagicKeyUpsShutdownReachedHalt);
+		break;
+	}
+}
+#endif
+
 void machine_halt(void)
 {
+#if defined(CONFIG_BUFFALO_USE_GPIO_DRIVER)
+	BuffaloChangePowerStatusBeforeHalt();
+	BuffaloGpio_CpuReset();
+#endif
+#ifdef CONFIG_BUFFALO_USE_MICON
+	miconCntl_PowerOff();
+#endif
 }
 
 
