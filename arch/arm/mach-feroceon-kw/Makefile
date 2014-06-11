@@ -81,8 +81,8 @@ feroceon-$(CONFIG_MV_ETH_NFP_FDB_SUPPORT) += $(HAL_ETH_NFP_DIR)/mvNfpFdb.o
 feroceon-$(CONFIG_MV_INCLUDE_CESA) 	+= $(HAL_CESA_DIR)/mvCesa.o $(HAL_CESA_DIR)/mvCesaDebug.o 	\
                         		   $(HAL_CESA_DIR)/mvMD5.o $(HAL_CESA_DIR)/mvSHA1.o 		\
 					   $(HAL_CESA_AES_DIR)/mvAesAlg.o $(HAL_CESA_AES_DIR)/mvAesApi.o\
-					   $(SOC_SYS_DIR)/mvSysCesa.o
-feroceon-$(CONFIG_MV_CESA_TEST) 	+= $(HAL_CESA_DIR)/mvCesaTest.o
+					   $(SOC_SYS_DIR)/mvSysCesa.o $(HAL_CESA_DIR)/aes_dev.o
+#feroceon-$(CONFIG_MV_CESA_TEST) 	+= $(HAL_CESA_DIR)/mvCesaTest.o
 feroceon-$(CONFIG_MV_INCLUDE_INTEG_SATA)+= $(SOC_SYS_DIR)/mvSysSata.o $(HAL_SATA_DIR)/mvSataSoc.o
 feroceon-$(CONFIG_MV_INCLUDE_SPI) 	+= $(HAL_SPI_DIR)/mvSpi.o $(HAL_SPI_DIR)/mvSpiCmnd.o 		\
                          		   $(HAL_SFLASH_DIR)/mvSFlash.o

@@ -774,23 +774,6 @@ MV_BOARD_INFO*	boardInfoTbl[] = 	{
 
 #else // CONFIG_BUFFALO_PLATFORM
 
-//u32 product_id = 0x00000011; // @@debug
-u32 buffalo_product_id;
-EXPORT_SYMBOL(buffalo_product_id);
-
-char series_name[BUF_NV_SIZE_SERIES_NAME] = "LinkStation"; // @@debug
-//char series_name[BUF_NV_SIZE_SERIES_NAME];
-EXPORT_SYMBOL(series_name);
-
-char product_name[BUF_NV_SIZE_PRODUCT_NAME] = "LS-XHL(ANKOU)"; // @@debug
-//char product_name[BUF_NV_SIZE_PRODUCT_NAME];
-EXPORT_SYMBOL(product_name);
-
-u8 use_slide_power = 1;	// @@debug
-//u8 use_slide_power;
-EXPORT_SYMBOL(use_slide_power);
-
-
 /* MVLSXH */
 MV_BOARD_MAC_INFO mvlsxhInfoBoardMacInfo[] = 
 	/* {{MV_BOARD_MAC_SPEED	boardMacSpeed, MV_U8 boardEthSmiAddr}} */
@@ -804,8 +787,8 @@ MV_BOARD_GPP_INFO mvlsxhInfoBoardGppInfo[] =
 	{
 		{BOARD_GPP_HDD_POWER, 10},
 		{BOARD_GPP_USB_VBUS_EN, 11},
-		{BOARD_GPP_FAN_LOW, 18},
-		{BOARD_GPP_FAN_HIGH, 19},
+		{BOARD_GPP_FAN_LOW, 19},
+		{BOARD_GPP_FAN_HIGH, 18},
 		{BOARD_GPP_FUNC_LED, 36},
 		{BOARD_GPP_ALARM_LED, 37},
 		{BOARD_GPP_INFO_LED, 38},
@@ -856,7 +839,6 @@ struct bfLedInfo mvlsxhLedInfo[] =
 #define MVLSXH_BOARD_MPP_GROUP_TYPE_NUM		0x1
 #define MVLSXH_BOARD_MPP_CONFIG_NUM		0x1
 #define MVLSXH_BOARD_DEVICE_CONFIG_NUM		0x1
-#define MVLSXH_BOARD_DEBUG_LED_NUM		0x0
 #define MVLSXH_BOARD_BUFFALO_LED_INFO_NUM	(sizeof(mvlsxhLedInfo)/sizeof(mvlsxhLedInfo[0]))
 
 MV_BOARD_INFO mvlsxhInfo = {
@@ -866,7 +848,7 @@ MV_BOARD_INFO mvlsxhInfo = {
 	MVLSXH_BOARD_MPP_CONFIG_NUM,		/* numBoardMppConfigValue */
 	mvlsxhInfoBoardMppConfigValue,		/* pBoardMppConfigValue */
 	0,					/* intsGppMaskLow */
-	(1 << 3),				/* intsGppMaskHigh */
+	0,					/* intsGppMaskHigh */
 	MVLSXH_BOARD_DEVICE_CONFIG_NUM,		/* numBoardDeviceIf */
 	mvlsxhInfoBoardDeCsInfo,		/* pDevCsInfo */
 	MVLSXH_BOARD_TWSI_DEF_NUM,		/* numBoardTwsiDev */
@@ -875,7 +857,7 @@ MV_BOARD_INFO mvlsxhInfo = {
 	mvlsxhInfoBoardMacInfo,			/* pBoardMacInfo */
 	MVLSXH_BOARD_GPP_INFO_NUM,		/* numBoardGppInfo */
 	mvlsxhInfoBoardGppInfo,			/* pBoardGppInfo */
-	MVLSXH_BOARD_DEBUG_LED_NUM,		/* activeLedsNumber */              
+	0,					/* activeLedsNumber */              
 	NULL,					/* pLedGppPin */
 	0,					/* ledsPolarity */		
 	MVLSXH_OE_LOW,				/* gppOutEnLow */
@@ -889,9 +871,155 @@ MV_BOARD_INFO mvlsxhInfo = {
 	mvlsxhLedInfo,				/* pLedInfo */
 };
 
+MV_BOARD_INFO mvlsxlInfo = {
+	"MVLSXL",				/* boardName[MAX_BOARD_NAME_LEN] */
+	MVLSXH_BOARD_MPP_GROUP_TYPE_NUM,	/* numBoardMppTypeValue */
+	mvlsxhInfoBoardMppTypeInfo,		/* pBoardMppTypeValue */
+	MVLSXH_BOARD_MPP_CONFIG_NUM,		/* numBoardMppConfigValue */
+	mvlsxhInfoBoardMppConfigValue,		/* pBoardMppConfigValue */
+	0,					/* intsGppMaskLow */
+	0,					/* intsGppMaskHigh */
+	MVLSXH_BOARD_DEVICE_CONFIG_NUM,		/* numBoardDeviceIf */
+	mvlsxhInfoBoardDeCsInfo,		/* pDevCsInfo */
+	MVLSXH_BOARD_TWSI_DEF_NUM,		/* numBoardTwsiDev */
+	NULL,					/* pBoardTwsiDev */
+	MVLSXH_BOARD_MAC_INFO_NUM,		/* numBoardMacInfo */
+	mvlsxhInfoBoardMacInfo,			/* pBoardMacInfo */
+	MVLSXH_BOARD_GPP_INFO_NUM,		/* numBoardGppInfo */
+	mvlsxhInfoBoardGppInfo,			/* pBoardGppInfo */
+	0,					/* activeLedsNumber */              
+	NULL,					/* pLedGppPin */
+	0,					/* ledsPolarity */		
+	MVLSXH_OE_LOW,				/* gppOutEnLow */
+	MVLSXH_OE_HIGH,				/* gppOutEnHigh */
+	MVLSXH_OE_VAL_LOW,			/* gppOutValLow */
+	MVLSXH_OE_VAL_HIGH,			/* gppOutValHigh */
+	MVLSXH_POLARITY_VAL_LOW,		/* gppPolarityValLow */
+	MVLSXH_POLARITY_VAL_HIGH,		/* gppPolarityValHigh */
+	NULL,					/* pSwitchInfo */
+	MVLSXH_BOARD_BUFFALO_LED_INFO_NUM,	/* numLedInfo */
+	mvlsxhLedInfo,				/* pLedInfo */
+};
+
+/* LS-WXL */
+MV_BOARD_GPP_INFO mvwxlInfoBoardGppInfo[] = 
+	/* {{MV_BOARD_GPP_CLASS	devClass, MV_U8	gppPinNum}} */
+	{
+		{BOARD_GPP_HDD_ERR_LED,  8},
+		{BOARD_GPP_HDD_POWER,	28},
+		{BOARD_GPP_HDD_POWER,	29},
+		{BOARD_GPP_FUNC_RED_LED,34},
+		{BOARD_GPP_FUNC_LED,	36},
+		{BOARD_GPP_USB_VBUS_EN, 37},
+		{BOARD_GPP_INFO_LED,	38},
+		{BOARD_GPP_PWR_LED,	39},
+		{BOARD_GPP_FAN_LOCK,	40},
+		{BOARD_GPP_FUNC_SW,	41},
+		{BOARD_GPP_PWR_SW,	42},
+		{BOARD_GPP_PWRAUTO_SW,	43},
+		{BOARD_GPP_HDD_ERR_LED, 46},
+		{BOARD_GPP_FAN_LOW,	48},
+		{BOARD_GPP_FAN_HIGH,	47},
+		{BOARD_GPP_ALARM_LED,	49},
+		{BOARD_GPP_UART_EN,	49},
+	};
+
+MV_BOARD_MPP_INFO	mvwxlInfoBoardMppConfigValue[] = 
+	{{{
+	MVWXL_MPP0_7,
+	MVWXL_MPP8_15,
+	MVWXL_MPP16_23,
+	MVWXL_MPP24_31,
+	MVWXL_MPP32_39,
+	MVWXL_MPP40_47,
+	MVWXL_MPP48_55
+	}}};
+
+MV_DEV_CS_INFO mvwxlInfoBoardDeCsInfo[] = 
+		/*{deviceCS, params, devType, devWidth}*/
+	{
+#if defined(MV_NAND) && defined(MV_NAND_BOOT)
+		{0, N_A, BOARD_DEV_NAND_FLASH, 8},	/* NAND DEV */
+#elif defined(MV_NAND) && defined(MV_SPI_BOOT)
+		{0, N_A, BOARD_DEV_NAND_FLASH, 8},	/* NAND DEV */
+		{1, N_A, BOARD_DEV_SPI_FLASH, 8},	/* SPI DEV */
+#else
+		{1, N_A, BOARD_DEV_SPI_FLASH, 8},	/* SPI DEV */
+#endif
+	};
+
+struct bfLedInfo mvwxlLedInfo[] =
+	{
+		/* name,	gppPin,	group,	priority */
+		{"power",	39,	0,	0},
+		{"info",	38,	0,	1},
+		{"alarm",	49,	0,	2},
+		{"func",	36,	1,	0},
+		{"func2",	34,	1,	1},
+		{"hdderr0",	8,	1,	1},
+		{"hdderr1",	46,	1,	1},
+	};
+
+
+#define MVWXL_BOARD_PCI_IF_NUM			0x0
+#define MVWXL_BOARD_TWSI_DEF_NUM		0x0
+#define MVWXL_BOARD_MAC_INFO_NUM		0x2
+#define MVWXL_BOARD_GPP_INFO_NUM		(sizeof(mvwxlInfoBoardGppInfo)/sizeof(MV_BOARD_GPP_INFO))
+#define MVWXL_BOARD_MPP_GROUP_TYPE_NUM		0x1
+#define MVWXL_BOARD_MPP_CONFIG_NUM		0x1
+
+#if defined(MV_NAND) && defined(MV_NAND_BOOT)
+ #define MVWXL_BOARD_DEVICE_CONFIG_NUM		0x1
+#elif defined(MV_NAND) && defined(MV_SPI_BOOT)
+ #define MVWXL_BOARD_DEVICE_CONFIG_NUM		0x2
+#else
+ #define MVWXL_BOARD_DEVICE_CONFIG_NUM		0x1
+#endif
+
+#define MVWXL_BOARD_BUFFALO_LED_INFO_NUM	(sizeof(mvwxlLedInfo)/sizeof(mvwxlLedInfo[0]))
+
+
+MV_BOARD_INFO mvwxlInfo = {
+	"MVWXL",				/* boardName[MAX_BOARD_NAME_LEN] */
+	MVWXL_BOARD_MPP_GROUP_TYPE_NUM,		/* numBoardMppTypeValue */
+	mvlsxhInfoBoardMppTypeInfo,		/* pBoardMppTypeValue */
+	MVWXL_BOARD_MPP_CONFIG_NUM,		/* numBoardMppConfigValue */
+	mvwxlInfoBoardMppConfigValue,		/* pBoardMppConfigValue */
+	0,					/* intsGppMaskLow */
+	0,					/* intsGppMaskHigh */
+	MVWXL_BOARD_DEVICE_CONFIG_NUM,		/* numBoardDeviceIf */
+	mvwxlInfoBoardDeCsInfo,			/* pDevCsInfo */
+	MVWXL_BOARD_TWSI_DEF_NUM,		/* numBoardTwsiDev */
+	NULL,					/* pBoardTwsiDev */
+	MVWXL_BOARD_MAC_INFO_NUM,		/* numBoardMacInfo */
+	mvlsxhInfoBoardMacInfo,			/* pBoardMacInfo */
+	MVWXL_BOARD_GPP_INFO_NUM,		/* numBoardGppInfo */
+	mvwxlInfoBoardGppInfo,			/* pBoardGppInfo */
+	0,					/* activeLedsNumber */              
+	NULL,					/* pLedGppPin */
+	0,					/* ledsPolarity */		
+	MVWXL_OE_LOW,				/* gppOutEnLow */
+	MVWXL_OE_HIGH,				/* gppOutEnHigh */
+	MVWXL_OE_VAL_LOW,			/* gppOutValLow */
+	MVWXL_OE_VAL_HIGH,			/* gppOutValHigh */
+	MVWXL_POLARITY_VAL_LOW,			/* gppPolarityValLow */
+	MVWXL_POLARITY_VAL_HIGH,		/* gppPolarityValHigh */
+	NULL,					/* pSwitchInfo */
+	MVWXL_BOARD_BUFFALO_LED_INFO_NUM,	/* numLedInfo */
+	mvwxlLedInfo,				/* pLedInfo */
+};
+
 
 MV_BOARD_INFO* boardInfoTbl[] = {
-	&mvlsxhInfo,
+	&mvlsxhInfo,				/* 0x00: MVLSXH */
+	&mvlsxhInfo,				/* 0x01: dummy */
+	&mvlsxhInfo,				/* 0x02: dummy */
+	&mvlsxhInfo,				/* 0x03: dummy */
+	&mvlsxlInfo,				/* 0x04: MVLSXL */
+	&mvlsxhInfo,				/* 0x05: dummy */
+	&mvlsxhInfo,				/* 0x06: dummy */
+	&mvlsxhInfo,				/* 0x07: dummy */
+	&mvwxlInfo,				/* 0x08: MVWXL */
 };
 
 #endif // CONFIG_BUFFALO_PLATFORM

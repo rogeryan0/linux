@@ -286,7 +286,8 @@ MV_STATUS mvCtrlEnvInit(MV_VOID)
 	/* Update SSCG configuration register*/
 	if(mvBoardIdGet() == DB_88F6281A_BP_ID || mvBoardIdGet() == DB_88F6192A_BP_ID ||
 	   mvBoardIdGet() == DB_88F6190A_BP_ID || mvBoardIdGet() == DB_88F6180A_BP_ID ||
-	   mvBoardIdGet() == BF_MVLSXH_ID)
+	   mvBoardIdGet() == BF_MVLSXH_ID || mvBoardIdGet() == BF_MVLSXL_ID ||
+	   mvBoardIdGet() == BF_MVWXL_ID)
 		MV_REG_WRITE(0x100d8, 0x4080);
 
 	return MV_OK;

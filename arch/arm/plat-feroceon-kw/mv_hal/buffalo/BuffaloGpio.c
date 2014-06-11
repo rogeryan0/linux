@@ -175,13 +175,13 @@ BuffaloGpio_Init(void)
 void __inline__
 BuffaloGpio_LedEnable(int led_bit)
 {
-	bfGppOutRegBitClr(led_bit);
+	bfGppOutRegBitAssert(led_bit);
 }
 
 void __inline__
 BuffaloGpio_LedDisable(int led_bit)
 {
-	bfGppOutRegBitSet(led_bit);
+	bfGppOutRegBitNagate(led_bit);
 }
 
 void __inline__
@@ -205,25 +205,25 @@ BuffaloGpio_LedBlinkDisable(int led_bit)
 void __inline__
 BuffaloGpio_HddPowerOn(int hdd_bit)
 {
-	bfGppOutRegBitSet(hdd_bit);
+	bfGppOutRegBitAssert(hdd_bit);
 }
 
 void __inline__
 BuffaloGpio_HddPowerOff(int hdd_bit)
 {
-	bfGppOutRegBitClr(hdd_bit);
+	bfGppOutRegBitNagate(hdd_bit);
 }
 
 void __inline__
 BuffaloGpio_UsbPowerOn(int usb_bit)
 {
-	bfGppOutRegBitSet(usb_bit);
+	bfGppOutRegBitAssert(usb_bit);
 }
 
 void __inline__
 BuffaloGpio_UsbPowerOff(int usb_bit)
 {
-	bfGppOutRegBitClr(usb_bit);
+	bfGppOutRegBitNagate(usb_bit);
 }
 
 
@@ -647,7 +647,40 @@ MV_VOID bfGppBlinkRegBitClr(MV_32 bit)
 		mvGppBlinkEn(1, BIT(bit - 32), 0x0);
 }
 
-MV_BOOL bfGppPolarityRegBitTest(MV_32 bit)
+MV_BOOL bfGppOutEnableRegBitTest(MV_32 bit)
+{
+	if (bit < 0)
+		return MV_FALSE;
+
+	if (bit < 32)
+		return MV_REG_READ(GPP_DATA_OUT_EN_REG(0)) & BIT(bit) ? MV_TRUE : MV_FALSE;
+	else
+		return MV_REG_READ(GPP_DATA_OUT_EN_REG(1)) & BIT(bit - 32) ? MV_TRUE : MV_FALSE;
+}
+
+MV_VOID bfGppOutEnableRegBitSet(MV_32 bit)
+{
+	if (bit < 0)
+		return;
+
+	if (bit < 32)
+		mvGppTypeSet(0, BIT(bit), 0xffffffff);
+	else
+		mvGppTypeSet(1, BIT(bit - 32), 0xffffffff);
+}
+
+MV_VOID bfGppOutEnableRegBitClr(MV_32 bit)
+{
+	if (bit < 0)
+		return;
+
+	if (bit < 32)
+		mvGppTypeSet(0, BIT(bit), 0x0);
+	else
+		mvGppTypeSet(1, BIT(bit - 32), 0x0);
+}
+
+MV_BOOL bfGppDataInPolRegBitTest(MV_32 bit)
 {
 	if (bit < 0)
 		return MV_FALSE;
@@ -658,15 +691,56 @@ MV_BOOL bfGppPolarityRegBitTest(MV_32 bit)
 		return MV_REG_READ(GPP_DATA_IN_POL_REG(1)) & BIT(bit - 32) ? MV_TRUE : MV_FALSE;
 }
 
-MV_VOID bfGppPolarityRegBitInv(MV_32 bit)
+MV_VOID bfGppOutRegBitAssert(MV_32 bit)
 {
-	if (bit < 0)
-		return MV_FALSE;
+	MV_U32 group;
+	MV_U32 mask;
+	MV_U32 value;
 
-	if (bit < 32)
-		return bfRegInv(GPP_DATA_IN_POL_REG(0), BIT(bit));
+	if (bit < 0)
+		return;
+
+	if (bit < 32) {
+		mask = BIT(bit);
+		group = 0;
+	}
+	else {
+		mask = BIT(bit - 32);
+		group = 1;
+	}
+
+	if (bfGppDataInPolRegBitTest(bit))
+		value = 0x0;
 	else
-		return bfRegInv(GPP_DATA_IN_POL_REG(1), BIT(bit - 32));
+		value = 0xffffffff;
+	
+	mvGppValueSet(group, mask, value);
+}
+
+MV_VOID bfGppOutRegBitNagate(MV_32 bit)
+{
+	MV_U32 group;
+	MV_U32 mask;
+	MV_U32 value;
+
+	if (bit < 0)
+		return;
+
+	if (bit < 32) {
+		mask = BIT(bit);
+		group = 0;
+	}
+	else {
+		mask = BIT(bit - 32);
+		group = 1;
+	}
+
+	if (bfGppDataInPolRegBitTest(bit))
+		value = 0xffffffff;
+	else
+		value = 0x0;
+	
+	mvGppValueSet(group, mask, value);
 }
 
 MV_U32 bfRegGet(MV_U32 regOffs, MV_U32 mask)
@@ -694,7 +768,24 @@ MV_VOID bfRegInv(MV_U32 regOffs, MV_U32 mask)
 
 int bfIsSerialConsoleEnable(void)
 {
-	return bfGppInRegBitTest(BIT_UART_EN);
+	static int ret = -1;
+	
+	if (ret != -1)
+		return ret;
+
+	MV_BOOL uart_pin_input = bfGppOutEnableRegBitTest(BIT_UART_EN);
+	
+	if (!uart_pin_input) {
+		bfGppOutEnableRegBitSet(BIT_UART_EN);
+	}
+
+	ret = bfGppInRegBitTest(BIT_UART_EN);
+
+	if (!uart_pin_input) {
+		bfGppOutEnableRegBitClr(BIT_UART_EN);
+	}
+
+	return ret;
 }
 
 EXPORT_SYMBOL(BuffaloGpio_HddPowerOff);

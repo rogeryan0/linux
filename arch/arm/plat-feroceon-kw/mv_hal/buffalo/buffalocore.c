@@ -137,8 +137,8 @@ extern char saved_command_line[];
 
 extern int buffaloBoardInfoInit(void);
 extern u32 buffalo_product_id;
-extern char series_name[];
-extern char product_name[];
+extern char buffalo_series_name[];
+extern char buffalo_product_name[];
 //----------------------------------------------------------------------
 static int kernelfw_read_proc(char *page, char **start, off_t offset, int length)
 {
@@ -157,8 +157,8 @@ static int kernelfw_read_proc(char *page, char **start, off_t offset, int length
 			*p=0;
 	}
 
-	len += sprintf(buf+len,"SERIES=%s\n", series_name);
-	len += sprintf(buf+len,"PRODUCTNAME=%s\n", product_name);
+	len += sprintf(buf+len,"SERIES=%s\n", buffalo_series_name);
+	len += sprintf(buf+len,"PRODUCTNAME=%s\n", buffalo_product_name);
 
 	len += sprintf(buf+len,"VERSION=%s\n",BUFCORE_VERSION);
 	len += sprintf(buf+len,"SUBVERSION=FLASH 0.00\n");

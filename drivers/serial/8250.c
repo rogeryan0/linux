@@ -2852,7 +2852,7 @@ static int __init serial8250_init(void)
 #if defined(CONFIG_BUFFALO_PLATFORM)
 	extern int bfIsSerialConsoleEnable(void);
 	if (!bfIsSerialConsoleEnable())
-		return 0;
+		return -EPERM;
 #endif
 
 	if (nr_uarts > UART_NR)

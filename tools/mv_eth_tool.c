@@ -198,7 +198,7 @@ static void parse_status(char *src)
                 status = STS_PORT_REGS;
         }
       	else if(!strcmp(src, "statis")) {
-             	status = STS_PORT_STATIS;
+             	status = STS_PORT_STATS;
         }
         else if(!strcmp(src, "nfp")) {
                 status = STS_PORT_NFP_STATS;

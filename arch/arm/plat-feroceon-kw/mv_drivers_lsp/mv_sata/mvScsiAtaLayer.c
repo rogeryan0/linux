@@ -102,6 +102,11 @@ static MV_BOOLEAN  mvScsiAtaGetModeSenseDataPhase2(IN MV_SATA_ADAPTER    *pSataA
 static MV_SCSI_COMMAND_STATUS_TYPE  mvScsiAtaModeSelect(IN    MV_SATA_ADAPTER*    pSataAdapter,
                                                         IN    MV_SATA_SCSI_CMD_BLOCK  *pScb);
 
+#if defined(CONFIG_BUFFALO_PLATFORM)
+static MV_SCSI_COMMAND_STATUS_TYPE bfScsiAtaStartStopUnit(IN MV_SATA_ADAPTER *pSataAdapter,
+							  IN MV_SATA_SCSI_CMD_BLOCK *pScb);
+#endif
+
 static MV_U8 modeSelect(IN MV_SATA_ADAPTER    *pSataAdapter,
                         IN  MV_SATA_SCSI_CMD_BLOCK  *pScb,
                         MV_SCSI_COMMAND_STATUS_TYPE *pCommandStatus);
@@ -3006,7 +3011,9 @@ MV_SCSI_COMMAND_STATUS_TYPE mvSataExecuteScsiCommand(MV_SATA_SCSI_CMD_BLOCK  *pS
         case SCSI_OPCODE_WRITE_LONG10:
         case SCSI_OPCODE_READ_LONG10:
 #endif
-
+#if defined(CONFIG_BUFFALO_PLATFORM)
+	case SCSI_OPCODE_START_STOP_UNIT:
+#endif
             break;
         default:
             commandSupported = MV_FALSE;
@@ -3115,6 +3122,10 @@ MV_SCSI_COMMAND_STATUS_TYPE mvSataExecuteScsiCommand(MV_SATA_SCSI_CMD_BLOCK  *pS
     case SCSI_OPCODE_READ_LONG10:
         return mvScsiAtaReadLong(pSataAdapter, pScb);
 #endif
+#if defined(CONFIG_BUFFALO_PLATFORM)
+    case SCSI_OPCODE_START_STOP_UNIT:
+	return bfScsiAtaStartStopUnit(pSataAdapter, pScb);
+#endif
 
     default:
         {
@@ -3220,3 +3231,68 @@ MV_VOID mvSataScsiNotifyUA(MV_SAL_ADAPTER_EXTENSION *pAdapterExt,
              pAdapterExt->pSataAdapter->adapterId, channelIndex, PMPort);
 }
 
+#if defined(CONFIG_BUFFALO_PLATFORM)
+static MV_SCSI_COMMAND_STATUS_TYPE
+bfScsiAtaStartStopUnit(IN MV_SATA_ADAPTER *pSataAdapter,
+		       IN MV_SATA_SCSI_CMD_BLOCK *pScb)
+{
+	MV_QUEUE_COMMAND_RESULT result;
+	MV_QUEUE_COMMAND_INFO   qCommandInfo;
+	MV_SATA_SCSI_DRIVE_DATA *pDriveData
+	  = &pScb->pSalAdapterExtension->ataDriveData[pScb->bus][pScb->target];
+
+	pScb->dataTransfered = 0;
+	pScb->senseDataLength = 0;
+
+	if (pScb->ScsiCdb[4] & MV_BIT0) {
+		if (pScb->ScsiCdb[1] & MV_BIT0) {
+			qCommandInfo.commandParams.NoneUdmaCommand.command =
+			  MV_ATA_COMMAND_IDLE_IMMEDIATE;
+		}
+		else {
+			qCommandInfo.commandParams.NoneUdmaCommand.command =
+			  MV_ATA_COMMAND_IDLE;
+		}
+	}
+	else {
+		if (pScb->ScsiCdb[1] & MV_BIT0) {
+			qCommandInfo.commandParams.NoneUdmaCommand.command =
+			  MV_ATA_COMMAND_STANDBY_IMMEDIATE;
+		}
+		else {
+			qCommandInfo.commandParams.NoneUdmaCommand.command =
+			  MV_ATA_COMMAND_STANDBY;
+		}
+	}
+
+	qCommandInfo.type = MV_QUEUED_COMMAND_TYPE_NONE_UDMA;
+	qCommandInfo.commandParams.NoneUdmaCommand.protocolType
+	  = MV_NON_UDMA_PROTOCOL_NON_DATA;
+	qCommandInfo.commandParams.NoneUdmaCommand.isEXT = MV_FALSE;
+	qCommandInfo.PMPort = pScb->target;
+	qCommandInfo.commandParams.NoneUdmaCommand.bufPtr = NULL;
+	qCommandInfo.commandParams.NoneUdmaCommand.count = 0;
+	qCommandInfo.commandParams.NoneUdmaCommand.features = 0;
+	qCommandInfo.commandParams.NoneUdmaCommand.sectorCount = 0;
+	qCommandInfo.commandParams.NoneUdmaCommand.lbaLow = 0;
+	qCommandInfo.commandParams.NoneUdmaCommand.lbaMid = 0;
+	qCommandInfo.commandParams.NoneUdmaCommand.lbaHigh = 0;
+	qCommandInfo.commandParams.NoneUdmaCommand.device = (MV_U8)(MV_BIT6);
+	qCommandInfo.commandParams.NoneUdmaCommand.callBack =
+	  SALCommandCompletionCB;
+	qCommandInfo.commandParams.NoneUdmaCommand.commandId = (MV_VOID_PTR)pScb;
+
+	result = mvSataQueueCommand(pSataAdapter, pScb->bus, &qCommandInfo);
+	if (result != MV_QUEUE_COMMAND_RESULT_OK) {
+		checkQueueCommandResult(pScb, result);
+		pScb->completionCallBack(pSataAdapter, pScb);
+		return MV_SCSI_COMMAND_STATUS_COMPLETED;
+	}
+
+	pDriveData->stats.totalIOs++;
+/* 	printk("ATA command %02Xh, queued\n",
+ 	       qCommandInfo.commandParams.NoneUdmaCommand.command); */
+
+	return MV_SCSI_COMMAND_STATUS_QUEUED;
+}
+#endif

@@ -216,11 +216,17 @@ extern "C" {
 #define MSAR_BOOT_SPI_WITH_BOOTROM_6180         0x1
 #define MSAR_BOOT_NAND_WITH_BOOTROM_6180        0x5
 
+#if defined(CONFIG_BUFFALO_PLATFORM)
+#define MSAR_TCLCK_OFFS				21
+#define MSAR_TCLCK_MASK				(0x1 << MSAR_TCLCK_OFFS)
+#define MSAR_TCLCK_166				(0x1 << MSAR_TCLCK_OFFS)
+#define MSAR_TCLCK_200				(0x0 << MSAR_TCLCK_OFFS)
+#else
 #define MSAR_TCLCK_OFFS				16
 #define MSAR_TCLCK_MASK				(0x3 << MSAR_TCLCK_OFFS)
 #define MSAR_TCLCK_166				(0x1 << MSAR_TCLCK_OFFS)
 #define MSAR_TCLCK_200				(0x2 << MSAR_TCLCK_OFFS)
-
+#endif
 
 #define MSAR_CPUCLCK_EXTRACT(X)     (((X & 0x2) >> 1) | ((X & 0x400000) >> 21) | \
                                     ((X & 0x18) >> 1))

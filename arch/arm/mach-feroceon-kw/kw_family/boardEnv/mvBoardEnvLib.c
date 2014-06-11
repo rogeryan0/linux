@@ -91,6 +91,14 @@ extern MV_CPU_ARM_CLK _cpuARMDDRCLK[];
 extern	MV_BOARD_INFO*	boardInfoTbl[];
 #if defined(CONFIG_BUFFALO_PLATFORM)
  #define BOARD_INFO(boardId)	boardInfoTbl[boardId - BUFFALO_BOARD_ID_BASE]
+ u32 buffalo_product_id;
+ EXPORT_SYMBOL(buffalo_product_id);
+ char buffalo_series_name[BUF_NV_SIZE_SERIES_NAME];
+ EXPORT_SYMBOL(buffalo_series_name);
+ char buffalo_product_name[BUF_NV_SIZE_PRODUCT_NAME];
+ EXPORT_SYMBOL(buffalo_product_name);
+ u8 use_slide_power = 1;
+ EXPORT_SYMBOL(use_slide_power);
 #else
  #define BOARD_INFO(boardId)	boardInfoTbl[boardId - BOARD_ID_BASE]
 #endif
@@ -129,23 +137,32 @@ MV_VOID mvBoardEnvInit(MV_VOID)
 
 	}
 
+#if defined(CONFIG_BUFFALO_PLATFORM)
 	extern u32 env_addr;
 	extern u32 env_size;
-	printk(" %s > env_addr = 0x%08x\n", __FUNCTION__, env_addr);
-	printk(" %s > env_size = 0x%08x\n", __FUNCTION__, env_size);
 
 	char *p = ioremap(env_addr + env_size - 1024, 1024);
-	if (!p)
-		return;
+	if (p) {
+		buffalo_product_id = __be32_to_cpu(ioread32(p + 4));
+		strncpy(buffalo_series_name,p + 0x10, BUF_NV_SIZE_SERIES_NAME);
+		buffalo_series_name[BUF_NV_SIZE_SERIES_NAME - 1] = '\0';
+		strncpy(buffalo_product_name,p + 0x30, BUF_NV_SIZE_PRODUCT_NAME);
+		buffalo_product_name[BUF_NV_SIZE_PRODUCT_NAME - 1] = '\0';
+	}
 
-	extern u32 buffalo_product_id;
-	buffalo_product_id = __be32_to_cpu(ioread32(p + 4));
-	printk(" %s > buffalo_product_id = 0x%08x\n", __FUNCTION__, buffalo_product_id);
+	if (buffalo_product_id == 0x0 || buffalo_product_id == 0xffffffff)
+		buffalo_product_id = boardId | 0x80000000;
 
-	// It should be set by u-boot.
+	if (strlen(buffalo_series_name) == 0)
+		strcpy(buffalo_series_name,"BuffaloNas");
+
+	if (strlen(buffalo_product_name) == 0)
+		strcpy(buffalo_product_name,"UNINSPECT(Unknown)");
+
 	if (BUFFALO_BOARD_ID_BASE <= boardId && boardId < MV_MAX_BOARD_ID) {
 		return;
 	}
+#endif
 
 	/* Set GPP Out value */
 	MV_REG_WRITE(GPP_DATA_OUT_REG(0), BOARD_INFO(boardId)->gppOutValLow);
@@ -2086,63 +2103,13 @@ MV_U32 gBoardId = -1;
 *       32bit board ID number, '-1' if board is undefined.
 *
 *******************************************************************************/
+MV_U32 mvBoardIdGet(MV_VOID)
+{
 #if defined(CONFIG_BUFFALO_PLATFORM)
-#define BIT(x)		(1<<(x))
-#define BID_PIN_NUM	6
-
-MV_U32 mvBoardIdGet(MV_VOID)
-{
-	MV_U32 mask_low = 0;
-	MV_U32 mask_high = 0;
-	MV_U32 gpp_low;
-	MV_U32 gpp_high;
-	MV_32 pin_num[BID_PIN_NUM] = {45, 44, 35, 34, 29, 28};
-	int i;
-	MV_U32 tmpBoardId = 0;
-
-	if(gBoardId != -1) {
-		if (!(BUFFALO_BOARD_ID_BASE <= gBoardId && gBoardId < MV_MAX_BOARD_ID)) {
-			gBoardId = BUFFALO_BOARD_ID_BASE; // To avoid a segmentation fault
-		}
-		return gBoardId;
+	if (!(BUFFALO_BOARD_ID_BASE <= gBoardId && gBoardId < MV_MAX_BOARD_ID)) {
+		gBoardId = BUFFALO_BOARD_ID_BASE; // for avoid segmentation fault
 	}
-
-	for (i=0; i<BID_PIN_NUM; i++) {
-		if (pin_num[i] == -1) {
-			break;
-		}
-		else if (0 <= pin_num[i] && pin_num[i] < 32) {
-			mask_low |= BIT(pin_num[i]);
-		}
-		else if (32 <= pin_num[i] && pin_num[i] < 50) {
-			mask_high |= BIT(pin_num[i] - 32);
-		}
-	}
-
-	gpp_low = mvGppValueGet(0, mask_low);
-	gpp_high = mvGppValueGet(1, mask_high);
-
-	for (i=0; i<BID_PIN_NUM; i++) {
-		if (0 <= pin_num[i] && pin_num[i] < 32) {
-			tmpBoardId |= (gpp_low & BIT(pin_num[i])) >> pin_num[i];
-		}
-		else if (32 <= pin_num[i] && pin_num[i] < 50) {
-			tmpBoardId |= (gpp_high & BIT(pin_num[i] - 32)) >> (pin_num[i] -32);
-		}
-	}
-
-	tmpBoardId += BUFFALO_BOARD_ID_BASE;
-	if (!(BUFFALO_BOARD_ID_BASE <= tmpBoardId && tmpBoardId < MV_MAX_BOARD_ID)) {
-		tmpBoardId = BUFFALO_BOARD_ID_BASE; // To avoid a segmentation fault
-	}
-
-	gBoardId = tmpBoardId;
-	return gBoardId;
-}
-
-#else // !defined(CONFIG_BUFFALO_PLATFORM)
-MV_U32 mvBoardIdGet(MV_VOID)
-{
+#else
 	MV_U32 tmpBoardId = -1;
 
 	if(gBoardId == -1)
@@ -2168,10 +2135,10 @@ MV_U32 mvBoardIdGet(MV_VOID)
 		#endif
 		gBoardId = tmpBoardId;
 	}
+#endif // defined(CONFIG_BUFFALO_PLATFORM)
 
 	return gBoardId;
 }
-#endif // defined(CONFIG_BUFFALO_PLATFORM)
 
 
 /*******************************************************************************

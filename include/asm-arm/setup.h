@@ -153,13 +153,14 @@ struct tag_mv_uboot {
         __u32 isUsbHost;
         __u8  macAddr[MV_ARRAY_SIZE][6];
 	__u16 mtu[MV_ARRAY_SIZE];
-#if defined(CONFIG_BUFFALO_PLATFORM)
 	u32 fw_image_base;
 	u32 fw_image_size;
+#if defined(CONFIG_BUFFALO_PLATFORM)
 	u32 env_addr;
 	u32 env_size;
 	u32 env_offset;
 #endif
+	u32 nand_ecc;
 };                     
 
 struct tag {

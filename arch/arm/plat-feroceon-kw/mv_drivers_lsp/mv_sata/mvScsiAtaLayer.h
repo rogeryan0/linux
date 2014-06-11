@@ -79,6 +79,9 @@ extern "C" {
 #define SCSI_OPCODE_VERIFY6                 0x13
 #define SCSI_OPCODE_MODE_SELECT6            0x15
 #define SCSI_OPCODE_MODE_SENSE6             0x1A
+#if defined(CONFIG_BUFFALO_PLATFORM)
+ #define SCSI_OPCODE_START_STOP_UNIT        0x1B
+#endif
 
 /* 10 - bytes commands*/
 #define SCSI_OPCODE_READ_CAPACITY10         0x25

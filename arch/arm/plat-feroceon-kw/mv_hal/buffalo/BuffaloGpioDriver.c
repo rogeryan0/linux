@@ -179,7 +179,7 @@ bfActivateLowPriorityLed(struct bfLedInfo *led)
 		}
 		
 		if (pfound_li->ledCodeInfo.on_flag) {
-			bfGppOutRegBitClr(pfound_li->gppPinNumber);
+			bfGppOutRegBitAssert(pfound_li->gppPinNumber);
 		}
 
 		if (pfound_li->ledCodeInfo.blink_flag) {
@@ -223,7 +223,7 @@ bfDeactivateLowPriorityLed(struct bfLedInfo *led)
 		    bfIsLedActive(pli)) {
 			LED_TRACE(printk(" >>> %s LED deactivate.\n", pli->name));
 			pli->ledCodeInfo.blocked = 1;
-			bfGppOutRegBitSet(pli->gppPinNumber);
+			bfGppOutRegBitNagate(pli->gppPinNumber);
 			bfGppBlinkRegBitClr(pli->gppPinNumber);
 		}
 	}
@@ -242,11 +242,11 @@ BuffaloLed_StatChange(unsigned long data)
 	if (led->ledCodeInfo.tens_place_cnt) {
 		// tens place disp
 		if (bfGppOutRegBitTest(led->gppPinNumber)) {
-			bfGppOutRegBitClr(led->gppPinNumber);
+			bfGppOutRegBitAssert(led->gppPinNumber);
 			led->ledCodeInfo.timer.expires = (jiffies + BUFFALO_LED_WAIT_10);
 		}
 		else {
-			bfGppOutRegBitSet(led->gppPinNumber);
+			bfGppOutRegBitNagate(led->gppPinNumber);
 			led->ledCodeInfo.timer.expires = (jiffies + BUFFALO_LED_WAIT_SHORT);
 			led->ledCodeInfo.tens_place_cnt--;
 		}
@@ -254,11 +254,11 @@ BuffaloLed_StatChange(unsigned long data)
 	else if (led->ledCodeInfo.ones_place_cnt) {
 		// ones place disp
 		if (bfGppOutRegBitTest(led->gppPinNumber)) {
-			bfGppOutRegBitClr(led->gppPinNumber);
+			bfGppOutRegBitAssert(led->gppPinNumber);
 			led->ledCodeInfo.timer.expires = (jiffies + BUFFALO_LED_WAIT_1);
 		}
 		else {
-			bfGppOutRegBitSet(led->gppPinNumber);
+			bfGppOutRegBitNagate(led->gppPinNumber);
 			led->ledCodeInfo.timer.expires = (jiffies + BUFFALO_LED_WAIT_SHORT);
 			led->ledCodeInfo.ones_place_cnt--;
 		}
@@ -271,7 +271,7 @@ BuffaloLed_StatChange(unsigned long data)
 
 	if (led->ledCodeInfo.blocked) {
 		del_timer(&led->ledCodeInfo.timer);
-		bfGppOutRegBitSet(led->gppPinNumber);
+		bfGppOutRegBitNagate(led->gppPinNumber);
 	}
 	else if (led->ledCodeInfo.code != 0) {
 		add_timer(&led->ledCodeInfo.timer);
@@ -279,10 +279,10 @@ BuffaloLed_StatChange(unsigned long data)
 	else {
 		del_timer(&led->ledCodeInfo.timer);
 		if (led->ledCodeInfo.on_flag) {
-			bfGppOutRegBitClr(led->gppPinNumber);
+			bfGppOutRegBitAssert(led->gppPinNumber);
 		}
 		else {
-			bfGppOutRegBitSet(led->gppPinNumber);
+			bfGppOutRegBitNagate(led->gppPinNumber);
 		}
 	}
 }
@@ -323,7 +323,7 @@ BuffaloLedWriteProc(struct file *filep, const char *buffer, unsigned long count,
 			led->ledCodeInfo.on_flag = 1;
 			LED_TRACE(printk(">>> %s on.\n", led->name));
 			if (!bfIsHighPriorityLedActive(led)) {
-				bfGppOutRegBitClr(led->gppPinNumber);
+				bfGppOutRegBitAssert(led->gppPinNumber);
 				bfDeactivateLowPriorityLed(led);
 			}
 		}
@@ -332,7 +332,7 @@ BuffaloLedWriteProc(struct file *filep, const char *buffer, unsigned long count,
 				bfLedCodeDispStop(led);
 
 			led->ledCodeInfo.on_flag = 0;
-			bfGppOutRegBitSet(led->gppPinNumber);
+			bfGppOutRegBitNagate(led->gppPinNumber);
 			LED_TRACE(printk(">>> %s off.\n", led->name));
 			bfActivateLowPriorityLed(led);
 		}
@@ -340,7 +340,7 @@ BuffaloLedWriteProc(struct file *filep, const char *buffer, unsigned long count,
 	else if ((0 < code) && (code <= MAX_ALARM_NUM)) {
 		// display error/info code
 		led->ledCodeInfo.on_flag = 0;
-		bfGppOutRegBitSet(led->gppPinNumber);
+		bfGppOutRegBitNagate(led->gppPinNumber);
 
 		if (led->ledCodeInfo.code == 0) {
 			led->ledCodeInfo.code = code;
@@ -546,9 +546,9 @@ static int
 BuffaloHddWriteProc(struct file *filep, const char *buffer, unsigned long count, void *data)
 {
 	if(strncmp(buffer, "on", 2) == 0 ){
-		bfGppOutRegBitSet(mvBoardGpioPinNumGet(BOARD_GPP_HDD_POWER, (int)data));
+		bfGppOutRegBitAssert(mvBoardGpioPinNumGet(BOARD_GPP_HDD_POWER, (int)data));
 	}else if(strncmp(buffer, "off", 3) == 0){
-		bfGppOutRegBitClr(mvBoardGpioPinNumGet(BOARD_GPP_HDD_POWER, (int)data));
+		bfGppOutRegBitNagate(mvBoardGpioPinNumGet(BOARD_GPP_HDD_POWER, (int)data));
 	}
 
 	return count;
@@ -581,9 +581,9 @@ static int
 BuffaloUsbWriteProc(struct file *filep, const char *buffer, unsigned long count, void *data)
 {
 	if(strncmp(buffer, "on", 2) == 0 ){
-		bfGppOutRegBitSet(mvBoardGpioPinNumGet(BOARD_GPP_USB_VBUS_EN, (int)data));
+		bfGppOutRegBitAssert(mvBoardGpioPinNumGet(BOARD_GPP_USB_VBUS_EN, (int)data));
 	}else if(strncmp(buffer, "off", 3) == 0){
-		bfGppOutRegBitClr(mvBoardGpioPinNumGet(BOARD_GPP_USB_VBUS_EN, (int)data));
+		bfGppOutRegBitNagate(mvBoardGpioPinNumGet(BOARD_GPP_USB_VBUS_EN, (int)data));
 	}
 
 	return count;
@@ -883,23 +883,23 @@ BuffaloFanControlWriteProc(struct file *filep, const char *buffer, unsigned long
 {
 	if(strncmp(buffer, "stop", strlen("stop")) == 0)
 	{
-		bfGppOutRegBitSet(BIT_FAN_LOW);
-		bfGppOutRegBitSet(BIT_FAN_HIGH);
+		bfGppOutRegBitNagate(BIT_FAN_LOW);
+		bfGppOutRegBitNagate(BIT_FAN_HIGH);
 	}
 	else if(strncmp(buffer, "slow", strlen("slow")) == 0)
 	{
-		bfGppOutRegBitSet(BIT_FAN_LOW);
-		bfGppOutRegBitClr(BIT_FAN_HIGH);
+		bfGppOutRegBitAssert(BIT_FAN_LOW);
+		bfGppOutRegBitNagate(BIT_FAN_HIGH);
 	}
 	else if(strncmp(buffer, "fast", strlen("fast")) == 0)
 	{
-		bfGppOutRegBitClr(BIT_FAN_LOW);
-		bfGppOutRegBitSet(BIT_FAN_HIGH);
+		bfGppOutRegBitNagate(BIT_FAN_LOW);
+		bfGppOutRegBitAssert(BIT_FAN_HIGH);
 	}
 	else if(strncmp(buffer, "full", strlen("full")) == 0)
 	{
-		bfGppOutRegBitClr(BIT_FAN_LOW);
-		bfGppOutRegBitClr(BIT_FAN_HIGH);
+		bfGppOutRegBitAssert(BIT_FAN_LOW);
+		bfGppOutRegBitAssert(BIT_FAN_HIGH);
 	}
 
 	return count;
@@ -910,7 +910,7 @@ BuffaloFanControlReadProc(char *page, char **start, off_t off, int count, int *e
 {
 	int len = 0;
 
-	if (bfGppInRegBitTest(BIT_FAN_LOW) && bfGppInRegBitTest(BIT_FAN_HIGH)) {
+	if (!bfGppInRegBitTest(BIT_FAN_LOW) && !bfGppInRegBitTest(BIT_FAN_HIGH)) {
 		len += sprintf(page, "stop\n");
 	}
 	else if (bfGppInRegBitTest(BIT_FAN_LOW) && !bfGppInRegBitTest(BIT_FAN_HIGH)) {

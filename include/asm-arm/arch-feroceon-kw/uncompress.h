@@ -20,7 +20,7 @@
 #define MV_UART_LSR 	(*(volatile unsigned char *)(INTER_REGS_BASE + 0x12000 + 0x14))
 #define MV_UART_THR	(*(volatile unsigned char *)(INTER_REGS_BASE + 0x12000 + 0x0 ))	 
 #if defined(CONFIG_BUFFALO_PLATFORM)
-#define UART_EN		(*(volatile unsigned char *)(INTER_REGS_BASE + 0x10150) & (1 << 17))
+extern int bfIsSerialConsoleEnable(void);
 #endif
 
 #define LSR_THRE	0x20
@@ -31,7 +31,7 @@
 static void putstr(const char *s)
 {
 #if defined(CONFIG_BUFFALO_PLATFORM)
-	if (!UART_EN)
+	if (!bfIsSerialConsoleEnable)
 		return;
 #endif
   

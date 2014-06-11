@@ -97,6 +97,8 @@ MV_CPU_DEC_WIN* mv_sys_map(void)
 	case DB_88F6281A_BP_ID:
 	case RD_88F6281A_ID:
 	case BF_MVLSXH_ID:
+	case BF_MVLSXL_ID:
+	case BF_MVWXL_ID:
 		return SYSMAP_88F6281;
 	case DB_88F6192A_BP_ID:
 	case RD_88F6192A_ID:

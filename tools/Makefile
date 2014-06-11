@@ -27,6 +27,7 @@ else
 ifeq ($(CONFIG_ARCH_FEROCEON_KW), y)
 CFLAGS  += -I$(KSRC)/arch/arm/plat-feroceon-kw/mv_drivers_lsp/mv_cesa/ \
 	   -I$(KSRC)/arch/arm/plat-feroceon-kw/mv_drivers_lsp/mv_network/mv_ethernet/
+CFLAGS += -DMAX_PORT=2
 else
 CFLAGS  += -I$(KSRC)/arch/arm/plat-feroceon/mv_drivers_lsp/mv_cesa/ \
 	   -I$(KSRC)/arch/arm/plat-feroceon/mv_drivers_lsp/mv_network/mv_ethernet/

@@ -347,7 +347,7 @@ otherwise the following defines will be ignored */
 #define MV_DRAM_AUTO_SIZE
 
 /* Board clock detection */
-#undef TCLK_AUTO_DETECT    	/* Use Tclk auto detection   */
+#define TCLK_AUTO_DETECT    	/* Use Tclk auto detection   */
 #define SYSCLK_AUTO_DETECT	/* Use SysClk auto detection */
 #define PCLCK_AUTO_DETECT  	/* Use PClk auto detection   */
 #define L2CLK_AUTO_DETECT 	/* Use L2Clk auto detection   */
