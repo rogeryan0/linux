@@ -4,13 +4,13 @@
 #include "com_scsi.h"
 #include "com_util.h"
 
-/* NODRV device is used to send controller commands. 
+/* NODRV device is used to send controller commands.
  * Now we are using "Storage array controller device" as Microsoft recommended.
  * Peripheral Device Type: 03h Processor ( can be 3h or 0ch )
  * Peripheral Qualifier: 0h
  * Response Data Format: 2h ( must be 2 )
- * Version: 4h ( must be 4, 5 or 6 ) 
- * Only need support minimum 36 bytes inquiry data. 
+ * Version: 4h ( must be 4, 5 or 6 )
+ * Only need support minimum 36 bytes inquiry data.
  * Must return EVPD 0x0, 0x83, 0x80 */
 #ifndef SUPPORT_VIRTUAL_DEVICE
 	/* Standard Inquiry Data for Virtual Device */
@@ -74,7 +74,7 @@ MV_VOID MV_SetSenseData(
 	if ( pSense!=NULL ) {
 		MV_ZeroMemory(pSense, sizeof(MV_Sense_Data));
 
-		pSense->Valid = 0;	
+		pSense->Valid = 0;
 		pSense->ErrorCode = MV_SCSI_RESPONSE_CODE;
 		pSense->SenseKey = SenseKey;
 		pSense->AdditionalSenseCode = AdditionalSenseCode;

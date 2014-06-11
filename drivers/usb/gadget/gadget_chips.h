@@ -50,13 +50,16 @@
 #define gadget_is_s3c2410(g)		(!strcmp("s3c2410_udc", (g)->name))
 #define gadget_is_s3c_hsotg(g)		(!strcmp("s3c-hsotg", (g)->name))
 #define gadget_is_s3c_hsudc(g)		(!strcmp("s3c-hsudc", (g)->name))
-
+#ifdef CONFIG_USB_GADGET_LH7A40X
+#define	gadget_is_lh7a40x(g)	(!strcmp("lh7a40x_udc", (g)->name))
+#else
+#define	gadget_is_lh7a40x(g)	0
+#endif
 #ifdef CONFIG_USB_GADGET_MRVL
 #define gadget_is_mrvl(g)    (!strcmp("mv_udc", (g)->name))
 #else
 #define gadget_is_mrvl(g)    0
 #endif
-
 
 /**
  * usb_gadget_controller_number - support bcdDevice id convention
@@ -99,8 +102,6 @@ static inline int usb_gadget_controller_number(struct usb_gadget *gadget)
 		return 0x18;
 	else if (gadget_is_fsl_usb2(gadget))
 		return 0x19;
-	else if (gadget_is_mrvl(gadget))
-		return 0x1a;
 	else if (gadget_is_amd5536udc(gadget))
 		return 0x20;
 	else if (gadget_is_m66592(gadget))
@@ -116,6 +117,8 @@ static inline int usb_gadget_controller_number(struct usb_gadget *gadget)
 	else if (gadget_is_s3c_hsotg(gadget))
 		return 0x26;
 	else if (gadget_is_pch(gadget))
+		return 0x27;
+	else if (gadget_is_mrvl(gadget))
 		return 0x27;
 	else if (gadget_is_ci13xxx_msm(gadget))
 		return 0x28;

@@ -74,5 +74,3 @@ obj-$(CONFIG_NET_VENDOR_TUNDRA) += tundra/
 obj-$(CONFIG_NET_VENDOR_VIA) += via/
 obj-$(CONFIG_NET_VENDOR_XILINX) += xilinx/
 obj-$(CONFIG_NET_VENDOR_XIRCOM) += xircom/
-
-obj-$(CONFIG_MV_INCLUDE_GIG_ETH) += ../../../arch/arm/plat-feroceon/mv_drivers_lsp/mv_network/mv_ethernet/

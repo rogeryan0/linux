@@ -13,6 +13,7 @@
 LDFLAGS_vmlinux	:=-p --no-undefined -X
 ifeq ($(CONFIG_CPU_ENDIAN_BE8),y)
 LDFLAGS_vmlinux	+= --be8
+LDFLAGS_MODULE	+= --be8
 endif
 
 OBJCOPYFLAGS	:=-O binary -R .comment -S
@@ -20,12 +21,11 @@ GZFLAGS		:=-9
 #KBUILD_CFLAGS	+=-pipe
 # Explicitly specifiy 32-bit ARM ISA since toolchain default can be -mthumb:
 KBUILD_CFLAGS	+=$(call cc-option,-marm,)
-ifeq ($(CONFIG_REORDER),y)                                    
-KBUILD_CFLAGS          += -ffunction-sections                        
-endif  
 
+ifeq ($(CONFIG_REORDER),y)
 # Never generate .eh_frame
 KBUILD_CFLAGS	+= $(call cc-option,-fno-dwarf2-cfi-asm)
+endif
 
 # Do not use arch/arm/defconfig - it's always outdated.
 # Select a platform tht is kept up-to-date
@@ -67,11 +67,7 @@ arch-$(CONFIG_CPU_32v6)		:=-D__LINUX_ARM_ARCH__=6 $(call cc-option,-march=armv6,
 ifeq ($(CONFIG_CPU_32v6),y)
 arch-$(CONFIG_CPU_32v6K)	:=-D__LINUX_ARM_ARCH__=6 $(call cc-option,-march=armv6k,-march=armv5t -Wa$(comma)-march=armv6k)
 endif
-ifneq ($(CONFIG_USE_DSP),y)
-arch-$(CONFIG_CPU_32v5)         :=-D__LINUX_ARM_ARCH__=5 $(call cc-option,-march=armv5t)
-else
-arch-$(CONFIG_CPU_32v5)		    :=-D__LINUX_ARM_ARCH__=5 $(call cc-option,-march=armv5te,-march=armv4t)
-endif
+arch-$(CONFIG_CPU_32v5)		:=-D__LINUX_ARM_ARCH__=5 $(call cc-option,-march=armv5te,-march=armv4t)
 arch-$(CONFIG_CPU_32v4T)	:=-D__LINUX_ARM_ARCH__=4 -march=armv4t
 arch-$(CONFIG_CPU_32v4)		:=-D__LINUX_ARM_ARCH__=4 -march=armv4
 arch-$(CONFIG_CPU_32v3)		:=-D__LINUX_ARM_ARCH__=3 -march=armv3
@@ -90,27 +86,11 @@ tune-$(CONFIG_CPU_ARM922T)	:=-mtune=arm9tdmi
 tune-$(CONFIG_CPU_ARM925T)	:=-mtune=arm9tdmi
 tune-$(CONFIG_CPU_ARM926T)	:=-mtune=arm9tdmi
 tune-$(CONFIG_CPU_FA526)	:=-mtune=arm9tdmi
-ifeq ($(CONFIG_ARCH_FEROCEON),y)
-  #-KW
-  ifeq ($(CONFIG_ARCH_FEROCEON_KW),y)
-    tune-$(CONFIG_CPU_FEROCEON)	:=$(call cc-option,-mtune=arm9e,-mtune=xscale)
-  endif
-  #-6183
-  ifeq ($(CONFIG_ARCH_FEROCEON_ORION),y)
-    tune-$(CONFIG_CPU_FEROCEON)	:=$(call cc-option,-mtune=arm9e,-mtune=xscale)
-  endif
-  #-DD
-  ifeq ($(CONFIG_ARCH_FEROCEON_MV78XX0),y)
-    tune-$(CONFIG_CPU_FEROCEON)	:=$(call cc-option,-mtune=marvell-f,-mtune=xscale)
-  endif
-else
-  tune-$(CONFIG_CPU_ARM926T)	:=-mtune=arm9tdmi
-endif
 tune-$(CONFIG_CPU_SA110)	:=-mtune=strongarm110
 tune-$(CONFIG_CPU_SA1100)	:=-mtune=strongarm1100
 tune-$(CONFIG_CPU_XSCALE)	:=$(call cc-option,-mtune=xscale,-mtune=strongarm110) -Wa,-mcpu=xscale
 tune-$(CONFIG_CPU_XSC3)		:=$(call cc-option,-mtune=xscale,-mtune=strongarm110) -Wa,-mcpu=xscale
-#tune-$(CONFIG_CPU_FEROCEON)	:=$(call cc-option,-mtune=marvell-f,-mtune=xscale)
+tune-$(CONFIG_CPU_FEROCEON)	:=$(call cc-option,-mtune=marvell-f,-mtune=xscale)
 tune-$(CONFIG_CPU_V6)		:=$(call cc-option,-mtune=arm1136j-s,-mtune=strongarm)
 tune-$(CONFIG_CPU_V6K)		:=$(call cc-option,-mtune=arm1136j-s,-mtune=strongarm)
 
@@ -157,6 +137,9 @@ textofs-$(CONFIG_ARCH_MSM8960) := 0x00208000
 
 # Machine directory name.  This list is sorted alphanumerically
 # by CONFIG_* macro name.
+
+machine-$(CONFIG_ARCH_ARMADA_XP)	:= armadaxp
+machine-$(CONFIG_ARCH_ARMADA370)	:= armada370
 machine-$(CONFIG_ARCH_AT91)		:= at91
 machine-$(CONFIG_ARCH_BCMRING)		:= bcmring
 machine-$(CONFIG_ARCH_CLPS711X)		:= clps711x
@@ -176,14 +159,6 @@ machine-$(CONFIG_ARCH_IXP2000)		:= ixp2000
 machine-$(CONFIG_ARCH_IXP23XX)		:= ixp23xx
 machine-$(CONFIG_ARCH_IXP4XX)		:= ixp4xx
 machine-$(CONFIG_ARCH_KIRKWOOD)		:= kirkwood
- machine-$(CONFIG_ARCH_FEROCEON_ORION)  := feroceon-orion
- machine-$(CONFIG_ARCH_FEROCEON_KW) 	:= feroceon-kw
- machine-$(CONFIG_ARCH_FEROCEON_MV78XX0)	:= feroceon-mv78xx0
-    plat-$(CONFIG_ARCH_FEROCEON_KW)	:= feroceon
-plat-$(CONFIG_ARCH_FEROCEON_MV78XX0)	:= feroceon
-
-
-
 machine-$(CONFIG_ARCH_KS8695)		:= ks8695
 machine-$(CONFIG_ARCH_LPC32XX)		:= lpc32xx
 machine-$(CONFIG_ARCH_MMP)		:= mmp
@@ -234,6 +209,9 @@ plat-$(CONFIG_ARCH_MXC)		:= mxc
 plat-$(CONFIG_ARCH_OMAP)	:= omap
 plat-$(CONFIG_ARCH_S3C64XX)	:= samsung
 plat-$(CONFIG_ARCH_ZYNQ)	:= versatile
+#plat-$(CONFIG_PLAT_ARMADA)	:= armada
+plat-$(CONFIG_ARCH_ARMADA370)	:= armada370
+plat-$(CONFIG_ARCH_ARMADA_XP)	:= armadaxp
 plat-$(CONFIG_PLAT_IOP)		:= iop
 plat-$(CONFIG_PLAT_NOMADIK)	:= nomadik
 plat-$(CONFIG_PLAT_ORION)	:= orion
@@ -269,7 +247,7 @@ else
 KBUILD_CPPFLAGS += $(patsubst %,-I$(srctree)/%include,$(machdirs) $(platdirs))
 endif
 
-export	TEXT_OFFSET GZFLAGS MMUEXT
+export	TEXT_OFFSET GZFLAGS MMUEXT MACHINE
 
 # Do we have FASTFPE?
 FASTFPE		:=arch/arm/fastfpe

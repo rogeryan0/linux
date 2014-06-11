@@ -9,8 +9,14 @@
 
 typedef struct {
 	unsigned int __softirq_pending;
+#ifdef CONFIG_ARCH_ARMADA_XP
+	unsigned int local_pmu_irqs;
+#endif
 #ifdef CONFIG_SMP
 	unsigned int ipi_irqs[NR_IPI];
+#endif
+#ifdef CONFIG_ARCH_ARMADA370
+	unsigned int local_pmu_irqs;
 #endif
 } ____cacheline_aligned irq_cpustat_t;
 

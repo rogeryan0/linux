@@ -31,7 +31,12 @@ obj-$(CONFIG_USB_MV_UDC)	+= mv_udc.o
 mv_udc-y			:= mv_udc_core.o
 obj-$(CONFIG_USB_CI13XXX_MSM)	+= ci13xxx_msm.o
 obj-$(CONFIG_USB_FUSB300)	+= fusb300_udc.o
-obj-$(CONFIG_USB_MRVL)       	+= ../../../arch/arm/plat-feroceon/mv_drivers_lsp/mv_udc/
+ifeq ($(CONFIG_ARCH_ARMADA370), y)
+obj-$(CONFIG_USB_MRVL)       	+= ../../../arch/arm/plat-armada370/mv_drivers_lsp/mv_udc/
+endif
+ifeq ($(CONFIG_ARCH_ARMADA_XP), y)
+obj-$(CONFIG_USB_MRVL)       	+= ../../../arch/arm/plat-armadaxp/mv_drivers_lsp/mv_udc/
+endif
 
 #
 # USB gadget drivers

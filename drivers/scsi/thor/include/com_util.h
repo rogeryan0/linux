@@ -99,7 +99,7 @@ MV_BOOLEAN MV_Equals(MV_PU8 des, MV_PU8 src, MV_U8 len);
 #endif /* !_OS_LINUX */
 
 /*
- * big endian bit-field structs that are larger than a single byte 
+ * big endian bit-field structs that are larger than a single byte
  * need swapping
  */
 #ifdef __MV_BIG_ENDIAN__
@@ -119,7 +119,7 @@ MV_BOOLEAN MV_Equals(MV_PU8 des, MV_PU8 src, MV_U8 len);
 #define MV_LE32_TO_CPU_PTR(pu32)
 #endif /* __MV_BIG_ENDIAN__ */
 
-/* definitions - following macro names are used by RAID module 
+/* definitions - following macro names are used by RAID module
    must keep consistent */
 #define CPU_TO_BIG_ENDIAN_16(x)        MV_CPU_TO_BE16(x)
 #define CPU_TO_BIG_ENDIAN_32(x)        MV_CPU_TO_BE32(x)
@@ -192,7 +192,7 @@ void MV_DumpSGTable(PMV_SG_Table pSGTable);
 const char* MV_DumpSenseKey(MV_U8 sense);
 
 MV_U32 MV_CRC(
-	IN MV_PU8  pData, 
+	IN MV_PU8  pData,
 	IN MV_U16  len
 );
 
@@ -220,7 +220,7 @@ static inline MV_VOID mv_swap_bytes(MV_PVOID buf, MV_U32 len)
 		return;
 
 	p = (MV_U8 *) buf;
-	for (i = 0; i < len / 2; i++) 
+	for (i = 0; i < len / 2; i++)
 	{
 		tmp = p[i];
 		p[i] = p[len - i - 1];

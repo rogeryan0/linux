@@ -46,7 +46,7 @@
 #define ERR_LD_NAME_INVALID	                     (ERR_RAID + 22)
 
 /* API errors */
-#define ERR_INVALID_MATCH_ID                     (ERR_API + 1)    
+#define ERR_INVALID_MATCH_ID                     (ERR_API + 1)
 #define ERR_INVALID_HDCOUNT                      (ERR_API + 2)
 #define ERR_INVALID_BGA_ACTION                   (ERR_API + 3)
 #define ERR_HD_IN_DIFF_CARD                      (ERR_API + 4)

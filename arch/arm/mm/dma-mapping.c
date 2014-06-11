@@ -175,7 +175,6 @@ static int __init consistent_init(void)
 		pr_err("%s: no memory\n", __func__);
 		return -ENOMEM;
 	}
-	printk("%s: consistent_pte=0x%p\n", consistent_pte);
 
 	pr_debug("DMA memory: 0x%08lx - 0x%08lx:\n", base, CONSISTENT_END);
 	consistent_head.vm_start = base;

@@ -110,26 +110,6 @@ struct cpu_cache_fns {
 	void (*dma_flush_range)(const void *, const void *);
 };
 
-#ifdef CONFIG_MV_XOR_NET_DMA
-/* 
- * Clean and Invalidate L1 cache w/o dsb()
- * The call is intended for multiple calls and when dsb() on commit endpoint
- * HW would align addresses. If 'end' was already aligned, put it 
- * one cacheline up.
- */
-static inline void flush_user_range_fast(unsigned long start, 
-										 unsigned long end, unsigned int vmflags)
-{
-	unsigned long flags;
-
-	raw_local_irq_save(flags);
-	__asm__("mcr p15, 5, %0, c15, c15, 0" : : "r" (start));
-	__asm__("mcr p15, 5, %0, c15, c15, 1" : : "r" (end-1));
-	raw_local_irq_restore(flags);
-
-	/* dsb();*/
-}
-#endif
 /*
  * Select the calling method
  */
@@ -269,8 +249,20 @@ extern void flush_cache_page(struct vm_area_struct *vma, unsigned long user_addr
  * Harvard caches are synchronised for the user space address range.
  * This is used for the ARM private sys_cacheflush system call.
  */
+#ifdef CONFIG_ARCH_ARMADA_370
 #define flush_cache_user_range(vma,start,end) \
 	__cpuc_coherent_user_range((start) & PAGE_MASK, PAGE_ALIGN(end))
+#else
+#define local_flush_cache_user_range(vma,start,end) \
+	__cpuc_coherent_user_range((start) & PAGE_MASK, PAGE_ALIGN(end))
+
+#if defined(CONFIG_SMP) && defined(CONFIG_CPU_V6)
+extern void flush_cache_user_range(struct vm_area_struct *vma, unsigned long start,
+				   unsigned long end);
+#else
+#define flush_cache_user_range	local_flush_cache_user_range
+#endif
+#endif
 
 /*
  * Perform necessary cache operations to ensure that data previously
@@ -282,7 +274,14 @@ extern void flush_cache_page(struct vm_area_struct *vma, unsigned long user_addr
  * Perform necessary cache operations to ensure that the TLB will
  * see data written in the specified area.
  */
+#if defined (CONFIG_CACHE_AURORA_L2) && (defined (CONFIG_ARCH_ARMADA370) || defined (CONFIG_AURORA_L2_OUTER)) && !defined (CONFIG_AURORA_L2_PT_WALK)
+/*#warning "clean_dcache_area: Using D$ FLUSH instead of CLEAN. To be Checked\n"*/
+extern void aurora_l2_flush_range(unsigned long start, unsigned long end);
+#define clean_dcache_area(start,size)	do {cpu_dcache_clean_area(start, size);	\
+	aurora_l2_flush_range(__pa(start), __pa(start) + size);} while (0)
+#else
 #define clean_dcache_area(start,size)	cpu_dcache_clean_area(start, size)
+#endif
 
 /*
  * flush_dcache_page is used when the kernel has written to the page
@@ -323,18 +322,6 @@ static inline void flush_anon_page(struct vm_area_struct *vma,
 #define ARCH_HAS_FLUSH_KERNEL_DCACHE_PAGE
 static inline void flush_kernel_dcache_page(struct page *page)
 {
-}
-static inline void flush_kernel_dcache_addr(void *addr)
-{
-	if ((cache_is_vivt() || cache_is_vipt_aliasing()))
-		//__cpuc_flush_dcache_page(addr);
-		__cpuc_flush_dcache_area(addr, PAGE_SIZE);
-}
-static inline void invalidate_kernel_dcache_addr(void *addr)
-{
-	if ((cache_is_vivt() || cache_is_vipt_aliasing()))
-		//__cpuc_flush_dcache_page(addr);
-		__cpuc_flush_dcache_area(addr, PAGE_SIZE);
 }
 
 #define flush_dcache_mmap_lock(mapping) \

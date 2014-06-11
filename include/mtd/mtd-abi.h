@@ -220,7 +220,11 @@ struct nand_oobfree {
 };
 
 #define MTD_MAX_OOBFREE_ENTRIES	8
+#ifdef CONFIG_MTD_NAND_NFC
+#define MTD_MAX_ECCPOS_ENTRIES	128
+#else
 #define MTD_MAX_ECCPOS_ENTRIES	64
+#endif
 /*
  * OBSOLETE: ECC layout control structure. Exported to user-space via ioctl
  * ECCGETLAYOUT for backwards compatbility and should not be mistaken as a

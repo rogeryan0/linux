@@ -28,10 +28,10 @@ typedef struct _Domain_Device Domain_Device, *PDomain_Device;
 
 typedef struct _Core_Driver_Extension
 {
-#ifdef __MM_SE__	
+#ifdef __MM_SE__
 /* Must be first */
 	struct mv_mod_desc *desc;
-#endif /* __MM_SE__ */	
+#endif /* __MM_SE__ */
 	MV_LPVOID	Mmio_Base;						/* Memory IO base address */
 	MV_U16		Vendor_Id;
 	MV_U16		Device_Id;
@@ -40,7 +40,7 @@ typedef struct _Core_Driver_Extension
 	MV_U8		VS_Reg_Saved;
 	MV_U8		Flag_Fastboot_Skip;
 
-	MV_U32		Capacity;						
+	MV_U32		Capacity;
 	MV_U32		Port_Map;
 	MV_U8		Port_Num;						/* How much ports we have? */
 	MV_U8		SATA_Port_Num;
@@ -55,7 +55,7 @@ typedef struct _Core_Driver_Extension
 	MV_U8		Reserved1;
 	MV_U8		Reserved2[3];
 #else
-	MV_U32		Saved_ISR_Status;						
+	MV_U32		Saved_ISR_Status;
 #endif
 
 	MV_LPVOID	Base_Address[MAX_BASE_ADDRESS];	/* Base Address */
@@ -65,7 +65,7 @@ typedef struct _Core_Driver_Extension
 	List_Head	Internal_Req_List;				/* Internal Request Queue */
 
 #ifdef SUPPORT_CONSOLIDATE
-	PConsolidate_Extension	pConsolid_Extent;	
+	PConsolidate_Extension	pConsolid_Extent;
 	PConsolidate_Device		pConsolid_Device;
 #endif
 #ifdef COMMAND_ISSUE_WORKROUND
@@ -75,4 +75,3 @@ typedef struct _Core_Driver_Extension
 }Core_Driver_Extension, *PCore_Driver_Extension;
 
 #endif /* CORE_MAIN_H */
-

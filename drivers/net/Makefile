@@ -1,6 +1,14 @@
 #
 # Makefile for the Linux network device drivers.
 #
+ifeq ($(CONFIG_ARCH_ARMADA370), y)
+obj-$(CONFIG_MV_ETH_LEGACY) += ../../arch/arm/plat-armada370/mv_drivers_lsp/mv_network/mv_ethernet/
+obj-$(CONFIG_MV_ETH_NETA) += ../../arch/arm/plat-armada370/mv_drivers_lsp/mv_neta/net_dev/
+endif
+ifeq ($(CONFIG_ARCH_ARMADA_XP), y)
+obj-$(CONFIG_MV_ETH_LEGACY) += ../../arch/arm/plat-armadaxp/mv_drivers_lsp/mv_network/mv_ethernet/
+obj-$(CONFIG_MV_ETH_NETA) += ../../arch/arm/plat-armadaxp/mv_drivers_lsp/mv_neta/net_dev/
+endif
 
 #
 # Networking Core Drivers

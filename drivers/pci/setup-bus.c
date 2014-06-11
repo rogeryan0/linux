@@ -322,11 +322,7 @@ EXPORT_SYMBOL(pci_setup_cardbus);
    config space writes, so it's quite possible that an I/O window of
    the bridge will have some undesirable address (e.g. 0) after the
    first write. Ditto 64-bit prefetchable MMIO.  */
-#ifdef CONFIG_PCIE_VIRTUAL_BRIDGE_SUPPORT
-static void pci_setup_bridge_io(struct pci_bus *bus, u16 *flags)
-#else
 static void pci_setup_bridge_io(struct pci_bus *bus)
-#endif
 {
 	struct pci_dev *bridge = bus->self;
 	struct resource *res;
@@ -348,9 +344,6 @@ static void pci_setup_bridge_io(struct pci_bus *bus)
 		/* Clear upper 16 bits of I/O base/limit. */
 		io_upper16 = 0;
 		l = 0x00f0;
-#ifdef CONFIG_PCIE_VIRTUAL_BRIDGE_SUPPORT
-		*flags &= ~PCI_COMMAND_IO;
-#endif
 	}
 	/* Temporarily disable the I/O range before updating PCI_IO_BASE. */
 	pci_write_config_dword(bridge, PCI_IO_BASE_UPPER16, 0x0000ffff);
@@ -360,11 +353,7 @@ static void pci_setup_bridge_io(struct pci_bus *bus)
 	pci_write_config_dword(bridge, PCI_IO_BASE_UPPER16, io_upper16);
 }
 
-#ifdef CONFIG_PCIE_VIRTUAL_BRIDGE_SUPPORT
-static void pci_setup_bridge_mmio(struct pci_bus *bus, u16 *flags)
-#else
 static void pci_setup_bridge_mmio(struct pci_bus *bus)
-#endif
 {
 	struct pci_dev *bridge = bus->self;
 	struct resource *res;
@@ -380,9 +369,6 @@ static void pci_setup_bridge_mmio(struct pci_bus *bus)
 		dev_info(&bridge->dev, "  bridge window %pR\n", res);
 	} else {
 		l = 0x0000fff0;
-#ifdef CONFIG_PCIE_VIRTUAL_BRIDGE_SUPPORT
-		*flags &= ~PCI_COMMAND_MEMORY;
-#endif
 	}
 	pci_write_config_dword(bridge, PCI_MEMORY_BASE, l);
 }
@@ -424,44 +410,20 @@ static void pci_setup_bridge_mmio_pref(struct pci_bus *bus)
 static void __pci_setup_bridge(struct pci_bus *bus, unsigned long type)
 {
 	struct pci_dev *bridge = bus->self;
-#ifdef CONFIG_PCIE_VIRTUAL_BRIDGE_SUPPORT
-	u16 flags = PCI_COMMAND_IO | PCI_COMMAND_MEMORY;
-	u16 cmd, old_cmd;
-#endif
 
 	dev_info(&bridge->dev, "PCI bridge to [bus %02x-%02x]\n",
 		 bus->secondary, bus->subordinate);
 
 	if (type & IORESOURCE_IO)
-#ifdef CONFIG_PCIE_VIRTUAL_BRIDGE_SUPPORT
-		pci_setup_bridge_io(bus, &flags);
-#else
 		pci_setup_bridge_io(bus);
-#endif
 
 	if (type & IORESOURCE_MEM)
-#ifdef CONFIG_PCIE_VIRTUAL_BRIDGE_SUPPORT
-		pci_setup_bridge_mmio(bus, &flags);
-#else
 		pci_setup_bridge_mmio(bus);
-#endif
 
 	if (type & IORESOURCE_PREFETCH)
 		pci_setup_bridge_mmio_pref(bus);
 
 	pci_write_config_word(bridge, PCI_BRIDGE_CONTROL, bus->bridge_ctl);
-#ifdef CONFIG_PCIE_VIRTUAL_BRIDGE_SUPPORT
-	if (flags) {			
-		pci_read_config_word(bridge, PCI_COMMAND, &old_cmd);	
-		cmd  = old_cmd | (PCI_COMMAND_IO | PCI_COMMAND_MEMORY);
-		if (cmd != old_cmd) {
-			printk("PCI: enabling bridge %s (%04x -> %04x)\n",
-			       pci_name(bridge), old_cmd, cmd);
-			pci_write_config_word(bridge, PCI_COMMAND, cmd);
-		}
-		pci_set_master(bridge);
-	}
-#endif
 }
 
 void pci_setup_bridge(struct pci_bus *bus)

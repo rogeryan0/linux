@@ -146,7 +146,11 @@ static struct srcu_struct pmus_srcu;
  *   1 - disallow cpu events for unpriv
  *   2 - disallow kernel profiling for unpriv
  */
+#ifdef CONFIG_ARCH_ARMADA370
 int sysctl_perf_event_paranoid __read_mostly = 1;
+#else
+int sysctl_perf_event_paranoid __read_mostly = -1;
+#endif
 
 /* Minimum for 512 kiB + 1 user control page */
 int sysctl_perf_event_mlock __read_mostly = 512 + (PAGE_SIZE / 1024); /* 'free' kiB per user */
@@ -5823,6 +5827,9 @@ done:
 		return ERR_PTR(err);
 	}
 
+#ifdef CONFIG_ARCH_ARMADA370
+ 	event->pmu = pmu;
+#endif
 	if (!event->parent) {
 		if (event->attach_state & PERF_ATTACH_TASK)
 			jump_label_inc(&perf_sched_events.key);

@@ -262,7 +262,7 @@ static int ebt_ulog_tg_check(const struct xt_tgchk_param *par)
 	if (uloginfo->qthreshold > EBT_ULOG_MAX_QLEN)
 		uloginfo->qthreshold = EBT_ULOG_MAX_QLEN;
 
-	return true;
+	return 0;
 }
 
 static struct xt_target ebt_ulog_tg_reg __read_mostly = {

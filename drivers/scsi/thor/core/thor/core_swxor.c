@@ -33,7 +33,7 @@ static MV_PVOID sgd_kmap(
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24)
 	kvaddr = page_address(ksg->page);
-	if (!kvaddr) 
+	if (!kvaddr)
 #endif
 		kvaddr = map_sg_page(ksg);
 	kvaddr += ksg->offset;
@@ -84,7 +84,7 @@ static MV_PVOID sgd_kmap_sec(
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24)
 	kvaddr = page_address(ksg->page);
-	if (!kvaddr) 
+	if (!kvaddr)
 #endif
 		kvaddr = map_sg_page_sec(ksg);
 	kvaddr += ksg->offset;
@@ -126,7 +126,7 @@ void CopySGs(
  * use memory with known virtual address.
  */
 void
-CompareSGs( 
+CompareSGs(
 	PCore_Driver_Extension	pCore,
 	PMV_XOR_Request			pXORReq,
 	PMV_SG_Table			srctbl
@@ -151,7 +151,7 @@ CompareSGs(
 
 		sgd_get_vaddr( sgd, p );
 		pSrc[bIndex] = (MV_PU32) p;
-		
+
 		sgd_getsz( sgd, wCount[bIndex] );
 
 	}
@@ -188,7 +188,7 @@ CompareSGs(
 
 				sgd_get_vaddr( sgd, p );
 				pSrc[bIndex] = (MV_PU32) p;
-				
+
 				sgd_getsz( sgd, wCount[bIndex] );
 			}
 		}
@@ -234,7 +234,7 @@ void sg_xor(
 				ptmp = p;
 				mapped = MV_TRUE;
 	#ifdef _OS_LINUX
-				p = (XORUNIT*)(((MV_PU8)p) + 
+				p = (XORUNIT*)(((MV_PU8)p) +
 				              strm[i].sgd[1].size);
 	#endif
 			}
@@ -257,7 +257,7 @@ void sg_xor(
 			if( mapped ){
 				sgd_kunmap( pCore, strm[i].sgd, ptmp );
 			#ifdef _OS_LINUX
-			 	local_irq_restore(flags);	
+				local_irq_restore(flags);
 			#endif
 			}
 		}
@@ -313,7 +313,7 @@ XorSGs(
 	for( bIndex = 0; bIndex < srcCount + dstCount; bIndex++ )
 	{
 		strm[bIndex].off = 0;
-		sgd_iter_get_next( &sg_iter[bIndex], strm[bIndex].sgd );		
+		sgd_iter_get_next( &sg_iter[bIndex], strm[bIndex].sgd );
 		sgd_getsz( strm[bIndex].sgd, wCount[bIndex] );
 
 		if( wCount[bIndex] < count )
@@ -356,12 +356,12 @@ void Core_ModuleSendXORRequest(MV_PVOID This, PMV_XOR_Request pXORReq)
 {
 	PCore_Driver_Extension pCore = (PCore_Driver_Extension)This;
 
-	switch (pXORReq->Request_Type) 
+	switch (pXORReq->Request_Type)
 	{
 		case XOR_REQUEST_WRITE:
-			XorSGs( 
-				pCore, 
-				pXORReq->Source_SG_Table_Count, 
+			XorSGs(
+				pCore,
+				pXORReq->Source_SG_Table_Count,
 				pXORReq->Target_SG_Table_Count,
 				pXORReq->Source_SG_Table_List,
 				pXORReq->Target_SG_Table_List,
@@ -369,8 +369,8 @@ void Core_ModuleSendXORRequest(MV_PVOID This, PMV_XOR_Request pXORReq)
 			break;
 		case XOR_REQUEST_COMPARE:
 			MV_ASSERT( pXORReq->Source_SG_Table_Count == 2 );
-			CompareSGs( 
-				pCore, 
+			CompareSGs(
+				pCore,
 				pXORReq,
 				pXORReq->Source_SG_Table_List );
 			break;
@@ -447,8 +447,8 @@ static void sg_memcpy(
 		}
 	}
 
-	MV_CopyMemory( 
-		pSrc[1]+strm[1].off/sizeof(MV_U32), 
+	MV_CopyMemory(
+		pSrc[1]+strm[1].off/sizeof(MV_U32),
 		pSrc[0]+strm[0].off/sizeof(MV_U32),
 		byte_cnt );
 
@@ -459,7 +459,7 @@ static void sg_memcpy(
 			else
 				sgd_kunmap_sec(pCore,strm[i].sgd, ptmp);
 		}
-	}		
+	}
 
 #ifdef _OS_LINUX
 	if( enabled == 1 )
@@ -500,7 +500,7 @@ void CopySGs(
 	{
 		count = MV_MIN( wCount[0], wCount[1] );
 
-		sg_memcpy( 
+		sg_memcpy(
 			pCore,
 			strm,
 			count

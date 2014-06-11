@@ -50,7 +50,7 @@
 #define INIT_FULLBACKGROUND                     2    //Initialize full LD size background
 #define INIT_NONE                               3
 
-#define INIT_QUICK_WITHOUT_EVENT				0xf	 // Used for QUICK INIT but set cdb[5]to 0xf so driver won't send event. 
+#define INIT_QUICK_WITHOUT_EVENT				0xf	 // Used for QUICK INIT but set cdb[5]to 0xf so driver won't send event.
 
 #define BGA_CONTROL_START                       0
 #define BGA_CONTROL_RESTART                     1
@@ -77,7 +77,7 @@
 #define LD_BGA_INIT_QUICK                       MV_BIT(3)
 #define LD_BGA_INIT_BACK                        MV_BIT(4)
 #define LD_BGA_MIGRATION                        MV_BIT(5)
-#define LD_BGA_INIT_FORE                        MV_BIT(6)                     
+#define LD_BGA_INIT_FORE                        MV_BIT(6)
 
 #define LD_BGA_STATE_NONE                       0
 #define LD_BGA_STATE_RUNNING                    1
@@ -200,7 +200,7 @@
 #define HD_FEATURE_48BITS                       MV_BIT(5)
 #define HD_FEATURE_SMART                        MV_BIT(6)
 
-#define HD_SPEED_1_5G							1		// current 
+#define HD_SPEED_1_5G							1		// current
 #define HD_SPEED_3G								2
 
 #define EXP_SSP                                 MV_BIT(0)
@@ -251,7 +251,7 @@
 #ifdef _OS_BIOS
 #define FREE_BLOCK(Flags)       (Flags&(BLOCK_VALID) == Flags)
 #define ASSIGN_BLOCK(Flags)     (Flags&(BLOCK_VALID|BLOCK_ASSIGNED) == Flags)
-#define INVALID_BLOCK(Flags)    (Flags&(BLOCK_VALID|BLOCK_ASSIGNED) == 0) 
+#define INVALID_BLOCK(Flags)    (Flags&(BLOCK_VALID|BLOCK_ASSIGNED) == 0)
 #endif /* _OS_BIOS */
 
 /* Target device type */
@@ -272,21 +272,21 @@
 #pragma pack(8)
 #endif /* _OS_BIOS */
 
-typedef struct _Link_Endpoint 
+typedef struct _Link_Endpoint
 {
 	MV_U16      DevID;
 	MV_U8       DevType;         /* Refer to DEVICE_TYPE_xxx, (additional
-					type like EDGE_EXPANDER and 
+					type like EDGE_EXPANDER and
 					FANOUT_EXPANDER might be added). */
-	MV_U8       PhyCnt;          /* Number of PHYs for this endpoint.  
+	MV_U8       PhyCnt;          /* Number of PHYs for this endpoint.
 					Greater than 1 if it is wide port. */
-	MV_U8       PhyID[MAX_WIDEPORT_PHYS];    /* Assuming wide port has 
+	MV_U8       PhyID[MAX_WIDEPORT_PHYS];    /* Assuming wide port has
 						    max of 8 PHYs. */
 	MV_U8       SAS_Address[8];  /* Filled with 0 if not SAS device. */
 	MV_U8       Reserved1[8];
 } Link_Endpoint, * PLink_Endpoint;
 
-typedef struct _Link_Entity 
+typedef struct _Link_Entity
 {
 	Link_Endpoint    Parent;
 	MV_U8            Reserved[8];
@@ -318,7 +318,7 @@ typedef struct _Version_Info
 #define FEATURE_BGA_MIGRATION_SUPPORT           MV_BIT(3)
 #define FEATURE_BGA_MEDIAPATROL_SUPPORT         MV_BIT(4)
 
-typedef struct _Adapter_Info 
+typedef struct _Adapter_Info
 {
 	Version_Info    DriverVersion;
 	Version_Info    BIOSVersion;
@@ -328,24 +328,24 @@ typedef struct _Adapter_Info
 	MV_U32          SlotNumber;
 	MV_U32          InterruptLevel;
 	MV_U32          InterruptVector;
-    
+
 	MV_U16          VenID;
 	MV_U16          SubVenID;
 	MV_U16          DevID;
 	MV_U16          SubDevID;
-    
-	MV_U8           PortCount;        /* How many ports, like 4 ports,  
+
+	MV_U8           PortCount;        /* How many ports, like 4 ports,
 					     or 4S1P. */
-	MV_U8           PortSupportType;  /* Like SATA port, SAS port, 
+	MV_U8           PortSupportType;  /* Like SATA port, SAS port,
 					     PATA port, use MV_BIT */
 	MV_U8           Features;         /* Feature bits.  See FEATURE_XXX.
-					     If corresponding bit is set, 
+					     If corresponding bit is set,
 					     that feature is supported. */
 	MV_BOOLEAN      AlarmSupport;
 	MV_U8           RevisionID;		/* Chip revision */
 	MV_U8           Reserved2[11];
-    
-	MV_U8           MaxTotalBlocks;    
+
+	MV_U8           MaxTotalBlocks;
 	MV_U8           MaxBlockPerPD;
 	MV_U8           MaxHD;
 	MV_U8           MaxExpander;
@@ -383,13 +383,13 @@ typedef struct _HD_Info
 	MV_U8           SerialNo[20];
 	MV_U8           FWVersion[8];
 	MV_U64          Size;             /* unit: 1KB */
-	MV_U8           WWN[8];          /* ATA/ATAPI-8 has such definitions 
+	MV_U8           WWN[8];          /* ATA/ATAPI-8 has such definitions
 					     for the identify buffer */
 	MV_U8           CurrentPIOMode;		/* Current PIO mode */
 	MV_U8           CurrentMDMAMode;	/* Current MDMA mode */
 	MV_U8           CurrentUDMAMode;	/* Current UDMA mode */
 	MV_U8			Reserved3[5];
-//	MV_U32			FeatureEnable;		
+//	MV_U32			FeatureEnable;
 
 	MV_U8           Reserved4[80];
 }HD_Info, *PHD_Info;
@@ -398,7 +398,7 @@ typedef struct _HD_MBR_Info
 {
 	MV_U8           HDCount;
 	MV_U8           Reserved[7];
-	MV_U16          HDIDs[MAX_HD_SUPPORTED_API];    
+	MV_U16          HDIDs[MAX_HD_SUPPORTED_API];
 	MV_BOOLEAN      hasMBR[MAX_HD_SUPPORTED_API];
 } HD_MBR_Info, *PHD_MBR_Info;
 
@@ -420,14 +420,14 @@ typedef struct _HD_Block_Info
 	MV_U8           Reserved1[5];
 
 	/* Free is 0xff */
-	MV_U16          BlockIDs[MAX_BLOCK_PER_HD_SUPPORTED_API];  
+	MV_U16          BlockIDs[MAX_BLOCK_PER_HD_SUPPORTED_API];
 }HD_Block_Info, *PHD_Block_Info;
 
 typedef struct _Exp_Info
 {
 	Link_Entity       Link;            /* Including self DevID & DevType */
 	MV_U8             AdapterID;
-	MV_BOOLEAN        Configuring;      
+	MV_BOOLEAN        Configuring;
 	MV_BOOLEAN        RouteTableConfigurable;
 	MV_U8             PhyCount;
 	MV_U16            ExpChangeCount;
@@ -464,7 +464,7 @@ typedef struct _HD_CONFIG
 
 typedef struct  _HD_STATUS
 {
-	MV_BOOLEAN        SmartThresholdExceeded;        
+	MV_BOOLEAN        SmartThresholdExceeded;
 	MV_U8             Reserved[1];
 	MV_U16            HDID;
 }HD_Status, *PHD_Status;
@@ -506,10 +506,10 @@ typedef struct _LD_Info
 	MV_U8             Status;         /* Refer to LD_STATUS_xxx */
 	MV_U8             BGAStatus;      /* Refer to LD_BGA_STATE_xxx */
 	MV_U16            StripeBlockSize;/* unit: 512 bytes */
-	MV_U8             RaidMode;            
+	MV_U8             RaidMode;
 	MV_U8             HDCount;
 
-	MV_U8             CacheMode;      /* Default is CacheMode_Default, 
+	MV_U8             CacheMode;      /* Default is CacheMode_Default,
 					     see above */
 	MV_U8             LD_GUID[MV_GUID_SIZE];
 	MV_U8             SectorCoefficient; /* (sector size) 1=>512 (default)
@@ -522,8 +522,8 @@ typedef struct _LD_Info
 	MV_U8             Name[LD_MAX_NAME_LENGTH];
 
 	MV_U16            BlockIDs[MAX_HD_SUPPORTED_API];        /* 32 */
-/* 
- * According to BLOCK ID, to get the related HD ID, then WMRU can 
+/*
+ * According to BLOCK ID, to get the related HD ID, then WMRU can
  * draw the related graph like above.
  */
 	MV_U8             SubLDCount;     /* for raid 10, 50,60 */
@@ -543,12 +543,12 @@ typedef struct _Create_LD_Param
 	MV_U8             CachePolicy;    /* please refer to the definitions
 					     of CACHEMODE_XXXX. */
 
-	MV_U8             InitializationOption;/* please refer to the 
+	MV_U8             InitializationOption;/* please refer to the
 						 definitions of INIT_XXXX. */
-	MV_U8             SectorCoefficient; /* (sector size) 1=>512 
+	MV_U8             SectorCoefficient; /* (sector size) 1=>512
 						(default), 2=>1024, 4=>2048,
 						8=>4096 */
-	MV_U16            LDID;               /* ID of the LD to be migrated 
+	MV_U16            LDID;               /* ID of the LD to be migrated
 						 or expanded */
 	MV_U8             Reserved2[4];
 
@@ -570,9 +570,9 @@ typedef struct _LD_STATUS
 
 typedef struct    _LD_Config
 {
-	MV_U8            CacheMode;        /* See definition 4.4.1 
+	MV_U8            CacheMode;        /* See definition 4.4.1
 					      CacheMode_xxx */
-	MV_U8            Reserved1;        
+	MV_U8            Reserved1;
 	MV_BOOLEAN       AutoRebuildOn;    /* 1- AutoRebuild On */
 	MV_U8            Status;
 	MV_U16           LDID;
@@ -585,10 +585,10 @@ typedef struct    _LD_Config
 typedef struct    _TargetLunType
 {
 	MV_U8            AdapterID;
-	MV_U8            TargetID;       
-	MV_U8            Lun;        
+	MV_U8            TargetID;
+	MV_U8            Lun;
 	MV_U8            Type;		// TARGET_TYPE_LD or TARGET_TYPE_FREE_PD
-	MV_U16           DeviceID;	// LD ID or PD ID depends on Type  
+	MV_U16           DeviceID;	// LD ID or PD ID depends on Type
 	MV_U8            Reserved[30];
 }TargetLunType, * PTargetLunType;
 
@@ -600,7 +600,7 @@ typedef struct _HD_MPSTATUS
 	MV_U16            Percentage;     /* xx% */
 	MV_U8             Status;         /* Refer to HD_BGA_STATE_xxx */
 	MV_U8             Type;
-	MV_U8             Reserved[50];  
+	MV_U8             Reserved[50];
 }HD_MPStatus, *PHD_MPStatus;
 
 typedef struct _HD_BGA_STATUS
@@ -610,7 +610,7 @@ typedef struct _HD_BGA_STATUS
 	MV_U8             Bga;             /* Refer to HD_BGA_TYPE_xxx */
 	MV_U8             Status;          /* Refer to HD_STATUS_xxx */
 	MV_U8             BgaStatus;         /* Refer to HD_BGA_STATE_xxx */
-	MV_U8             Reserved[1];  
+	MV_U8             Reserved[1];
 }HD_BGA_Status, *PHD_BGA_Status;
 
 typedef struct _RCT_Record{
@@ -668,7 +668,7 @@ typedef struct {
 	// We put Data_Buffer[] at the very beginning of this structure because SCSI commander did so.
 	MV_U8			Data_Buffer[MAX_PASS_THRU_DATA_BUFFER_SIZE];  // set by driver if read, by application if write
 	MV_U8			Reserved1[128];
-    MV_U32			Data_Length;	// set by driver if read, by application if write 
+    MV_U32			Data_Length;	// set by driver if read, by application if write
 	MV_U16			DevId;		//	PD ID (used by application only)
 	MV_U8			CDB_Type;	// define a CDB type for each CDB category (used by application only)
 	MV_U8			Reserved2;

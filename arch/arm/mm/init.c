@@ -35,6 +35,13 @@
 #include <asm/memblock.h>
 
 #include "mm.h"
+#ifdef CONFIG_MV_SUPPORT_64KB_PAGE_SIZE
+#define FREEAREA_ROUND_START(addr)	((((unsigned long)addr) + ((PAGE_SIZE) - 1)) & (~((PAGE_SIZE) - 1)))
+#define FREEAREA_ROUND_END(addr)	(((unsigned long)addr) & (~((PAGE_SIZE) - 1)))
+#else
+#define FREEAREA_ROUND_START(addr)	(addr)
+#define FREEAREA_ROUND_END(addr)	(addr)
+#endif
 
 static unsigned long phys_initrd_start __initdata = 0;
 static unsigned long phys_initrd_size __initdata = 0;
@@ -164,7 +171,6 @@ static void __init arm_bootmem_init(unsigned long start_pfn,
 	boot_pages = bootmem_bootmap_pages(end_pfn - start_pfn);
 	bitmap = memblock_alloc_base(boot_pages << PAGE_SHIFT, L1_CACHE_BYTES,
 				__pfn_to_phys(end_pfn));
-	printk("%s: boot_pages=0x%x bitmap=0x%x\n", __func__, boot_pages, bitmap);
 
 	/*
 	 * Initialise the bootmem allocator, handing the
@@ -413,7 +419,7 @@ void __init bootmem_init(void)
 
 static inline int free_area(unsigned long pfn, unsigned long end, char *s)
 {
-	unsigned int pages = 0, size = (end - pfn) << (PAGE_SHIFT - 10);
+	unsigned int pages = 0, size = ((end > pfn) ? ((end - pfn) << (PAGE_SHIFT - 10)) : 0);
 
 	for (; pfn < end; pfn++) {
 		struct page *page = pfn_to_page(pfn);
@@ -728,8 +734,8 @@ void free_initmem(void)
 
 	poison_init_mem(__init_begin, __init_end - __init_begin);
 	if (!machine_is_integrator() && !machine_is_cintegrator())
-		totalram_pages += free_area(__phys_to_pfn(__pa(__init_begin)),
-					    __phys_to_pfn(__pa(__init_end)),
+		totalram_pages += free_area(__phys_to_pfn(__pa(FREEAREA_ROUND_START(__init_begin))),
+					    __phys_to_pfn(__pa(FREEAREA_ROUND_END(__init_end))),
 					    "init");
 }
 
@@ -739,6 +745,8 @@ static int keep_initrd;
 
 void free_initrd_mem(unsigned long start, unsigned long end)
 {
+	start = FREEAREA_ROUND_START(start);
+	end = FREEAREA_ROUND_END(end);
 	if (!keep_initrd) {
 		poison_init_mem((void *)start, PAGE_ALIGN(end) - start);
 		totalram_pages += free_area(__phys_to_pfn(__pa(start)),

@@ -63,7 +63,7 @@ void MV_CopySGTable(PMV_SG_Table pTargetSGTable, PMV_SG_Table pSourceSGTable)
 	pTargetSGTable->Valid_Entry_Count = pSourceSGTable->Valid_Entry_Count;
 	pTargetSGTable->Flag = pSourceSGTable->Flag;
 	pTargetSGTable->Byte_Count = pSourceSGTable->Byte_Count;
-	MV_CopyMemory(pTargetSGTable->Entry_Ptr, pSourceSGTable->Entry_Ptr, 
+	MV_CopyMemory(pTargetSGTable->Entry_Ptr, pSourceSGTable->Entry_Ptr,
 					sizeof(MV_SG_Entry)*pTargetSGTable->Valid_Entry_Count);
 
 }
@@ -83,7 +83,7 @@ MV_U64 CPU_TO_BIG_ENDIAN_64(MV_U64 x)
 MV_BOOLEAN MV_Equals(
 	IN MV_PU8		des,
 	IN MV_PU8		src,
-	IN MV_U8		len							 
+	IN MV_U8		len
 )
 {
 	MV_U8 i;
@@ -124,7 +124,7 @@ void SGTable_Append(
 	pSGEntry = &pSGTable->Entry_Ptr[pSGTable->Valid_Entry_Count];
 
 	MV_ASSERT(pSGTable->Valid_Entry_Count < pSGTable->Max_Entry_Count);
-	/* 
+	/*
 	 * Workaround hardware issue:
 	 * If the transfer size is odd, some request cannot be finished.
 	 * Hopefully the workaround won't damage the system.
@@ -242,8 +242,8 @@ void MV_DecodeReadWriteCDB(
 	MV_LBA tmpLBA;
 	MV_U32 tmpSectorCount;
 
-	if ((!SCSI_IS_READ(Cdb[0])) && 
-	    (!SCSI_IS_WRITE(Cdb[0])) && 
+	if ((!SCSI_IS_READ(Cdb[0])) &&
+	    (!SCSI_IS_WRITE(Cdb[0])) &&
 	    (!SCSI_IS_VERIFY(Cdb[0])))
 		return;
 
@@ -259,17 +259,17 @@ void MV_DecodeReadWriteCDB(
 	case SCSI_CMD_READ_10:
 	case SCSI_CMD_WRITE_10:
 	case SCSI_CMD_VERIFY_10:
-		tmpLBA.value = (MV_U32)(((MV_U32)Cdb[2]<<24) | 
-					((MV_U32)Cdb[3]<<16) | 
-					((MV_U32)Cdb[4]<<8) | 
+		tmpLBA.value = (MV_U32)(((MV_U32)Cdb[2]<<24) |
+					((MV_U32)Cdb[3]<<16) |
+					((MV_U32)Cdb[4]<<8) |
 					((MV_U32)Cdb[5]));
 		tmpSectorCount = ((MV_U32)Cdb[7]<<8) | (MV_U32)Cdb[8];
 		break;
 	case SCSI_CMD_READ_12:
 	case SCSI_CMD_WRITE_12:
-		tmpLBA.value = (MV_U32)(((MV_U32)Cdb[2]<<24) | 
-					((MV_U32)Cdb[3]<<16) | 
-					((MV_U32)Cdb[4]<<8) | 
+		tmpLBA.value = (MV_U32)(((MV_U32)Cdb[2]<<24) |
+					((MV_U32)Cdb[3]<<16) |
+					((MV_U32)Cdb[4]<<8) |
 					((MV_U32)Cdb[5]));
 		tmpSectorCount = (MV_U32)(((MV_U32)Cdb[6]<<24) |
 					  ((MV_U32)Cdb[7]<<16) |
@@ -279,9 +279,9 @@ void MV_DecodeReadWriteCDB(
 	case SCSI_CMD_READ_16:
 	case SCSI_CMD_WRITE_16:
 	case SCSI_CMD_VERIFY_16:
-		tmpLBA.parts.high = (MV_U32)(((MV_U32)Cdb[2]<<24) | 
-				       ((MV_U32)Cdb[3]<<16) | 
-				       ((MV_U32)Cdb[4]<<8) | 
+		tmpLBA.parts.high = (MV_U32)(((MV_U32)Cdb[2]<<24) |
+				       ((MV_U32)Cdb[3]<<16) |
+				       ((MV_U32)Cdb[4]<<8) |
 				       ((MV_U32)Cdb[5]));
 		tmpLBA.parts.low = (MV_U32)(((MV_U32)Cdb[6]<<24) |
 				      ((MV_U32)Cdb[7]<<16) |
@@ -373,7 +373,7 @@ void MV_DumpSGTable(PMV_SG_Table pSGTable)
 	for ( i=0; i<pSGTable->Valid_Entry_Count; i++ )
 	{
 		pSGEntry = &pSGTable->Entry_Ptr[i];
-		MV_PRINT("%d: addr(0x%x-0x%x), size(0x%x).\n", 
+		MV_PRINT("%d: addr(0x%x-0x%x), size(0x%x).\n",
 			i, pSGEntry->Base_Address_High, pSGEntry->Base_Address, pSGEntry->Size);
 	}
 #endif
@@ -475,7 +475,7 @@ static MV_U32  BASEATTR crc_tab[] = {
 
 /* Calculate CRC and generate PD_Reference number */
 MV_U32 MV_CRC(
-	IN	MV_PU8		pData, 
+	IN	MV_PU8		pData,
 	IN	MV_U16		len
 )
 {
@@ -590,7 +590,7 @@ void List_Del(struct list_head *entry)
 
 	if(likely(entry->prev->next == entry) && likely(entry->next->prev == entry))
 		__list_del(entry->prev, entry->next);
-	
+
 	entry->next = NULL;
 	entry->prev = NULL;
 }
@@ -606,7 +606,7 @@ void List_Del(List_Head *entry)
 #endif
 //	list_del(entry);	//Not use kernel function, which set next,prev not NULL but LIST_POISON1 under DEBUG mode
 	__list_del(entry->prev, entry->next);
-	entry->next = NULL;	
+	entry->next = NULL;
 	entry->prev = NULL;
 
 //	if((entry->prev) || (entry->next))
@@ -624,7 +624,7 @@ void List_Add(List_Head *new_one, List_Head *head)
           BUG_ON(!head);
           BUG_ON(!head->prev);
           BUG_ON(!head->next);
-	
+
           BUG_ON(!new_one);
 
 #ifdef MV_DEBUG
@@ -634,7 +634,7 @@ void List_Add(List_Head *new_one, List_Head *head)
 #endif
         BUG_ON(!new_one->next);
          BUG_ON(!new_one->prev);
-         
+
 }
 
 void List_AddTail(List_Head *new_one, List_Head *head)
@@ -642,7 +642,7 @@ void List_AddTail(List_Head *new_one, List_Head *head)
           BUG_ON(!head);
           BUG_ON(!head->prev);
           BUG_ON(!head->next);
-	
+
           BUG_ON(!new_one);
 
 #ifdef MV_DEBUG
@@ -652,7 +652,7 @@ void List_AddTail(List_Head *new_one, List_Head *head)
 #endif
         BUG_ON(!new_one->next);
          BUG_ON(!new_one->prev);
-         
+
 }
 
 
@@ -689,13 +689,13 @@ struct list_head *List_GetFirst(struct list_head *head)
 #endif
 	}
 
-      	if (list_empty(head))
+	if (list_empty(head))
 		return NULL;
 
         one = head->next;
         BUG_ON(!one->next);
         BUG_ON(!one->prev);
-      	List_Del(one);
+	List_Del(one);
 
 	if (unlikely(head->prev->next != head)) {
 		MV_DPRINT(( "List_GetFirst after del corruption. prev->next should be 0x%p, "
@@ -711,7 +711,7 @@ struct list_head *List_GetFirst(struct list_head *head)
 		MV_DASSERT(0);
 #endif
 	}
-      	
+
         return one;
 }
 
@@ -734,4 +734,3 @@ struct list_head *List_GetLast(struct list_head *head)
 
 
 #endif
-

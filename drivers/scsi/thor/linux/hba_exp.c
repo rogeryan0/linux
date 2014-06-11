@@ -4,14 +4,14 @@
 #include "hba_exp.h"
 
 /*
- * 
+ *
  * Other exposed functions
  *
  */
 int __mv_is_mod_all_started(struct mv_adp_desc *adp_desc);
-/* 
- * The extension is the calling module extension. 
- *   It can be any module extension. 
+/*
+ * The extension is the calling module extension.
+ *   It can be any module extension.
  */
 void HBA_ModuleStarted(struct mv_mod_desc *mod_desc)
 {
@@ -80,12 +80,12 @@ void hba_map_sg_to_buffer(void *preq)
 	scmd = (struct scsi_cmnd *) req->Org_Req;
 	sg = (struct scatterlist *) mv_rq_bf(scmd);
 
-	
+
 	if (mv_use_sg(scmd)) {
 		if (mv_use_sg(scmd) > 1)
-			MV_DBG(DMSG_SCSI, 
+			MV_DBG(DMSG_SCSI,
 			       "_MV_ more than 1 sg entry in an inst cmd.\n");
-	
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 14)
 		req->Data_Buffer = kmalloc(sg->length, GFP_ATOMIC);
 		if (req->Data_Buffer) {
@@ -134,11 +134,11 @@ MV_PVOID HBA_GetModuleExtension(MV_PVOID ext, MV_U32 mod_id)
 	struct mv_adp_desc *hba_desc = mod_desc->hba_desc;
 	MV_ASSERT(mod_id<MAX_MODULE_NUMBER);
 	BUG_ON(NULL == mod_desc);
-	list_for_each_entry(mod_desc, &hba_desc->online_module_list, 
+	list_for_each_entry(mod_desc, &hba_desc->online_module_list,
 			    mod_entry)
 	{
 		BUG_ON(NULL == mod_desc);
-		if (mod_desc->status != MV_MOD_GONE) 
+		if (mod_desc->status != MV_MOD_GONE)
 		{
 			if ((mod_desc->module_id == mod_id) && (mod_desc->extension))
 			{
@@ -175,7 +175,7 @@ void HBA_RequestTimer(
 	PHBA_Extension pHBA   = (PHBA_Extension)HBA_GetModuleExtension(extension,MODULE_HBA);
 	PTimer_Module pTimer = &pHBA->Timer_Module;
 	u64 jif_offset;
-	
+
 	pTimer->routine = routine;
 	pTimer->context = extension;
 	del_timer(&pHBA->timer);
@@ -190,12 +190,12 @@ void HBA_RequestTimer(
 void hba_spin_lock_irq(spinlock_t* plock)
 {
 	WARN_ON(irqs_disabled());
-	spin_lock_irq(plock);                             	
+	spin_lock_irq(plock);
 }
 
 void hba_spin_unlock_irq(spinlock_t* plock)
 {
-	spin_unlock_irq(plock);                             	
+	spin_unlock_irq(plock);
 }
 
 
@@ -240,3 +240,66 @@ MV_BOOLEAN __is_scsi_cmd_simulated(MV_U8 cmd_type)
 	}
 }
 
+MV_U32 hba_parse_ata_protocol(struct scsi_cmnd *scmd)
+{
+	MV_U8 protocol, t_length, t_dir;
+	MV_U32 cmd_flag =0;
+
+	protocol = (scmd->cmnd[1]>> 1) & 0x0F;
+	if(protocol== HARD_RESET || protocol==SRST){
+		MV_PRINT("Unsupported ATA Protocol = 0x%x\n", protocol);
+		return cmd_flag;
+	}
+
+	t_length = scmd->cmnd[2] & 0x03;
+	t_dir = (scmd->cmnd[2] >> 3) & 0x01;
+
+	if (t_length == 0){
+		cmd_flag = CMD_FLAG_NON_DATA;
+	}else {
+		if (t_dir == 0)
+			cmd_flag = CMD_FLAG_DATA_OUT;
+		else
+			cmd_flag = CMD_FLAG_DATA_IN;
+	}
+	switch (protocol) {
+	case NON_DATA:
+		cmd_flag |= CMD_FLAG_NON_DATA;
+		break;
+	case PIO_DATA_IN:
+		cmd_flag |= CMD_FLAG_PIO;
+		if (!(cmd_flag & CMD_FLAG_DATA_IN))
+			cmd_flag |= CMD_FLAG_DATA_IN;
+		break;
+	case PIO_DATA_OUT:
+		cmd_flag |= CMD_FLAG_PIO;
+		if (!(cmd_flag & CMD_FLAG_DATA_OUT))
+			cmd_flag |= CMD_FLAG_DATA_OUT;
+		break;
+	case DMA:
+		cmd_flag |= CMD_FLAG_DMA;
+		break;
+	case DMA_QUEUED:
+		cmd_flag |= (CMD_FLAG_DMA | CMD_FLAG_TCQ);
+		break;
+	case DEVICE_DIAGNOSTIC:
+	case DEVICE_RESET:
+		/* Do nothing*/
+		break;
+	case UDMA_DATA_IN:
+		cmd_flag |= CMD_FLAG_DMA;
+		break;
+	case UDMA_DATA_OUT:
+		cmd_flag |= CMD_FLAG_DMA;
+		break;
+	case FPDMA:
+		cmd_flag |= (CMD_FLAG_DMA | CMD_FLAG_NCQ);
+		break;
+	case RTN_INFO:
+		break;
+	default:
+		MV_PRINT("Unsupported ATA Protocol = 0x%x\n", protocol);
+		break;
+	}
+	return cmd_flag;
+}

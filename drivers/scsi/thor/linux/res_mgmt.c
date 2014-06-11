@@ -15,10 +15,10 @@ struct mv_request_pool *res_reserve_req_pool(MV_U32 mod_id,
 
 	MV_DBG(DMSG_RES, "module %u reserves reqcount=%d, sgcount=%d,request pool of size %lu.\n",
 	       mod_id,size,sg_count,
-	       (unsigned long) (sizeof(struct _MV_Request) * size + 
+	       (unsigned long) (sizeof(struct _MV_Request) * size +
 				sizeof(MV_SG_Entry)* sg_count * size));
 
-	/* 
+	/*
 	 * since we almost always use sgd_t with pctx, we need x2 memory
 	 * than normal sgd_t table
 	 */
@@ -53,7 +53,7 @@ struct mv_request_pool *res_reserve_req_pool(MV_U32 mod_id,
 	pool->size    = size;
 	pool->req_mem = (void *) req;
 	pool->sg_mem = (void *)sg;
-	
+
 	for (i = 0; i < size; i++) {
 		//MV_DBG(DMSG_RES, "req no.%d at %p with sg at %p.\n",
 		 //      i, req, sg);
@@ -92,9 +92,9 @@ struct mv_request_pool *res_reserve_req_pool(MV_U32 mod_id,
 		req++;
 		sg += sg_count;
 	}
-	
+
 #endif
-		
+
 	return pool;
 
 res_err_sg:
@@ -124,7 +124,7 @@ struct _MV_Request *res_get_req_from_pool(struct mv_request_pool *pool)
 		OSSW_SPIN_UNLOCK_IRQRESTORE(&pool->lock, flags);
 		return NULL;
 	}
-	
+
 	req = list_entry(pool->free_list.next, struct _MV_Request, pool_entry);
 	MV_ZeroMvRequest(req); /* FIX: we can do better than this */
 	list_move_tail(pool->free_list.next, &pool->use_list);
@@ -132,7 +132,7 @@ struct _MV_Request *res_get_req_from_pool(struct mv_request_pool *pool)
 	mv_init_os_req_timer(req);
 #endif
 	OSSW_SPIN_UNLOCK_IRQRESTORE(&pool->lock, flags);
-	
+
 	return req;
 }
 
@@ -149,13 +149,13 @@ void res_free_req_to_pool(struct mv_request_pool *pool,
 
 void res_dump_pool_info(struct mv_request_pool *pool)
 {
-	
+
 }
 
 void res_release_req_pool(struct mv_request_pool *pool)
 {
 	BUG_ON(NULL == pool);
-	
+
 	MV_DBG(DMSG_RES, "module %d release pool at %p.\n",
 	       pool->mod_id, pool);
 	vfree(pool->req_mem);
@@ -171,7 +171,7 @@ struct _MV_Request *get_ioctl_req_from_pool(struct mv_request_pool *pool)
 {
 	struct _MV_Request *req;
 	unsigned long flags;
-	
+
 	BUG_ON(pool == NULL);
 	OSSW_SPIN_LOCK_IRQSAVE(&pool->ioctl_lock, flags);
 	if (list_empty(&pool->ioctl_free_list)) {
@@ -179,12 +179,12 @@ struct _MV_Request *get_ioctl_req_from_pool(struct mv_request_pool *pool)
 		OSSW_SPIN_UNLOCK_IRQRESTORE(&pool->ioctl_lock, flags);
 		return NULL;
 	}
-	
+
 	req = list_entry(pool->ioctl_free_list.next, struct _MV_Request, pool_entry);
-	MV_ZeroMvRequest(req); 
+	MV_ZeroMvRequest(req);
 	list_move_tail(pool->ioctl_free_list.next, &pool->ioctl_use_list);
 	OSSW_SPIN_UNLOCK_IRQRESTORE(&pool->ioctl_lock, flags);
-	
+
 	return req;
 }
 

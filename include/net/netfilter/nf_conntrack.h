@@ -128,6 +128,21 @@ struct nf_conn {
 	u_int32_t secmark;
 #endif
 
+#if defined(CONFIG_NETFILTER_XT_MATCH_LAYER7) || \
+    defined(CONFIG_NETFILTER_XT_MATCH_LAYER7_MODULE)
+	struct {
+		/*
+		 * e.g. "http". NULL before decision. "unknown" after decision
+		 * if no match.
+		 */
+		char *app_proto;
+		/*
+		 * application layer data so far. NULL after match decision.
+		 */
+		char *app_data;
+		unsigned int app_data_len;
+	} layer7;
+#endif
 	/* Extensions */
 	struct nf_ct_ext *ext;
 #ifdef CONFIG_NET_NS
@@ -326,7 +341,7 @@ void init_nf_conntrack_hash_rnd(void);
 #define NF_CT_STAT_INC(net, count)
 #define NF_CT_STAT_INC_ATOMIC(net, count)
 
-#else 
+#else
 
 #define NF_CT_STAT_INC(net, count)	\
 	__this_cpu_inc((net)->ct.stat->count)

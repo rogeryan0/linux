@@ -12,6 +12,19 @@
 #ifndef __ARM_PERF_EVENT_H__
 #define __ARM_PERF_EVENT_H__
 
+#ifdef CONFIG_ARCH_ARMADA370
+/*
+ * NOP: on *most* (read: all supported) ARM platforms, the performance
+ * counter interrupts are regular interrupts and not an NMI. This
+ * means that when we receive the interrupt we can call
+ * perf_event_do_pending() that handles all of the work with
+ * interrupts enabled.
+ */
+static inline void
+set_perf_event_pending(void)
+{
+}
+#endif
 /* ARM performance counters start from 1 (in the cp15 accesses) so use the
  * same indexes here for consistency. */
 #define PERF_EVENT_INDEX_OFFSET 1
@@ -26,6 +39,7 @@ enum arm_perf_pmu_ids {
 	ARM_PERF_PMU_ID_CA9,
 	ARM_PERF_PMU_ID_CA5,
 	ARM_PERF_PMU_ID_CA15,
+	MRVL_PERF_PMU_ID_PJ4B,
 	ARM_NUM_PMU_IDS,
 };
 

@@ -45,7 +45,7 @@ void Device_SoftReset(PDomain_Port pPort, PDomain_Device pDevice)
 	pDevice->State = DEVICE_STATE_RESET_DONE;
 	mvDeviceStateMachine (pCore, pDevice);
 }
-#endif	/* #ifdef SUPPORT_HOT_PLUG */ 
+#endif	/* #ifdef SUPPORT_HOT_PLUG */
 
 PMV_Request GetInternalReqFromPool( PCore_Driver_Extension pCore )
 {
@@ -58,7 +58,7 @@ PMV_Request GetInternalReqFromPool( PCore_Driver_Extension pCore )
 void ReleaseInternalReqToPool( PCore_Driver_Extension pCore, PMV_Request pReq)
 {
 	MV_ZeroMvRequest(pReq);
-	List_AddTail( &pReq->Queue_Pointer, &pCore->Internal_Req_List );	
+	List_AddTail( &pReq->Queue_Pointer, &pCore->Internal_Req_List );
 }
 
 /*
@@ -67,11 +67,11 @@ void ReleaseInternalReqToPool( PCore_Driver_Extension pCore, PMV_Request pReq)
 
 #ifdef SUPPORT_PM
 void mvPMDevReWrReg(
-	PDomain_Port pPort, 
-	MV_U8 read, 
-	MV_U8 PMreg, 
-	MV_U32 regVal, 
-	MV_U8 PMport, 
+	PDomain_Port pPort,
+	MV_U8 read,
+	MV_U8 PMreg,
+	MV_U32 regVal,
+	MV_U8 PMport,
 	MV_BOOLEAN control)
 {
 	/* Always use the last slot for PM */
@@ -90,21 +90,21 @@ void mvPMDevReWrReg(
 
 	MV_ZeroMemory(header, sizeof(MV_Command_Header));
 	MV_ZeroMemory(pCmdTable, sizeof(MV_Command_Table));
-	
+
 	header->FIS_Length = FIS_REG_H2D_SIZE_IN_DWORD;
 	header->PM_Port = control? 0xF : PMport;
-	
+
 	*((MV_U16 *) header) = CPU_TO_LE_16( *((MV_U16 *) header) );
 	header->Table_Address = CPU_TO_LE_32(pPort->Cmd_Table_DMA.parts.low + SATA_CMD_TABLE_SIZE*tag);
 	header->Table_Address_High = CPU_TO_LE_32(pPort->Cmd_Table_DMA.parts.high);
-	
+
 	pFIS->FIS_Type = SATA_FIS_TYPE_REG_H2D;
 	pFIS->PM_Port = control? 0xF : PMport;
 	pFIS->Command =  (read)?MV_ATA_COMMAND_PM_READ_REG : MV_ATA_COMMAND_PM_WRITE_REG;
 	pFIS->Features = PMreg;
 	pFIS->Device = PMport;
 	pFIS->C = 1;
-	
+
 	if (!read)
 	{
 		pFIS->LBA_Low =  (MV_U8)((regVal & 0xff00) >> 8);
@@ -114,10 +114,10 @@ void mvPMDevReWrReg(
 	}
 
 	MV_DASSERT( (MV_REG_READ_DWORD(portMmio, PORT_CMD_ISSUE)&(1<<tag))==0 );
-	
+
 	MV_REG_WRITE_DWORD(portMmio, PORT_CMD_ISSUE, 1<<tag);
 	MV_REG_READ_DWORD(portMmio, PORT_CMD_ISSUE);	/* flush */
-	
+
 	//temp = MV_REG_READ_DWORD(portMmio, PORT_SCR_ERR);
 	//MV_REG_WRITE_DWORD(portMmio, PORT_SCR_ERR, temp);
 	//temp = MV_REG_READ_DWORD(portMmio, PORT_IRQ_STAT);
@@ -139,9 +139,9 @@ void mvPMDevReWrReg(
 		MV_DPRINT(("read/write PM register: CI not cleared!\n"));
 
 	mvEnableIntr(portMmio, old_stat);
-	
+
 }
-static MV_U8 mvGetSataDeviceType(PDomain_Port pPort)
+MV_U8 mvGetSataDeviceType(PDomain_Port pPort)
 {
 	MV_LPVOID portMmio = pPort->Mmio_Base;
 	MV_U32 tmp;
@@ -180,15 +180,15 @@ MV_BOOLEAN SATA_DoSoftReset(PDomain_Port pPort, MV_U8 PMPort)
 	{
 		MV_ZeroMemory(header, sizeof(MV_Command_Header));
 		MV_ZeroMemory(pCmdTable, sizeof(MV_Command_Table));
-	
+
 		header->FIS_Length = FIS_REG_H2D_SIZE_IN_DWORD;
 		header->Reset = (reset)?1:0;
 		header->PM_Port = PMPort;
-		
+
 		*((MV_U16 *) header) = CPU_TO_LE_16( *((MV_U16 *) header) );
 		header->Table_Address = CPU_TO_LE_32(pPort->Cmd_Table_DMA.parts.low + SATA_CMD_TABLE_SIZE*tag);
 		header->Table_Address_High = CPU_TO_LE_32(pPort->Cmd_Table_DMA.parts.high);
-	
+
 		pFIS->FIS_Type = SATA_FIS_TYPE_REG_H2D;
 		pFIS->PM_Port = PMPort;
 //		pFIS->Device = 0x40;
@@ -208,10 +208,10 @@ MV_BOOLEAN SATA_DoSoftReset(PDomain_Port pPort, MV_U8 PMPort)
 			temp = MV_REG_READ_DWORD(portMmio, PORT_CMD_ISSUE) & (1<<tag);
 			count++;
 			HBA_SleepMillisecond(pCore, 10);
-		} while (temp != 0 && count < 1000);
+		} while (temp != 0 && count < 3000);
 
 	}while(reset==0);
-	
+
 	Tag_ReleaseOne(&pPort->Tag_Pool, tag);
 	mvEnableIntr(portMmio, old_stat);
 #if 0//def MV_DEBUG
@@ -272,7 +272,7 @@ MV_BOOLEAN SATA_SoftResetDevice(PDomain_Port pPort, MV_U8 portNum)
 	return MV_FALSE;
 }
 
-MV_BOOLEAN SATA_SoftResetPMDevice(PDomain_Port pPort, MV_U8 portNum) 
+MV_BOOLEAN SATA_SoftResetPMDevice(PDomain_Port pPort, MV_U8 portNum)
 {
 #ifndef _OS_LINUX
 	PCore_Driver_Extension pCore = pPort->Core_Extension;
@@ -281,11 +281,11 @@ MV_BOOLEAN SATA_SoftResetPMDevice(PDomain_Port pPort, MV_U8 portNum)
 	MV_U32 status, loop = 5000;
 //	MV_U32 PMPort;
 
-	
+
 	if (! (SATA_DoSoftReset(pPort, portNum)) )
 		return MV_FALSE;
 
-	
+
 	while(loop>0)
 	{
 		status = MV_REG_READ_DWORD(portMmio, PORT_TFDATA) & 0xff;
@@ -298,7 +298,7 @@ MV_BOOLEAN SATA_SoftResetPMDevice(PDomain_Port pPort, MV_U8 portNum)
 			return MV_TRUE;
 		}
 		HBA_SleepMicrosecond(pCore, 1000);
-		
+
 		loop--;
 	}
 
@@ -325,7 +325,7 @@ MV_BOOLEAN PMPortDeviceDetected(PDomain_Port pPort, MV_U8 portNum)
 
 			if (((temp >> 16) & 0xF0) == 0xF0)
 				valid = MV_TRUE;
-              
+
 			read_result = MV_REG_READ_DWORD( portMmio, PORT_PM_FIS_0 );
 		} while (valid == MV_FALSE);
 
@@ -352,13 +352,13 @@ void SATA_InitPMPort (PDomain_Port pPort, MV_U8 portNum)
 	MV_U32 signature, tmp;
 #ifdef SUPPORT_ERROR_HANDLING
 	#ifdef RAID_DRIVER
-	MV_PVOID pUpperLayer = HBA_GetModuleExtension(pCore, MODULE_RAID);	
+	MV_PVOID pUpperLayer = HBA_GetModuleExtension(pCore, MODULE_RAID);
 	#else
 	MV_PVOID pUpperLayer = HBA_GetModuleExtension(pCore, MODULE_HBA);
 	#endif
 	struct mod_notif_param param;
 #endif
-	if( PMPortDeviceDetected(pPort, portNum) ) 
+	if( PMPortDeviceDetected(pPort, portNum) )
 	{
 		/*
 		This delay is for SiliconImage PM
@@ -369,11 +369,11 @@ void SATA_InitPMPort (PDomain_Port pPort, MV_U8 portNum)
 		{
 			signature = MV_REG_READ_DWORD(pPort->Mmio_Base, PORT_PM_FIS_0);
 
-			if ( signature==0xEB140101 )				/* ATAPI signature */	
-				pDevice->Device_Type |= DEVICE_TYPE_ATAPI;			
+			if ( signature==0xEB140101 )				/* ATAPI signature */
+				pDevice->Device_Type |= DEVICE_TYPE_ATAPI;
 			else
 				MV_DASSERT( signature==0x00000101 );	/* ATA signature */
-	
+
 			pDevice->Internal_Req = GetInternalReqFromPool(pCore);
 			if( pDevice->Internal_Req == NULL )
 			{
@@ -382,7 +382,7 @@ void SATA_InitPMPort (PDomain_Port pPort, MV_U8 portNum)
 				pDevice->Status = DEVICE_STATUS_NO_DEVICE;
 				pDevice->State = DEVICE_STATE_INIT_DONE;
 			}
-			else 
+			else
 			{
 				pDevice->Status = DEVICE_STATUS_EXISTING|DEVICE_STATUS_FUNCTIONAL;
 				pDevice->State = DEVICE_STATE_RESET_DONE;
@@ -390,7 +390,7 @@ void SATA_InitPMPort (PDomain_Port pPort, MV_U8 portNum)
 				pPort->Device_Number++;
 			}
 		}
-		else 
+		else
 		{
 			MV_DPRINT(("soft reset failed on PM port %d\n", portNum));
 
@@ -405,8 +405,8 @@ void SATA_InitPMPort (PDomain_Port pPort, MV_U8 portNum)
 				#ifdef RAID_DRIVER
 				RAID_ModuleNotification(pUpperLayer, EVENT_DEVICE_REMOVAL, &param);
 				#else
-				HBA_ModuleNotification(pUpperLayer, 
-						       EVENT_DEVICE_REMOVAL, 
+				HBA_ModuleNotification(pUpperLayer,
+						       EVENT_DEVICE_REMOVAL,
 						       &param);
 				#endif
 			}
@@ -414,7 +414,7 @@ void SATA_InitPMPort (PDomain_Port pPort, MV_U8 portNum)
 			pDevice->Status = DEVICE_STATUS_EXISTING;
 			pDevice->State = DEVICE_STATE_INIT_DONE;
 			pDevice->Need_Notify = MV_FALSE;
-			
+
 			/* toggle the start bit in cmd register */
 			tmp = MV_REG_READ_DWORD( portMmio, PORT_CMD );
 			MV_REG_WRITE_DWORD( portMmio, PORT_CMD, tmp & ~MV_BIT(0));
@@ -437,7 +437,7 @@ void SATA_InitPM (PDomain_Port pPort)
 
 	pPort->Setting |= PORT_SETTING_PM_EXISTING;
 	pPort->Setting |= PORT_SETTING_PM_FUNCTIONAL;
-	
+
 	/* fill in various information about the PM */
 
 	/* check how many ports the PM has */
@@ -449,10 +449,10 @@ void SATA_InitPM (PDomain_Port pPort)
 
 		if (((temp >> 16) & 0xF0) == 0xF0)
 			valid = MV_TRUE;
-          
-		numPMPorts = MV_REG_READ_DWORD( portMmio, PORT_PM_FIS_0 ) & 0xF;		
+
+		numPMPorts = MV_REG_READ_DWORD( portMmio, PORT_PM_FIS_0 ) & 0xF;
 	} while (valid == MV_FALSE);
-	
+
 	if ( numPMPorts > MAX_DEVICE_PER_PORT )
 		numPMPorts = MAX_DEVICE_PER_PORT;
 	else if ( numPMPorts < MAX_DEVICE_PER_PORT )
@@ -474,10 +474,10 @@ void SATA_InitPM (PDomain_Port pPort)
 
 		if (((temp >> 16) & 0xF0) == 0xF0)
 			valid = MV_TRUE;
-          
+
 		temp = MV_REG_READ_DWORD( portMmio, PORT_PM_FIS_0 );
 	} while (valid == MV_FALSE);
-	
+
 	pPort->PM_Vendor_Id = (MV_U16)temp;
 	pPort->PM_Device_Id = (MV_U16)(temp >> 16);
 
@@ -490,10 +490,10 @@ void SATA_InitPM (PDomain_Port pPort)
 
 		if (((temp >> 16) & 0xF0) == 0xF0)
 			valid = MV_TRUE;
-          
+
 		temp = MV_REG_READ_DWORD( portMmio, PORT_PM_FIS_0 );
 	} while (valid == MV_FALSE);
-	
+
 	pPort->PM_Product_Revision = (MV_U8)((temp & 0xFF00) >> 8);
 	if ( temp & MV_BIT(3) )
 		pPort->PM_Spec_Revision = 12;
@@ -513,11 +513,11 @@ void SATA_InitPM (PDomain_Port pPort)
 
 		if (((temp >> 16) & 0xF0) == 0xF0)
 			valid = MV_TRUE;
-          
+
 		temp = MV_REG_READ_DWORD( portMmio, PORT_PM_FIS_0 );
 	} while (valid == MV_FALSE);
-	
-	mvPMDevReWrReg( pPort, MV_Write_Reg, MV_SATA_GSCR_FEATURES_ENABLE_REG_NUM, 
+
+	mvPMDevReWrReg( pPort, MV_Write_Reg, MV_SATA_GSCR_FEATURES_ENABLE_REG_NUM,
 					temp | MV_BIT(3), 0xF, MV_TRUE );
 
 	/* enable N & X bit in SError for hot plug */
@@ -529,11 +529,11 @@ void SATA_InitPM (PDomain_Port pPort)
 
 		if (((temp >> 16) & 0xF0) == 0xF0)
 			valid = MV_TRUE;
-          
+
 		temp = MV_REG_READ_DWORD( portMmio, PORT_PM_FIS_0 );
 	} while (valid == MV_FALSE);
-	
-	mvPMDevReWrReg( pPort, MV_Write_Reg, MV_SATA_GSCR_ERROR_ENABLE_REG_NUM, 
+
+	mvPMDevReWrReg( pPort, MV_Write_Reg, MV_SATA_GSCR_ERROR_ENABLE_REG_NUM,
 					MV_BIT(16) | MV_BIT(26), 0xF, MV_TRUE );
 
 	for( i=0; i<numPMPorts; i++ )
@@ -542,19 +542,19 @@ void SATA_InitPM (PDomain_Port pPort)
 		pDevice->Status = DEVICE_STATUS_NO_DEVICE;
 		pDevice->State = DEVICE_STATE_INIT_DONE;
 
-	
+
 		/*
 		When enter hibernation, do not enable device port again
 		for saving hibernation time
 		*/
 		if(!pCore->Is_Dump){
 			/*enable the device port*/
-			mvPMDevReWrReg(pPort, MV_Write_Reg, MV_SATA_PSCR_SCONTROL_REG_NUM, 0x01, i, MV_TRUE);	
+			mvPMDevReWrReg(pPort, MV_Write_Reg, MV_SATA_PSCR_SCONTROL_REG_NUM, 0x01, i, MV_TRUE);
 			HBA_SleepMillisecond(pCore, 1);
 			mvPMDevReWrReg(pPort, MV_Write_Reg, MV_SATA_PSCR_SCONTROL_REG_NUM, 0x00, i, MV_TRUE);
 			HBA_SleepMillisecond(pCore, 1);
 		}
-	
+
 		SATA_InitPMPort( pPort, i );
 	}
 
@@ -585,12 +585,12 @@ MV_BOOLEAN SATA_PortSoftReset( PCore_Driver_Extension pCore, PDomain_Port pPort 
 		MV_REG_WRITE_DWORD( portMmio, PORT_CMD, tmp | MV_BIT(0));
 		HBA_SleepMillisecond( pCore, 100 );
 
-		if( (pPort->Type != PORT_TYPE_PM) && (pDevice->Status & DEVICE_STATUS_FUNCTIONAL) 
+		if( (pPort->Type != PORT_TYPE_PM) && (pDevice->Status & DEVICE_STATUS_FUNCTIONAL)
 #ifdef COMMAND_ISSUE_WORKROUND
 			&& !mv_core_check_is_reseeting(pCore)
 #endif
 			){
-			SATA_PortReportNoDevice( pCore, pPort );		
+			SATA_PortReportNoDevice( pCore, pPort );
 		}
 		/* had trouble detecting device on this port, so we report existing
 		   but not functional */
@@ -599,12 +599,12 @@ MV_BOOLEAN SATA_PortSoftReset( PCore_Driver_Extension pCore, PDomain_Port pPort 
 
 		/* set the rest of the device on this port */
 		for (i=1; i<MAX_DEVICE_PER_PORT; i++)
-		{	
+		{
 			pDevice = &pPort->Device[i];
 			pDevice->Status = DEVICE_STATUS_NO_DEVICE;
 			pDevice->State = DEVICE_STATE_INIT_DONE;
 		}
-				
+
 		mvDeviceStateMachine(pCore, pDevice);
 		return MV_FALSE;
 	}
@@ -615,7 +615,7 @@ MV_BOOLEAN SATA_PortSoftReset( PCore_Driver_Extension pCore, PDomain_Port pPort 
 	MV_REG_WRITE_DWORD( portMmio, PORT_CMD, tmp & ~MV_BIT(0));
 	MV_REG_WRITE_DWORD( portMmio, PORT_CMD, tmp | MV_BIT(0));
 	HBA_SleepMillisecond( pCore, 100 );
-	
+
 	return MV_TRUE;
 }
 
@@ -637,7 +637,7 @@ void SATA_PortReportNoDevice (PCore_Driver_Extension pCore, PDomain_Port pPort)
 		temp = MAX_DEVICE_PER_PORT-1;
 	else
 		temp = 0;
-		
+
 	for( i=0; i<=temp; i++ )
 	{
 		pDevice = &pPort->Device[i];
@@ -654,13 +654,13 @@ void SATA_PortReportNoDevice (PCore_Driver_Extension pCore, PDomain_Port pPort)
 #ifdef RAID_DRIVER
 			RAID_ModuleNotification(pUpperLayer, EVENT_DEVICE_REMOVAL, &param);
 #else
-			HBA_ModuleNotification(pUpperLayer, 
-					       EVENT_DEVICE_REMOVAL, 
+			HBA_ModuleNotification(pUpperLayer,
+					       EVENT_DEVICE_REMOVAL,
 					       &param);
 #endif /* RAID_DRIVER */
 			pPort->Device_Number--;
 		}
-		
+
 		pDevice->Status = DEVICE_STATUS_NO_DEVICE;
 		pDevice->State = DEVICE_STATE_INIT_DONE;
 	}
@@ -722,7 +722,7 @@ void SATA_PortReset(
 		}
 	}
 
-	
+
 	if( pCore->Total_Device_Count >= MAX_DEVICE_SUPPORTED )
 	{
 		for( i=0; i<MAX_DEVICE_PER_PORT; i++ )
@@ -754,7 +754,7 @@ void SATA_PortReset(
 	}
 
 #ifdef FORCE_1_5_G
-	/* It'll trigger OOB. Looks like PATA hardware reset. 
+	/* It'll trigger OOB. Looks like PATA hardware reset.
 	 * Downgrade 3G to 1.5G
 	 * If Port Multiplier is attached, only the PM is downgraded. */
 	{
@@ -785,7 +785,7 @@ void SATA_PortReset(
 			MV_DPRINT(("PM on port %d is gone\n", pPort->Id));
 			SATA_PortReportNoDevice( pCore, pPort );
 		}
-		else if( pDevice->Status & DEVICE_STATUS_FUNCTIONAL ) 
+		else if( pDevice->Status & DEVICE_STATUS_FUNCTIONAL )
 		{
 			MV_DPRINT(("device on port %d is gone\n", pPort->Id));
 			SATA_PortReportNoDevice( pCore, pPort );
@@ -794,7 +794,7 @@ void SATA_PortReset(
 
 		// fixed: have to set each device individually - or hot plug will have problem
 		for (i=0; i<MAX_DEVICE_PER_PORT; i++)
-		{	
+		{
 			pDevice = &pPort->Device[i];
 			pDevice->State = DEVICE_STATE_INIT_DONE;
 		}
@@ -805,10 +805,10 @@ void SATA_PortReset(
 
 	MV_DPRINT(("find device on port %d.\n", pPort->Id));
 	if( !SATA_PortDeviceReady(pPort) )
-	{	
+	{
 
 #if defined(SUPPORT_ERROR_HANDLING)
-		if( pPort->Setting & PORT_SETTING_PM_FUNCTIONAL ) 
+		if( pPort->Setting & PORT_SETTING_PM_FUNCTIONAL )
 		{
 			pPort->Setting &= ~PORT_SETTING_PM_FUNCTIONAL;
 			MV_DPRINT(("PM on port %d is non-functional\n", pPort->Id));
@@ -818,15 +818,15 @@ void SATA_PortReset(
 		{
 			MV_DPRINT(("device on port %d is non-functional\n", pPort->Id));
 			SATA_PortReportNoDevice( pCore, pPort );
-			pDevice->Status = DEVICE_STATUS_EXISTING;		
+			pDevice->Status = DEVICE_STATUS_EXISTING;
 		}
 #endif
 		for (i=0; i<MAX_DEVICE_PER_PORT; i++)
-		{	
+		{
 			pDevice = &pPort->Device[i];
 			pDevice->State = DEVICE_STATE_INIT_DONE;
 		}
-				
+
 		mvDeviceStateMachine(pCore, pDevice);
 		return;
 	}
@@ -853,7 +853,7 @@ void SATA_PortReset(
 		MV_DPRINT(("SATA_PortReset not skipped\n"));
 
 		/* Always turn the PM bit on - otherwise won't work! */
-		tmp = MV_REG_READ_DWORD(portMmio, PORT_CMD);					
+		tmp = MV_REG_READ_DWORD(portMmio, PORT_CMD);
 		MV_REG_WRITE_DWORD(portMmio, PORT_CMD, tmp | MV_BIT(17));
 		tmp=MV_REG_READ_DWORD(portMmio, PORT_CMD);	/* flush */
 
@@ -866,7 +866,7 @@ void SATA_PortReset(
 		if (! (SATA_PortSoftReset( pCore, pPort )) )
 		{
 #if defined(SUPPORT_ERROR_HANDLING) || defined(_OS_LINUX)
-			if( pPort->Setting & PORT_SETTING_PM_FUNCTIONAL ) 
+			if( pPort->Setting & PORT_SETTING_PM_FUNCTIONAL )
 			{
 				pPort->Setting &= ~PORT_SETTING_PM_FUNCTIONAL;
 				SATA_PortReportNoDevice( pCore, pPort );
@@ -874,22 +874,22 @@ void SATA_PortReset(
 #endif
 			return;
 		}
-	} 
-	else {	
+	}
+	else {
 		MV_DPRINT(("SATA_PortReset is skipped.\n"));
 	}
 
-	if( pPort->Type == PORT_TYPE_PM ) 
+	if( pPort->Type == PORT_TYPE_PM )
 	{
 		SATA_InitPM( pPort );
-	} 
+	}
 	else
-#endif	
+#endif
 	{
 
 #ifdef SUPPORT_PM
 	/* not a PM - turn off the PM bit in command register */
-	tmp = MV_REG_READ_DWORD(portMmio, PORT_CMD);					
+	tmp = MV_REG_READ_DWORD(portMmio, PORT_CMD);
 	MV_REG_WRITE_DWORD(portMmio, PORT_CMD, tmp & (~MV_BIT(17)));
 	tmp=MV_REG_READ_DWORD(portMmio, PORT_CMD);	/* flush */
 #endif
@@ -899,7 +899,7 @@ void SATA_PortReset(
 
 
 	if ( signature==0xEB140101 )				/* ATAPI signature */
-	{		
+	{
 		pDevice->Device_Type |= DEVICE_TYPE_ATAPI;
 	}
 	else
@@ -913,7 +913,7 @@ void SATA_PortReset(
 		pPort->Device[i].Status = DEVICE_STATUS_NO_DEVICE;
 		pPort->Device[i].State = DEVICE_STATE_INIT_DONE;
 	}
-	
+
 	/* Device is ready */
 	pPort->Device[0].Internal_Req = GetInternalReqFromPool(pCore);
 	if( pPort->Device[0].Internal_Req == NULL )
@@ -923,7 +923,7 @@ void SATA_PortReset(
 		//pDevice->Status = DEVICE_STATUS_NO_DEVICE;
 		//pDevice->State = DEVICE_STATE_INIT_DONE;
 	}
-	else 
+	else
 	{
 		pPort->Device[0].Status = DEVICE_STATUS_EXISTING|DEVICE_STATUS_FUNCTIONAL;
 		pPort->Device[0].State = DEVICE_STATE_RESET_DONE;
@@ -936,9 +936,9 @@ void SATA_PortReset(
 
 MV_VOID PATA_MakeControllerCommandBlock(
 	MV_PU16 pControllerCmd,
-	MV_U8 address, 
-	MV_U8 data, 
-	MV_BOOLEAN master, 
+	MV_U8 address,
+	MV_U8 data,
+	MV_BOOLEAN master,
 	MV_BOOLEAN write
 	)
 {
@@ -955,7 +955,7 @@ MV_VOID PATA_MakeControllerCommandBlock(
 
 /* Poll the ATA register using enhanced mode. Exp register and Data is not included. */
 MV_BOOLEAN PATA_PollControllerCommand(
-	PDomain_Port pPort, 
+	PDomain_Port pPort,
 	MV_U8 slot,
 	MV_U8 registerAddress,
 	MV_U8 registerData,
@@ -991,7 +991,7 @@ MV_BOOLEAN PATA_PollControllerCommand(
 	header->Table_Address_High = pPort->Cmd_Table_DMA.parts.high;
 
 	PATA_MakeControllerCommandBlock(pCmdTableU16++, registerAddress, registerData, master, write);
-	
+
 	MV_REG_WRITE_DWORD(port_mmio, PORT_CMD_ISSUE, MV_BIT(0));
 	MV_REG_READ_DWORD(port_mmio, PORT_CMD_ISSUE);	/* flush */
 
@@ -1061,16 +1061,16 @@ MV_BOOLEAN PATA_PollControllerCommand(
 }
 
 MV_BOOLEAN PATA_PortDeviceWaitForBusy(
-	PDomain_Port pPort, 
+	PDomain_Port pPort,
 	MV_BOOLEAN master
 	)
 {
 	PCore_Driver_Extension pCore = pPort->Core_Extension;
 	ATA_TaskFile taskFile;
 	/* PATA_PollControllerCommand will poll for 1 millisecond each time, so total 5 seconds ,1 second=1000 millisecond*/
-	MV_U32 retry = 5000;	
+	MV_U32 retry = 5000;
 	do {
-		if ( master ) 
+		if ( master )
 			PATA_PollControllerCommand(pPort, 0, ATA_REGISTER_DEVICE, 0xA0, master, MV_TRUE, &taskFile);
 		else
 			PATA_PollControllerCommand(pPort, 0, ATA_REGISTER_DEVICE, 0xB0, master, MV_TRUE, &taskFile);
@@ -1081,12 +1081,12 @@ MV_BOOLEAN PATA_PortDeviceWaitForBusy(
 #if 1
 	if ( taskFile.Command&MV_BIT(7) )
 	{
-		MV_DPRINT(("Port %d %s is busy retry=%d.\n", 
+		MV_DPRINT(("Port %d %s is busy retry=%d.\n",
 			pPort->Id, master?"master":"slave", (5000-retry)));
 	}
 	else
 	{
-		MV_DPRINT(("Port %d %s is not busy retry=%d.\n", 
+		MV_DPRINT(("Port %d %s is not busy retry=%d.\n",
 			pPort->Id, master?"master":"slave", (5000-retry)));
 	}
 #endif
@@ -1098,7 +1098,7 @@ MV_BOOLEAN PATA_PortDeviceDetected(PDomain_Port pPort, MV_BOOLEAN master, MV_BOO
 {
 	ATA_TaskFile taskFile;
 
-	if ( master ) 
+	if ( master )
 		PATA_PollControllerCommand(pPort, 0, ATA_REGISTER_DEVICE, 0xA0, master, MV_TRUE, &taskFile);
 	else
 		PATA_PollControllerCommand(pPort, 0, ATA_REGISTER_DEVICE, 0xB0, master, MV_TRUE, &taskFile);
@@ -1108,7 +1108,7 @@ MV_BOOLEAN PATA_PortDeviceDetected(PDomain_Port pPort, MV_BOOLEAN master, MV_BOO
 		taskFile.Sector_Count, taskFile.LBA_Low, taskFile.LBA_Mid, taskFile.LBA_High));
 #endif
 
-	if ( //(taskFile.Sector_Count==0x01) && 
+	if ( //(taskFile.Sector_Count==0x01) &&
 		(taskFile.LBA_Low==0x01)
 		&& (taskFile.LBA_Mid==0x14)
 		&& (taskFile.LBA_High==0xEB) )
@@ -1123,7 +1123,7 @@ MV_BOOLEAN PATA_PortDeviceDetected(PDomain_Port pPort, MV_BOOLEAN master, MV_BOO
 		&& (taskFile.LBA_Mid==0x00)
 		&& (taskFile.LBA_High==0x00) )
 	{
-		
+
 		// if status is 0, conclude that drive is not present
 		if ( taskFile.Command == 0)
 			return MV_FALSE;
@@ -1132,7 +1132,7 @@ MV_BOOLEAN PATA_PortDeviceDetected(PDomain_Port pPort, MV_BOOLEAN master, MV_BOO
 		*isATAPI = MV_FALSE;
 		return MV_TRUE;
 	}
-	
+
 	return MV_FALSE;
 }
 
@@ -1140,11 +1140,11 @@ MV_BOOLEAN PATA_PortDeviceReady(PDomain_Port pPort, MV_BOOLEAN master, MV_BOOLEA
 {
 	ATA_TaskFile taskFile;
 
-	if ( master ) 
+	if ( master )
 		PATA_PollControllerCommand(pPort, 0, ATA_REGISTER_DEVICE, 0xA0, master, MV_TRUE, &taskFile);
 	else
 		PATA_PollControllerCommand(pPort, 0, ATA_REGISTER_DEVICE, 0xB0, master, MV_TRUE, &taskFile);
-	
+
 #if 0
 	MV_DPRINT(("PATA_PortDeviceReady: Sector_Count=0x%x, LBA_Low=0x%x, LBA_Mid=0x%x, LBA_High=0x%x.\n",
 		taskFile.Sector_Count, taskFile.LBA_Low, taskFile.LBA_Mid, taskFile.LBA_High));
@@ -1199,29 +1199,15 @@ void PATA_PortReset(
 	MV_BOOLEAN working[2];	/* Check whether the master/slave device is functional. */
 	MV_BOOLEAN isATAPI[2];	/* Check whether it's ATAPI device. */
 	MV_BOOLEAN unplug[2];
-#ifdef SUPPORT_ERROR_HANDLING	
+#ifdef SUPPORT_ERROR_HANDLING
 #ifdef RAID_DRIVER
-	MV_PVOID pUpperLayer = HBA_GetModuleExtension(pCore, MODULE_RAID);	
+	MV_PVOID pUpperLayer = HBA_GetModuleExtension(pCore, MODULE_RAID);
 #else
 	MV_PVOID pUpperLayer = HBA_GetModuleExtension(pCore, MODULE_HBA);
 #endif /* RAID_DRIVER */
 	struct mod_notif_param param;
 #endif /* SUPPORT_ERROR_HANDLING */
 
-	/* No running commands at this moment */
-	MV_ASSERT( pPort->Running_Slot==0 );
-	MV_ASSERT( pPort->Port_State==PORT_STATE_IDLE );
-
-#ifdef MV_DEBUG
-	{
-		MV_U8 i;
-		for ( i=0; i<MAX_SLOT_NUMBER; i++ )
-		{
-			MV_DASSERT(pPort->Running_Req[i]==NULL);
-		}
-	}
-#endif
-		
 	/* If we already reached the max number of devices supported,
 	   disregard the rest */
 	if( pCore->Total_Device_Count >= MAX_DEVICE_SUPPORTED )
@@ -1300,7 +1286,7 @@ void PATA_PortReset(
 			pDevice->State = DEVICE_STATE_INIT_DONE;
 		}
 
-		/* 
+		/*
 		 * Check master and slave devices. Master is at device[0], Slave is at device [1].
 		 */
 		/* Slave/Master device. Detect first. After it's totally done, we can send request to the devices. */
@@ -1311,10 +1297,10 @@ void PATA_PortReset(
 			/* Wait for busy after the reset */
 			temp = PATA_PortDeviceWaitForBusy(pPort, isMaster);
 
-			/* 
+			/*
 			* Suppose after waiting for 5 seconds for the BSY signal, we only need check the signature once.
 			* But I found one ATAPI device BSY is clear right away.
-			* But the first time we read the signature, it's all 0x7F. 
+			* But the first time we read the signature, it's all 0x7F.
 			* Only after a while, it will return the correct value.
 			*/
 			if ( temp )
@@ -1331,7 +1317,7 @@ void PATA_PortReset(
 
 				if ( !temp )
 				{
-					if ( isMaster ) 
+					if ( isMaster )
 						PATA_PollControllerCommand(pPort, 0, ATA_REGISTER_DEVICE, 0xA0, isMaster, MV_TRUE, &taskFile);
 					else
 						PATA_PollControllerCommand(pPort, 0, ATA_REGISTER_DEVICE, 0xB0, isMaster, MV_TRUE, &taskFile);
@@ -1349,21 +1335,21 @@ void PATA_PortReset(
 			isMaster = MV_FALSE;
 
 			pDevice = &pPort->Device[i];
-			if ( isATAPI[i] ) 
+			if ( isATAPI[i] )
 				pDevice->Device_Type |= DEVICE_TYPE_ATAPI;
 			else
 				pDevice->Device_Type &= ~DEVICE_TYPE_ATAPI;
 			pDevice->Is_Slave = (i==0)?MV_FALSE:MV_TRUE;
 
-			/* 
-			 * If the device has been reset for too many times, 
-			 * just set down this disk. It's better to set 
-			 * MEDIA ERROR to the timeout request. 
+			/*
+			 * If the device has been reset for too many times,
+			 * just set down this disk. It's better to set
+			 * MEDIA ERROR to the timeout request.
 			 */
 			if ( pDevice->Reset_Count>CORE_MAX_PATA_RESET_COUNT )
 				working[i] = MV_FALSE;
 
-			if ( !working[i] ) 
+			if ( !working[i] )
 			{
 				if ( pDevice->Status&DEVICE_STATUS_FUNCTIONAL )
 				{
@@ -1382,7 +1368,7 @@ void PATA_PortReset(
 			{
 
 				MV_DPRINT(("Port %d %s ready.\n", pPort->Id, pDevice->Is_Slave?"slave":"master"));
-				
+
 				pDevice->Internal_Req = GetInternalReqFromPool(pCore);
 				if( pDevice->Internal_Req == NULL )
 				{
@@ -1391,7 +1377,7 @@ void PATA_PortReset(
 					pDevice->Status = DEVICE_STATUS_NO_DEVICE;
 					pDevice->State = DEVICE_STATE_INIT_DONE;
 				}
-				else 
+				else
 				{
 					pDevice->Status = DEVICE_STATUS_EXISTING|DEVICE_STATUS_FUNCTIONAL;
 					pPort->Device_Number++;
@@ -1407,7 +1393,7 @@ void PATA_PortReset(
 			if ( pDevice->Status & DEVICE_STATUS_FUNCTIONAL )
 			{
 				pDevice->State = DEVICE_STATE_RESET_DONE;
-				/* Don't start mvDeviceStateMachine now. 
+				/* Don't start mvDeviceStateMachine now.
 				 * It may trigger other devices to send DMA request before resetting is done. */
 			}
 		}
@@ -1416,7 +1402,7 @@ void PATA_PortReset(
 		for ( i=0; i<2; i++ )
 		{
 			pDevice = &pPort->Device[i];
-			if ( unplug[i] ) 
+			if ( unplug[i] )
 			{
 				if( pDevice->Internal_Req!=NULL )
 				{
@@ -1426,7 +1412,7 @@ void PATA_PortReset(
 
 				mvRemoveDeviceWaitingList( pCore, pDevice->Id, MV_TRUE );
 
-			#ifdef SUPPORT_ERROR_HANDLING	
+			#ifdef SUPPORT_ERROR_HANDLING
 				param.lo = pDevice->Id;
 				#ifdef RAID_DRIVER
 					RAID_ModuleNotification(pUpperLayer, EVENT_DEVICE_REMOVAL, &param);
@@ -1434,16 +1420,16 @@ void PATA_PortReset(
 					HBA_ModuleNotification(pUpperLayer, EVENT_DEVICE_REMOVAL, &param);
 				#endif
 			#endif
-			} 
+			}
 		}
 
 		/* Then run the status machine.*/
 		/* Cable detection edit: We don't run the master state machine yet, if there is
-		   a slave attached */ 
+		   a slave attached */
 		for ( i=0; i<MAX_DEVICE_PER_PORT; i++ )
 		{
 			pDevice = &pPort->Device[i];
-			if ( pDevice->Status & DEVICE_STATUS_FUNCTIONAL ) 
+			if ( pDevice->Status & DEVICE_STATUS_FUNCTIONAL )
 			{
 				if (i != 0)
 					mvDeviceStateMachine(pCore, pDevice);
@@ -1459,7 +1445,7 @@ void PATA_PortReset(
 	if ( pPort->Device_Number==0 )
 	{
 		/* Just use the first device to make the ball roll. */
-		
+
 		mvDeviceStateMachine(pCore, &pPort->Device[0]);
 	}
 
@@ -1475,7 +1461,7 @@ static MV_BOOLEAN mvChannelStateMachine(
 	PDomain_Device pDevice;
 	PDomain_Port pOrgPort = pPort;
 	#ifdef RAID_DRIVER
-	MV_PVOID pUpperLayer = HBA_GetModuleExtension(pCore, MODULE_RAID);	
+	MV_PVOID pUpperLayer = HBA_GetModuleExtension(pCore, MODULE_RAID);
 	#else
 	MV_PVOID pUpperLayer = HBA_GetModuleExtension(pCore, MODULE_HBA);
 	#endif
@@ -1510,8 +1496,8 @@ static MV_BOOLEAN mvChannelStateMachine(
 			}
 			break;
 
-		/* 
-		 * Each port will call mvDeviceStateMachine for its devices. 
+		/*
+		 * Each port will call mvDeviceStateMachine for its devices.
 		 * When all the devices for that port are done, will call mvChannelStateMachine.
 		 */
 
@@ -1553,7 +1539,7 @@ static MV_BOOLEAN mvChannelStateMachine(
 #else
 							HBA_ModuleNotification(pUpperLayer, EVENT_DEVICE_ARRIVAL, &param);
 #endif
-							pDevice->Need_Notify = MV_FALSE;	
+							pDevice->Need_Notify = MV_FALSE;
 						}
 					}
 				}
@@ -1587,7 +1573,7 @@ MV_BOOLEAN mvDeviceStateMachine(
 			MV_DPRINT(("Device %d DEVICE_STATE_RESET_DONE.\n", pDevice->Id));
 
 			/* To do identify */
-			Device_IssueIdentify(pDevice->PPort, pDevice); 
+			Device_IssueIdentify(pDevice->PPort, pDevice);
 			break;
 
 		case DEVICE_STATE_IDENTIFY_DONE:
@@ -1631,7 +1617,7 @@ MV_BOOLEAN mvDeviceStateMachine(
 	}
 #endif
 
-        	/* No break here. */
+		/* No break here. */
 
 		case DEVICE_STATE_INIT_DONE:
 			MV_DPRINT(("Device %d DEVICE_STATE_INIT_DONE.\n", pDevice->Id));
@@ -1652,8 +1638,8 @@ MV_BOOLEAN mvDeviceStateMachine(
 	return MV_TRUE;
 }
 
-/* 
- * Global controller reset 
+/*
+ * Global controller reset
  */
 MV_BOOLEAN
 ResetController(PCore_Driver_Extension pCore)
@@ -1699,7 +1685,7 @@ ResetController(PCore_Driver_Extension pCore)
 
 	tmp = MV_REG_READ_DWORD(mmio, HOST_CTL);
 	if (tmp & HOST_RESET) {
-		MV_DASSERT(MV_FALSE);	
+		MV_DASSERT(MV_FALSE);
 		ret = MV_FALSE;
 	}
 
@@ -1768,7 +1754,7 @@ void PATA_ResetPort(PCore_Driver_Extension pCore, MV_U8 portId)
 #ifdef ENABLE_PATA_ERROR_INTERRUPT
 	MV_REG_WRITE_DWORD(portMmio, PORT_IRQ_MASK, DEF_PORT_PATA_IRQ);
 #else
-	/* 
+	/*
 	 * Workaround
 	 * If PATA device has a error, even the error bit in the interrupt register is cleared.
 	 * Internal hardware will trigger one more(OS has no idea).
@@ -1777,6 +1763,35 @@ void PATA_ResetPort(PCore_Driver_Extension pCore, MV_U8 portId)
 	MV_REG_WRITE_DWORD(portMmio, PORT_IRQ_MASK, MV_BIT(2)|MV_BIT(0));
 #endif
 }
+#ifdef CONFIG_PM
+extern void InitChip(PCore_Driver_Extension pCore);
+
+int core_resume(void *ext)
+{
+	int ret;
+	PCore_Driver_Extension core_ext;
+	core_ext=(PCore_Driver_Extension)ext;
+	MV_REG_WRITE_DWORD(core_ext->Mmio_Base, HOST_CTL, 0);
+	if(ResetController(core_ext) == MV_FALSE) {
+		MV_DPRINT(("Reset controller failed."));
+		return MV_FALSE;
+
+	}
+	InitChip(core_ext);
+	mvEnableGlobalIntr_resume(core_ext->Mmio_Base);
+
+	return 0;
+}
+int core_suspend(void *ext)
+{
+	int ret,tmp;
+	PCore_Driver_Extension core_ext;
+	core_ext=(PCore_Driver_Extension)ext;
+
+	mvDisableGlobalIntr(core_ext->Mmio_Base,tmp);
+	return 0;
+}
+#endif
 
 void SATA_ResetPort(PCore_Driver_Extension pCore, MV_U8 portId)
 {
@@ -1802,7 +1817,7 @@ void SATA_ResetPort(PCore_Driver_Extension pCore, MV_U8 portId)
 		//hba_msleep(500);
 	}
 
-	//PORT_CMD enable bit(5): PIO command will issue PIO setup interrupt bit. 
+	//PORT_CMD enable bit(5): PIO command will issue PIO setup interrupt bit.
 	// Only after clear the PIO setup interrupt bit, the hardware will issue the PIO done interrupt bit.
 	// Maybe in this case, we needn't enable PIO setup interrupt bit but for some others we should.
 
@@ -1822,7 +1837,7 @@ void SATA_ResetPort(PCore_Driver_Extension pCore, MV_U8 portId)
 		j++;
 	}
 
-	
+
 	/* Clear SATA error */
 	tmp = MV_REG_READ_DWORD(portMmio, PORT_SCR_ERR);
 	MV_REG_WRITE_DWORD(portMmio, PORT_SCR_ERR, tmp);
@@ -1839,12 +1854,12 @@ void SATA_ResetPort(PCore_Driver_Extension pCore, MV_U8 portId)
 
 
 	/* FIFO controller workaround for 6121-B0B1B2, 6111-B0B1, and 6145-A0 */
-	if ( 
+	if (
 		( (pCore->Device_Id==DEVICE_ID_THORLITE_2S1P)&&(pCore->Revision_Id>=0xB0) )
 		||
 		( (pCore->Device_Id==DEVICE_ID_THORLITE_2S1P_WITH_FLASH)&&(pCore->Revision_Id>=0xB0) )
 		||
-		( (pCore->Device_Id==DEVICE_ID_THORLITE_1S1P)&&(pCore->Revision_Id>=0xB0) )	
+		( (pCore->Device_Id==DEVICE_ID_THORLITE_1S1P)&&(pCore->Revision_Id>=0xB0) )
 		||
 		( (pCore->Device_Id==DEVICE_ID_THOR_4S1P_NEW)&&(pCore->Revision_Id>=0xA0) )
 	)
@@ -1866,8 +1881,8 @@ void InitChip(PCore_Driver_Extension pCore)
 
 	pCore->Capacity = MV_REG_READ_DWORD(mmio, HOST_CAP);
 
-	/* 
-	 * For 614x, enable enhanced mode for PATA and interrupt. 
+	/*
+	 * For 614x, enable enhanced mode for PATA and interrupt.
 	 * For AHCI, enable AHCI.
 	 */
 	tmp = MV_REG_READ_DWORD(mmio, HOST_CTL);
@@ -1905,7 +1920,7 @@ void InitChip(PCore_Driver_Extension pCore)
 
 		/* AHCI is different with Thor */
 		#ifdef AHCI
-		MV_REG_WRITE_DWORD(pPort->Mmio_Base, PORT_CMD, 
+		MV_REG_WRITE_DWORD(pPort->Mmio_Base, PORT_CMD,
 			PORT_CMD_ICC_ACTIVE | PORT_CMD_FIS_RX |	PORT_CMD_POWER_ON | PORT_CMD_SPIN_UP | PORT_CMD_START );
 		#else
 		if ( pPort->Type==PORT_TYPE_PATA )
@@ -1914,7 +1929,7 @@ void InitChip(PCore_Driver_Extension pCore)
 		}
 		else
 		{
-			/* 
+			/*
 			 * Workaround: Don't enable PORT_CMD_FIS_RX otherwise system will hang.
 			 */
 			MV_REG_WRITE_DWORD(pPort->Mmio_Base, PORT_CMD, PORT_CMD_START );
@@ -1937,7 +1952,7 @@ MV_BOOLEAN mvAdapterStateMachine(
 	{
 		case ADAPTER_INITIALIZING:
 			MV_DPRINT(("start mvAdapterStateMachine.\n"));
-			if(ResetController(pCore) == MV_FALSE) 
+			if(ResetController(pCore) == MV_FALSE)
 				return MV_FALSE;
 
 			InitChip(pCore);
@@ -1971,7 +1986,7 @@ void Core_InternalReqCallback(
 	 IN PMV_Request pReq
 	 )
 {
-	PDomain_Port pPort; 
+	PDomain_Port pPort;
 	PDomain_Device pDevice;
 	PATA_Identify_Data pATAIdentify;
 	MV_U8 portId, deviceId;
@@ -1985,7 +2000,7 @@ void Core_InternalReqCallback(
 
 	//It's possible that CDB_CORE_READ_LOG_EXT returns error and come here
 	//because we send CDB_CORE_READ_LOG_EXT no matter NCQ is running or not.
-	//if ( pReq->Cdb[2]!=CDB_CORE_READ_LOG_EXT ) 
+	//if ( pReq->Cdb[2]!=CDB_CORE_READ_LOG_EXT )
 	if (( pReq->Cdb[2]!=CDB_CORE_READ_LOG_EXT ) && ( pReq->Cdb[2]!=CDB_CORE_ENABLE_WRITE_CACHE )&&( pReq->Cdb[2]!=CDB_CORE_ENABLE_READ_AHEAD ))
 	{
 		if( pReq->Scsi_Status != REQ_STATUS_SUCCESS )
@@ -2008,7 +2023,7 @@ void Core_InternalReqCallback(
 	if ( pReq->Cdb[2]==CDB_CORE_IDENTIFY )
 	{
 #ifdef _OS_LINUX
-		hba_swap_buf_le16((MV_PU16) pATAIdentify, 
+		hba_swap_buf_le16((MV_PU16) pATAIdentify,
 				  sizeof(ATA_Identify_Data)/sizeof(MV_U16));
 #endif /* _OS_LINUX  */
 		Device_ParseIdentifyData(pDevice, pATAIdentify);
@@ -2019,10 +2034,10 @@ void Core_InternalReqCallback(
 		pDevice->State = DEVICE_STATE_IDENTIFY_DONE;
 
 		/* Detect PATA Cable:
-		 *** if there are master and slave, only detect after slave 
-			 has finished identify 
+		 *** if there are master and slave, only detect after slave
+			 has finished identify
 		 *** if there is only master, detect after master has finished
-			 identify 
+			 identify
 		 */
 		if (pPort->Type == PORT_TYPE_PATA)
 		{
@@ -2100,11 +2115,11 @@ static void Device_IssueIdentify(
 
 	/* Make SG table */
 	SGTable_Init(pSGTable, 0);
-	SGTable_Append(pSGTable, 
-				pDevice->Scratch_Buffer_DMA.parts.low, 
+	SGTable_Append(pSGTable,
+				pDevice->Scratch_Buffer_DMA.parts.low,
 				pDevice->Scratch_Buffer_DMA.parts.high,
 				pReq->Data_Transfer_Length
-				); 
+				);
 	MV_DASSERT( pReq->Data_Transfer_Length%2==0 );
 
 
@@ -2141,11 +2156,11 @@ void Device_IssueReadLogExt(
 
 	/* Make SG table */
 	SGTable_Init(pSGTable, 0);
-	SGTable_Append(pSGTable, 
-				pDevice->Scratch_Buffer_DMA.parts.low, 
+	SGTable_Append(pSGTable,
+				pDevice->Scratch_Buffer_DMA.parts.low,
 				pDevice->Scratch_Buffer_DMA.parts.high,
 				pReq->Data_Transfer_Length
-				); 
+				);
 	MV_DASSERT( pReq->Data_Transfer_Length%2==0 );
 
 
@@ -2176,7 +2191,7 @@ void Device_ParseIdentifyData(
 	MV_U32 temp;
 
 	/* Get serial number, firmware revision and model number. */
-	
+
 	MV_CopyMemory(pDevice->Serial_Number, pATAIdentify->Serial_Number, 20);
 	MV_CopyMemory(pDevice->Firmware_Revision, pATAIdentify->Firmware_Revision, 8);
 
@@ -2200,7 +2215,7 @@ void Device_ParseIdentifyData(
 		MV_DPRINT(("Device: %d 48 bit not supported.\n", pDevice->Id));
 	}
 
-	if ( pATAIdentify->Command_Set_Supported[0] & MV_BIT(0) ) 
+	if ( pATAIdentify->Command_Set_Supported[0] & MV_BIT(0) )
 	{
 		pDevice->Capacity |= DEVICE_CAPACITY_SMART_SUPPORTED;
 		if ( pATAIdentify->Command_Set_Enabled[0] & MV_BIT(0) )
@@ -2211,8 +2226,8 @@ void Device_ParseIdentifyData(
 		{
 			pDevice->Capacity |= DEVICE_CAPACITY_SMART_SELF_TEST_SUPPORTED;
 		}
-	}	
-	if ( pATAIdentify->Command_Set_Supported[0] & MV_BIT(5) ) 
+	}
+	if ( pATAIdentify->Command_Set_Supported[0] & MV_BIT(5) )
 	{
 		pDevice->Capacity |= DEVICE_CAPACITY_WRITECACHE_SUPPORTED;
 		if ( pATAIdentify->Command_Set_Enabled[0] & MV_BIT(5) )
@@ -2220,16 +2235,16 @@ void Device_ParseIdentifyData(
 			pDevice->Setting |= DEVICE_SETTING_WRITECACHE_ENABLED;
 		}
 	}
-	if ( pATAIdentify->Command_Set_Supported[0] & MV_BIT(6) ) 
+	if ( pATAIdentify->Command_Set_Supported[0] & MV_BIT(6) )
 	{
 		pDevice->Capacity |= DEVICE_CAPACITY_READ_LOOK_AHEAD_SUPPORTED;
 		if ( pATAIdentify->Command_Set_Enabled[0] & MV_BIT(6) )
 		{
 			pDevice->Setting |= DEVICE_SETTING_READ_LOOK_AHEAD;
 		}
-	}	
+	}
 #ifdef SUPPORT_ATA_SECURITY_CMD
-	if ( pATAIdentify->Security_Status & MV_BIT(0) ) 
+	if ( pATAIdentify->Security_Status & MV_BIT(0) )
 	{
 		pDevice->Capacity |= DEVICE_CAPACITY_SECURITY_SUPPORTED;
 		if (pATAIdentify->Security_Status & MV_BIT(2) )
@@ -2263,7 +2278,7 @@ void Device_ParseIdentifyData(
 	{
 		pDevice->Max_LBA.parts.low = *((MV_PU32)&pATAIdentify->Max_LBA[0]);
 		pDevice->Max_LBA.parts.high = *((MV_PU32)&pATAIdentify->Max_LBA[2]);
-	}else 
+	}else
 	{
 		pDevice->Max_LBA.parts.low = *((MV_PU32)&pATAIdentify->User_Addressable_Sectors[0]);
 		pDevice->Max_LBA.parts.high = 0;
@@ -2271,18 +2286,18 @@ void Device_ParseIdentifyData(
 	/* For SATA drive, MAX LBA in identify data is actually disk size */
 	pDevice->Max_LBA = U64_SUBTRACT_U32(pDevice->Max_LBA, 1);
 
-	/* PIO, MDMA and UDMA mode */	
-   	if ( ( pATAIdentify->Fields_Valid&MV_BIT(1) )
-		&& ( pATAIdentify->PIO_Modes&0x0F ) )	
+	/* PIO, MDMA and UDMA mode */
+	if ( ( pATAIdentify->Fields_Valid&MV_BIT(1) )
+		&& ( pATAIdentify->PIO_Modes&0x0F ) )
 	{
-       	if ( (MV_U8)pATAIdentify->PIO_Modes>=0x2 )
-		  	pDevice->PIO_Mode = 0x04; 
+	if ( (MV_U8)pATAIdentify->PIO_Modes>=0x2 )
+			pDevice->PIO_Mode = 0x04;
 		else
-	  		pDevice->PIO_Mode = 0x03; 
+			pDevice->PIO_Mode = 0x03;
 	}
     else
 	{
-       	pDevice->PIO_Mode = 0x02;
+	pDevice->PIO_Mode = 0x02;
 	}
 
 	pDevice->MDMA_Mode = 0xFF;
@@ -2299,9 +2314,9 @@ void Device_ParseIdentifyData(
 		for ( i=0; i<7; i++ )
 		{
 			if ( pATAIdentify->UDMA_Modes & MV_BIT(i) )
-				pDevice->UDMA_Mode = i;	
+				pDevice->UDMA_Mode = i;
 		}
-	}	
+	}
 
 	/* CRC identify buffer to get the U32 GUID. */
 	pDevice->WWN = MV_CRC((MV_PU8)pATAIdentify, sizeof(ATA_Identify_Data));
@@ -2330,7 +2345,7 @@ static void Device_IssueSetMDMAMode(
 	/* Set controller timing register for PATA port before set the device MDMA mode. */
 	if ( pPort->Type==PORT_TYPE_PATA )
 	{
-		if ( pCore->Device_Id==DEVICE_ID_THORLITE_2S1P 
+		if ( pCore->Device_Id==DEVICE_ID_THORLITE_2S1P
 			|| pCore->Device_Id==DEVICE_ID_THORLITE_2S1P_WITH_FLASH
 			|| pCore->Device_Id==DEVICE_ID_THORLITE_0S1P )
 		{
@@ -2342,7 +2357,7 @@ static void Device_IssueSetMDMAMode(
 				temp |= 0x0000A800;
 				MV_IO_WRITE_DWORD(pCore->Base_Address[4], 0, temp);
 
-				if ( !pDevice->Is_Slave ) 
+				if ( !pDevice->Is_Slave )
 					offset = 0x10;
 				else
 					offset = 0x14;
@@ -2360,7 +2375,7 @@ static void Device_IssueSetMDMAMode(
 				base = pCore->Base_Address[5];
 				memoryIO = MV_TRUE;
 			}
-		} 
+		}
 		else
 		{
 			MV_DASSERT( (pCore->Device_Id==DEVICE_ID_THOR_4S1P)||(pCore->Device_Id==DEVICE_ID_THOR_4S1P_NEW) );
@@ -2410,7 +2425,7 @@ static void Device_IssueSetMDMAMode(
 
 	//pDevice->MDMA_Mode = mode;
 	pDevice->Current_MDMA = mode;
-	
+
 	/* Prepare set UDMA mode task */
 	pReq->Cdb[0] = SCSI_CMD_MARVELL_SPECIFIC;
 	pReq->Cdb[1] = CDB_CORE_MODULE;
@@ -2442,7 +2457,7 @@ static void Device_IssueSetUDMAMode(
 	MV_LPVOID base;
 	MV_BOOLEAN memoryIO=MV_FALSE;
 	MV_U8 mode = pDevice->UDMA_Mode;
-	
+
 	if ( pDevice->UDMA_Mode==0xFF )
 	{
 		Device_IssueSetMDMAMode(pPort, pDevice);
@@ -2455,7 +2470,7 @@ static void Device_IssueSetUDMAMode(
 	{
 #ifdef PATA_CABLE_DETECTION
 		if (pPort->PATA_cable_type==MV_40_PIN_CABLE){
-			if ( mode>2 ) 
+			if ( mode>2 )
 				mode = 2;
 			pDevice->UDMA_Mode = mode;
 		}
@@ -2463,13 +2478,13 @@ static void Device_IssueSetUDMAMode(
 		temp = MV_IO_READ_DWORD(pCore->Base_Address[4], 0);
 		if( temp & MV_BIT(8) )	//40_pin cable
 		{
-			if ( mode>2 ) 
+			if ( mode>2 )
 				mode = 2;
 			pDevice->UDMA_Mode = mode;
 		}
 #endif
-	}	
-	
+	}
+
 	/* Hardware team required us to downgrade UDMA mode to zero. */
 	//if ( pDevice->Device_Type&DEVICE_TYPE_ATAPI )
 	//	mode = 0;
@@ -2497,7 +2512,7 @@ static void Device_IssueSetUDMAMode(
 		}
 	}
 
-	/* 
+	/*
 	 * Set controller timing register for PATA port before set the device UDMA mode.
 	 * Thorlite A0:	To enable timing programming, BAR 4 offset x0, write a800
 	 *				To set values, BAR 4 offset x10, x14
@@ -2507,7 +2522,7 @@ static void Device_IssueSetUDMAMode(
 	 */
 	if ( pPort->Type==PORT_TYPE_PATA )
 	{
-		if ( pCore->Device_Id==DEVICE_ID_THORLITE_2S1P 
+		if ( pCore->Device_Id==DEVICE_ID_THORLITE_2S1P
 			|| pCore->Device_Id==DEVICE_ID_THORLITE_2S1P_WITH_FLASH
 			|| pCore->Device_Id==DEVICE_ID_THORLITE_0S1P )
 		{
@@ -2519,7 +2534,7 @@ static void Device_IssueSetUDMAMode(
 				temp |= 0x0000A800;
 				MV_IO_WRITE_DWORD(pCore->Base_Address[4], 0, temp);
 
-				if ( !pDevice->Is_Slave ) 
+				if ( !pDevice->Is_Slave )
 					offset = 0x10;
 				else
 					offset = 0x14;
@@ -2537,7 +2552,7 @@ static void Device_IssueSetUDMAMode(
 				base = pCore->Base_Address[5];
 				memoryIO = MV_TRUE;
 			}
-		} 
+		}
 		else
 		{
 			MV_DASSERT( (pCore->Device_Id==DEVICE_ID_THOR_4S1P)||(pCore->Device_Id==DEVICE_ID_THOR_4S1P_NEW) );
@@ -2617,7 +2632,7 @@ static void Device_IssueSetPIOMode(
 	MV_LPVOID base;
 	MV_BOOLEAN memoryIO=MV_FALSE;
 	MV_U8 mode = pDevice->PIO_Mode;
-	
+
 	MV_ZeroMvRequest(pReq);
 
 	/* Hardware team required us to downgrade PIO mode to zero. */
@@ -2625,7 +2640,7 @@ static void Device_IssueSetPIOMode(
 		mode = 0;
 
 
-	/* 
+	/*
 	 * Set controller timing register for PATA port before set the device UDMA mode.
 	 * Thorlite A0:	To enable timing programming, BAR 4 offset x0, write a800
 	 *				To set values, BAR 4 offset x10, x14
@@ -2636,7 +2651,7 @@ static void Device_IssueSetPIOMode(
 	if ( pPort->Type==PORT_TYPE_PATA )
 	{
 
-		if ( pCore->Device_Id==DEVICE_ID_THORLITE_2S1P 
+		if ( pCore->Device_Id==DEVICE_ID_THORLITE_2S1P
 			|| pCore->Device_Id==DEVICE_ID_THORLITE_2S1P_WITH_FLASH
 			|| pCore->Device_Id==DEVICE_ID_THORLITE_0S1P )
 		{
@@ -2648,7 +2663,7 @@ static void Device_IssueSetPIOMode(
 				temp |= 0x0000A800;
 				MV_IO_WRITE_DWORD(pCore->Base_Address[4], 0, temp);
 
-				if ( !pDevice->Is_Slave ) 
+				if ( !pDevice->Is_Slave )
 					offset = 0x10;
 				else
 					offset = 0x14;
@@ -2666,7 +2681,7 @@ static void Device_IssueSetPIOMode(
 				base = pCore->Base_Address[5];
 				memoryIO = MV_TRUE;
 			}
-		} 
+		}
 		else
 		{
 
@@ -2715,7 +2730,7 @@ static void Device_IssueSetPIOMode(
 
 	//pDevice->PIO_Mode = mode;
 	pDevice->Current_PIO = mode;
-	
+
 	/* Prepare set PIO mode task */
 	pReq->Cdb[0] = SCSI_CMD_MARVELL_SPECIFIC;
 	pReq->Cdb[1] = CDB_CORE_MODULE;
@@ -2801,4 +2816,3 @@ static void Device_EnableReadAhead(
 		Core_ModuleSendRequest(pPort->Core_Extension, pReq);
 	}
 }
-

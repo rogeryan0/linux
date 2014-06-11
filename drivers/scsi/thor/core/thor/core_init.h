@@ -10,7 +10,7 @@ typedef enum mvAdapterState
     ADAPTER_FATAL_ERROR
 } MV_ADAPTER_STATE;
 
-typedef enum mvChannelState	
+typedef enum mvChannelState
 {
     CHANNEL_NOT_CONNECTED,
     CHANNEL_CONNECTED,
@@ -73,11 +73,11 @@ MV_BOOLEAN SATA_DoSoftReset(PDomain_Port pPort, MV_U8 PMPort);
 #define MV_Write_Reg 0
 
 void mvPMDevReWrReg(
-	PDomain_Port pPort, 
-	MV_U8 read, 
-	MV_U8 PMreg, 
-	MV_U32 regVal, 
-	MV_U8 PMport, 
+	PDomain_Port pPort,
+	MV_U8 read,
+	MV_U8 PMreg,
+	MV_U32 regVal,
+	MV_U8 PMport,
 	MV_BOOLEAN control
 	);
 
@@ -91,26 +91,26 @@ void SATA_InitPMPort (
 	);
 
 MV_BOOLEAN SATA_SoftResetDevice(
-	PDomain_Port pPort, 
+	PDomain_Port pPort,
 	MV_U8 portNum
 	);
 
-MV_BOOLEAN SATA_PortSoftReset( 
-	PCore_Driver_Extension pCore, 
-	PDomain_Port pPort 
-	);
-
-void SATA_PortReportNoDevice (
-    PCore_Driver_Extension pCore, 
+MV_BOOLEAN SATA_PortSoftReset(
+	PCore_Driver_Extension pCore,
 	PDomain_Port pPort
 	);
 
-PMV_Request GetInternalReqFromPool( 
+void SATA_PortReportNoDevice (
+    PCore_Driver_Extension pCore,
+	PDomain_Port pPort
+	);
+
+PMV_Request GetInternalReqFromPool(
 	PCore_Driver_Extension pCore
 	);
 
-void ReleaseInternalReqToPool( 
-	PCore_Driver_Extension pCore, 
+void ReleaseInternalReqToPool(
+	PCore_Driver_Extension pCore,
 	PMV_Request pReq
 	);
 
@@ -128,8 +128,8 @@ void ReleaseInternalReqToPool(
 
 #define mvEnableGlobalIntr(mmio, old_stat)	MV_REG_WRITE_DWORD(mmio, HOST_CTL, old_stat)
 
+#define mvEnableGlobalIntr_resume(mmio)	MV_REG_WRITE_DWORD(mmio, HOST_CTL, MV_REG_READ_DWORD(mmio, HOST_CTL)|HOST_IRQ_EN)
 
-#define CORE_MAX_RESET_COUNT		0xffff	
+#define CORE_MAX_RESET_COUNT		0xffff
 #define CORE_MAX_PATA_RESET_COUNT	0xffff
 #endif
-

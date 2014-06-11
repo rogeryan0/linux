@@ -1,5 +1,5 @@
-#ifndef __MV_THOR_H__
-#define __MV_THOR_H__
+#ifndef __MV_PRODUCT_THOR_H__
+#define __MV_PRODUCT_THOR_H__
 
 /* OEM Account definition */
 #define VER_OEM_GENERIC			0
@@ -20,9 +20,9 @@
  */
 #define USE_NEW_SGTABLE
 
-/* 
- * define USE_SRBEXT_AS_REQ to use Windows SrbExtension to store 
- * the MV_Request with its SG Table. 
+/*
+ * define USE_SRBEXT_AS_REQ to use Windows SrbExtension to store
+ * the MV_Request with its SG Table.
  */
 #define USE_SRBEXT_AS_REQ
 
@@ -40,7 +40,7 @@
 #define MAX_DEVICE_SUPPORTED	8
 
 /* Core driver macro definition */
-#define MAX_SG_ENTRY			34
+#define MAX_SG_ENTRY			68 //34*2, support > 128k OS tx data
 #define MAX_SG_ENTRY_REDUCED	16
 #define MV_MAX_PHYSICAL_BREAK	(MAX_SG_ENTRY - 1)
 
@@ -51,10 +51,10 @@
 //#define ENABLE_PATA_ERROR_INTERRUPT	//ATAPI???
 
 /* It's dangerous. Never enable it unless we have to. */
-#define PRD_SIZE_WORD_ALIGN	
+#define PRD_SIZE_WORD_ALIGN
 
-/* 
- * For ATAPI device, we can choose 
+/*
+ * For ATAPI device, we can choose
  * 1. Enable USE_PIO_FOR_ALL_PACKET_COMMAND
  * 2. Enable USE_DMA_FOR_ALL_PACKET_COMMAND
  * 3. Don't enable either of them. It'll use DMA for read/write. Others will use PIO.
@@ -82,7 +82,7 @@
 #endif /* _OS_WINDOWS */
 
 /* pass through */
-#ifdef SUPPORT_SCSI_PASSTHROUGH		
+#ifdef SUPPORT_SCSI_PASSTHROUGH
 #define SUPPORT_VIRTUAL_DEVICE
 #define MV_MAX_TARGET_NUMBER		21		// virtual device 5 port*4 device
 #else
@@ -148,8 +148,8 @@
 #endif
 
 /* hardware-dependent definitions */
-#define MAX_EXPANDER_SUPPORTED				0     
-#define MAX_PM_SUPPORTED					4     
+#define MAX_EXPANDER_SUPPORTED				0
+#define MAX_PM_SUPPORTED					4
 #define MAX_BLOCK_PER_HD_SUPPORTED			8
 
 #define MAX_REQUEST_NUMBER_WHQL				MAX_REQUEST_NUMBER
@@ -165,10 +165,10 @@
 
 #define COMMAND_ISSUE_WORKROUND		1
 
-#define SUPPORT_ATA_SMART        1 
+#define SUPPORT_ATA_SMART        1
 #define SUPPORT_ATA_SECURITY_CMD 1
 #define HOTPLUG_ISSUE_WORKROUND 1
 #define SUPPORT_ATA_POWER_MANAGEMENT   1
 //#define SUPPORT_WORKQUEUE             1
 
-#endif /* __MV_THOR_H__ */
+#endif

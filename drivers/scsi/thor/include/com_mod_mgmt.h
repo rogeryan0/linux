@@ -10,7 +10,7 @@ enum {
 	MV_MOD_VOID   = 0,
 	MV_MOD_UNINIT,
 	MV_MOD_REGISTERED,  /* module ops pointer registered */
-	MV_MOD_INITED,      /* resource assigned */ 
+	MV_MOD_INITED,      /* resource assigned */
 	MV_MOD_FUNCTIONAL,
 	MV_MOD_STARTED,
 	MV_MOD_DEINIT,      /* extension released, be gone soon */
@@ -46,8 +46,11 @@ struct mv_adp_desc {
 	MV_PVOID          Base_Address[ROUNDING(MAX_BASE_ADDRESS, 2)];
 
 	MV_U32            max_io;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,11)
+		unsigned int   pci_config_space[16];
+#endif
 
-#ifdef _OS_LINUX 
+#ifdef _OS_LINUX
 	dev_t             dev_no;
 
 	struct pci_dev    *dev;
@@ -62,9 +65,9 @@ struct mv_mod_res {
 	struct list_head       res_entry;
 	MV_PHYSICAL_ADDR       bus_addr;
 	MV_PVOID               virt_addr;
-	
+
 	MV_U32                 size;
-	
+
 	MV_U16                 type;          /* enum Resource_Type */
 	MV_U16                 align;
 };
@@ -78,16 +81,16 @@ typedef struct _Module_Interface
 					MV_U16   max_io);
 	MV_VOID    (*module_start)(MV_PVOID extension);
 	MV_VOID    (*module_stop)(MV_PVOID extension);
-	MV_VOID    (*module_notification)(MV_PVOID extension, 
-					  enum Module_Event event, 
+	MV_VOID    (*module_notification)(MV_PVOID extension,
+					  enum Module_Event event,
 					  struct mod_notif_param *param);
-	MV_VOID    (*module_sendrequest)(MV_PVOID extension, 
+	MV_VOID    (*module_sendrequest)(MV_PVOID extension,
 					 PMV_Request pReq);
 	MV_VOID    (*module_reset)(MV_PVOID extension);
 	MV_VOID    (*module_monitor)(MV_PVOID extension);
 	MV_BOOLEAN (*module_service_isr)(MV_PVOID extension);
 #ifdef RAID_DRIVER
-	MV_VOID    (*module_send_xor_request)(MV_PVOID This, 
+	MV_VOID    (*module_send_xor_request)(MV_PVOID This,
 					      PMV_XOR_Request pXORReq);
 #endif /* RAID_DRIVER */
 } Module_Interface, *PModule_Interface;
@@ -114,7 +117,7 @@ typedef struct _Module_Interface
 /* module descriptor */
 struct mv_mod_desc {
 	struct list_head           mod_entry;      /* kept in a list */
-	
+
 	struct mv_mod_desc         *parent;
 	struct mv_mod_desc         *child;
 

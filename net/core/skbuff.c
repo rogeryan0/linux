@@ -71,6 +71,12 @@
 
 #include "kmap_skb.h"
 
+/* 2012/12/16 t.saito add marvell code for improve perf. */
+#if 1
+#define MV_IMPROVE_SKBUFF_C
+#endif
+/* 2012/12/16 t.saito add end */
+
 static struct kmem_cache *skbuff_head_cache __read_mostly;
 static struct kmem_cache *skbuff_fclone_cache __read_mostly;
 
@@ -220,7 +226,11 @@ struct sk_buff *__alloc_skb(unsigned int size, gfp_t gfp_mask,
 
 	/* make sure we initialize shinfo sequentially */
 	shinfo = skb_shinfo(skb);
+#ifdef MV_IMPROVE_SKBUFF_C
+	memset(shinfo, 0, offsetof(struct skb_shared_info, hwtstamps));
+#else
 	memset(shinfo, 0, offsetof(struct skb_shared_info, dataref));
+#endif
 	atomic_set(&shinfo->dataref, 1);
 	kmemcheck_annotate_variable(shinfo->destructor_arg);
 
@@ -409,10 +419,11 @@ static inline void skb_release_data(struct sk_buff *skb)
 #ifdef CONFIG_NET_SKB_RECYCLE
 	/* Workaround for the cases when recycle callback was not called */
 	if (skb->hw_cookie) {
-		skb->skb_recycle(skb, 1);
+		kfree(skb->hw_cookie);
+		skb->hw_cookie = NULL;
 	}
 	skb->skb_recycle = NULL;
-#endif /* CONFIG_NET_SKB_RECYCLE */	
+#endif /* CONFIG_NET_SKB_RECYCLE */
 }
 
 /*
@@ -460,16 +471,11 @@ static inline void skb_release_head_state(struct sk_buff *skb)
 		skb->destructor(skb);
 	}
 #if IS_ENABLED(CONFIG_NF_CONNTRACK)
-	nf_conntrack_put(skb->nfct);
+	if(skb->nfct)
+		nf_conntrack_put(skb->nfct);
 #endif
 #ifdef NET_SKBUFF_NF_DEFRAG_NEEDED
-	nf_conntrack_put_reasm(skb->nfct_reasm);
-#endif
-#if defined(CONFIG_NF_CONNTRACK) || defined(CONFIG_NF_CONNTRACK_MODULE)
-	if(skb->nfct) 
-		nf_conntrack_put(skb->nfct);
-	
-	if(skb->nfct_reasm) 
+	if(skb->nfct_reasm)
 		nf_conntrack_put_reasm(skb->nfct_reasm);
 #endif
 #ifdef CONFIG_BRIDGE_NETFILTER
@@ -503,10 +509,10 @@ static inline void skb_release_all(struct sk_buff *skb)
 void __kfree_skb(struct sk_buff *skb)
 {
 #ifdef CONFIG_NET_SKB_RECYCLE
-	if (skb->skb_recycle && !skb->skb_recycle(skb, 0))
+	if (skb->skb_recycle && !skb->skb_recycle(skb))
 		return;
 #endif /* CONFIG_NET_SKB_RECYCLE */
- 
+
 	skb_release_all(skb);
 	kfree_skbmem(skb);
 }
@@ -568,7 +574,11 @@ void skb_recycle(struct sk_buff *skb)
 	skb_release_head_state(skb);
 
 	shinfo = skb_shinfo(skb);
+#ifdef MV_IMPROVE_SKBUFF_C
+	memset(shinfo, 0, offsetof(struct skb_shared_info, hwtstamps));
+#else
 	memset(shinfo, 0, offsetof(struct skb_shared_info, dataref));
+#endif
 	atomic_set(&shinfo->dataref, 1);
 
 	memset(skb, 0, offsetof(struct sk_buff, tail));

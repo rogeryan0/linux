@@ -16,8 +16,8 @@ struct hba_extension {
 	struct mv_mod_desc *desc;
 	/* Device extention */
 	MV_PVOID host_data;
-	
-	
+
+
 	struct list_head        next;
 	struct pci_dev          *dev;
 	struct cdev             cdev;
@@ -35,7 +35,7 @@ struct hba_extension {
 	atomic_t                hba_sync;
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 11) */
 
-	MV_U32                  State;	
+	MV_U32                  State;
 	MV_BOOLEAN              Is_Dump;
 	MV_U8                   Io_Count;
 	MV_U16                  Max_Io;
@@ -53,7 +53,7 @@ struct hba_extension {
 #ifdef SUPPORT_TASKLET
 	struct tasklet_struct mv_tasklet;
 #endif
-	
+
 };
 
 #define DRIVER_STATUS_IDLE      1    /* The first status */

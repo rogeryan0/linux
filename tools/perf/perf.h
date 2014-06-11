@@ -84,6 +84,7 @@ void get_term_dimensions(struct winsize *ws);
  * arch/arm/kernel/entry-armv.S in the kernel source for details.
  */
 #define rmb()		((void(*)(void))0xffff0fa0)()
+#define rmb()           asm volatile("mcr p15, 0, %0, c7, c10, 4" :: "r" (0) : "memory")
 #define cpu_relax()	asm volatile("":::"memory")
 #define CPUINFO_PROC	"Processor"
 #endif

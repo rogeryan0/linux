@@ -39,6 +39,7 @@
 #include <linux/io.h>
 #include <asm/irq.h>
 #include <linux/proc_fs.h>
+#include <linux/mbus.h>
 
 #include <video/dovefb.h>
 #include <video/dovefbreg.h>
@@ -59,7 +60,7 @@ void *vid_fb_start = 0;
 dma_addr_t vid_fb_start_dma = 0;
 #endif
 
-static int dovefb_init_layer(struct platform_device *pdev,
+static int __init dovefb_init_layer(struct platform_device *pdev,
 		enum dovefb_type type, struct dovefb_info *info,
 		struct resource *res);
 static int dovefb_enable_lcd0(struct platform_device *pdev);
@@ -191,7 +192,7 @@ proc_lcd_read(char *page, char **start, off_t off, int count, int *eof,
 	x = readl(dfli->reg_base+0x108);
 	zoomed_x = x & 0x0000ffff;
 	zoomed_y = (x & 0xffff0000) >> 16;
-	
+
 	p += sprintf(p, "Scaled from <%dx%d> to <%dx%d>\n",
 		orig_buff_x, orig_buff_y, zoomed_x, zoomed_y);
 
@@ -209,7 +210,7 @@ proc_lcd_read(char *page, char **start, off_t off, int count, int *eof,
 	len = (p - page) - off;
 	if (len < 0)
 		len = 0;
-	
+
 	*eof = (len <= count) ? 1 : 0;
 	*start = page + off;
 
@@ -522,23 +523,27 @@ int dovefb_check_var(struct fb_var_screeninfo *var, struct fb_info *fi)
 	/*
 	 * Basic geometry sanity checks.
 	 */
-	if (var->xoffset + var->xres > var->xres_virtual)
+	if (var->xoffset + var->xres > var->xres_virtual ||
+	    var->yoffset + var->yres > var->yres_virtual) {
+		printk(KERN_ERR "Visible area is not fully"
+			" inside virtual buffer.\n");
 		return -EINVAL;
-	if (var->yoffset + var->yres > var->yres_virtual)
-		return -EINVAL;
+	}
 
 	/*
 	 * Check size of framebuffer.
 	 */
 	if (var->xres_virtual * var->yres_virtual *
-	    (var->bits_per_pixel >> 3) > dfli->fb_size)
+	    (var->bits_per_pixel >> 3) > dfli->fb_size) {
+		printk(KERN_ERR "Requested FB size is too big.\n");
 		return -EINVAL;
+	}
 
 #ifdef CONFIG_DOVEFB_FORCE_EDID_RES
 	if ((dfli->type == DOVEFB_GFX_PLANE) && (dfli->info->edid_en)) {
 		int mode_valid = 0;
 
-		if (!mode_valid && fi->monspecs.gtf && 
+		if (!mode_valid && fi->monspecs.gtf &&
 		    !fb_get_mode(FB_MAXTIMINGS, 0, var, fi))
 			mode_valid = 1;
 
@@ -609,13 +614,13 @@ static irqreturn_t dovefb_handle_irq(int irq, void *dev_id)
 	 * Fix me:
 	 * Currently, hardware won't generate video layer IRQ to
 	 * bit31 while setting reg, IOPAD_CONTROL, bit [19:18]
-	 * to 0x3. We check vsync to make a workaround version. 
+	 * to 0x3. We check vsync to make a workaround version.
 	 */
 	if (isr & (DOVEFB_VID_INT_MASK|DOVEFB_VSYNC_INT_MASK)) {
 		ret += dovefb_ovly_handle_irq(isr, dfi->vid_plane);
 		isr &= ~DOVEFB_VID_INT_MASK;
 	}
-	
+
 	if (isr & (DOVEFB_GFX_INT_MASK|DOVEFB_VSYNC_INT_MASK)) {
 		ret += dovefb_gfx_handle_irq(isr, dfi->gfx_plane);
 		isr &= ~DOVEFB_GFX_INT_MASK;
@@ -759,9 +764,9 @@ bad_options:
 }
 #endif
 
-static int dovefb_init_layer(struct platform_device *pdev,
-		enum dovefb_type type, struct dovefb_info *info,
-		struct resource *res)
+static int __init dovefb_init_layer(struct platform_device *pdev,
+				    enum dovefb_type type, struct dovefb_info *info,
+				    struct resource *res)
 {
 	struct dovefb_mach_info *dmi = pdev->dev.platform_data;
 	struct fb_info *fi = 0;
@@ -786,6 +791,7 @@ static int dovefb_init_layer(struct platform_device *pdev,
 	dfli->reg_base = info->reg_base;
 	dfli->cur_fbid = 0;
 	dfli->src_mode = SHM_NORMAL;
+	dfli->checkbuf_timer_exist = 0;
 
 	if (type == DOVEFB_GFX_PLANE) {
 		dfli->cursor_enabled = 0;
@@ -835,24 +841,27 @@ static int dovefb_init_layer(struct platform_device *pdev,
 #ifdef USING_SAME_BUFF
 	if ((gfx_fb_start == 0) || (vid_fb_start == 0) ) {
 #endif
-#ifdef CONFIG_ARCH_DOVE
-		if (!dfli->fb_start || !dfli->fb_start_dma)
-			dfli->fb_start = dma_alloc_writecombine(dfli->dev, dfli->fb_size,
-					&dfli->fb_start_dma,
-					GFP_KERNEL);
+//#ifdef CONFIG_ARCH_DOVE
+#if CONFIG_ARCH_ARMADA_XP
+	if (!dfli->fb_start || !dfli->fb_start_dma)
+	dfli->fb_start = dma_alloc_writecombine(dfli->dev, dfli->fb_size,
+						&dfli->fb_start_dma,
+						GFP_KERNEL);
+	if (!dfli->fb_start || !dfli->fb_start_dma) {
+#else
+	{
 #endif
-		if (!dfli->fb_start || !dfli->fb_start_dma) {
-			dfli->new_addr = 0;
-			dfli->mem_status = 1;
-			dfli->fb_start = (void *)__get_free_pages(GFP_DMA | GFP_KERNEL,
+		dfli->new_addr = 0;
+		dfli->mem_status = 1;
+		dfli->fb_start = (void *)__get_free_pages(GFP_DMA | GFP_KERNEL,
 					get_order(dfli->fb_size));
-			dfli->fb_start_dma = (dma_addr_t)__virt_to_phys(dfli->fb_start);
-		}
+		dfli->fb_start_dma = (dma_addr_t)__virt_to_phys(dfli->fb_start);
+	}
 
-		if (dfli->fb_start == NULL) {
-			ret = -ENOMEM;
-			goto failed;
-		}
+	if (dfli->fb_start == NULL) {
+		ret = -ENOMEM;
+		goto failed;
+	}
 #ifdef USING_SAME_BUFF
 		if(strstr(fi->fix.id, "GFX")) {
 			gfx_fb_start = dfli->fb_start;
@@ -894,7 +903,7 @@ static int dovefb_init_layer(struct platform_device *pdev,
 
 	if (type == DOVEFB_GFX_PLANE) {
 		info->gfx_plane = dfli;
- 		dump_lcd_init_module( strstr(fi->fix.id, "1") ? 1:0,
+		dump_lcd_init_module( strstr(fi->fix.id, "1") ? 1:0,
 			fi);
 	} else
 		info->vid_plane = dfli;
@@ -968,7 +977,62 @@ static void dovefb_config_vga_calibration(struct dovefb_info *info)
 
 //#include <video/dovefb_gpio.h>
 
+void dovefb_conf_mbus_windows(struct dovefb_info *info,
+		struct mbus_dram_target_info *dram)
+{
+	int i;
+
+	for (i = 0; i < LCD_WIN_NUM; i++) {
+		writel(0x0, info->reg_base + LCD_WIN_CTRL(i));
+		writel(0x0, info->reg_base + LCD_WIN_BASE(i));
+	}
+
+	for (i = 0; i < dram->num_cs; i++) {
+		struct mbus_dram_window *cs = dram->cs + i;
+
+		writel(((cs->size - 1) & 0xffff0000) |
+			(cs->mbus_attr << 8) |
+			(dram->mbus_dram_target_id << 4) | 1,
+			info->reg_base + LCD_WIN_CTRL(i));
+		writel(cs->base, info->reg_base + LCD_WIN_BASE(i));
+	}
+}
+
+static void dovefb_conf_lvds(struct dovefb_info *info, struct dovefb_mach_info *dmi)
+{
+	uint32_t reg;
+
+	reg = readl(info->reg_base + LCD_LVDS_CLK_CFG);
+
+	/* Enable LVDS clock. */
+	reg &= ~LCD_LVDS_CFG_SER_MASK;
+	reg |= LCD_LVDS_CFG_SER_EN(1);
+
+	/* Set LVDS Pin count & 24-bit option. */
+	reg &= ~LCD_LVDS_CFG_PIN_CNT_MASK;
+	if (dmi->io_pin_allocation == IOPAD_DUMB24) {
+		reg |= LCD_LVDS_CFG_PIN_CNT_24;
+		reg &= ~LCD_LVDS_CFG_24BIT_MODE_MASK;
+		if (dmi->lvds_info.lvds_24b_option == 1)
+			reg |= LCD_LVDS_CFG_24BIT_OPT1;
+		else
+			reg |= LCD_LVDS_CFG_24BIT_OPT2;
+	} else {
+		reg |= LCD_LVDS_CFG_PIN_CNT_18;
+	}
+
+	/* Set data delay. */
+	reg &= ~LCD_LVDS_CFG_TICK_DRV_MASK;
+	reg |= LCD_LVDS_CFG_TICK_DRV(dmi->lvds_info.lvds_tick_drv);
+	writel(reg, info->reg_base + LCD_LVDS_CLK_CFG);
+	return;
+}
+
+#ifdef CONFIG_ARCH_ARMADA370
 static int __init dovefb_probe(struct platform_device *pdev)
+#else
+static int __devinit dovefb_probe(struct platform_device *pdev)
+#endif
 {
 	struct dovefb_mach_info *dmi;
 	struct dovefb_info *info = NULL;
@@ -1009,6 +1073,12 @@ static int __init dovefb_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
+	/*
+	 * Program MBUS remapping windows if we are asked to.
+	 */
+	if (dmi->dram != NULL)
+		dovefb_conf_mbus_windows(info, dmi->dram);
+
 #if 0 //KW-LCD
 	/*
 	* initialize lcd gpio access interface
@@ -1037,6 +1107,8 @@ static int __init dovefb_probe(struct platform_device *pdev)
 	info->io_pin_allocation = dmi->io_pin_allocation;
 	info->pix_fmt = dmi->pix_fmt;
 	info->panel_rbswap = dmi->panel_rbswap;
+	info->fixed_full_div = dmi->fixed_full_div;
+	info->full_div_val = dmi->full_div_val;
 #if 0 //KW-LCD
 	/* get LCD clock information. */
 	info->clk = clk_get(&pdev->dev, "LCDCLK");
@@ -1103,6 +1175,12 @@ static int __init dovefb_probe(struct platform_device *pdev)
 	writel( 0x0, info->reg_base + SPU_IRQ_ENA);
 
 	/*
+	 * Setup LVDS parameters if needed.
+	 */
+	if (dmi->lvds_info.enabled)
+		dovefb_conf_lvds(info, dmi);
+
+	/*
 	 * Register framebuffers.
 	 */
 	ret = register_framebuffer(info->gfx_plane->fb_info);
@@ -1158,26 +1236,62 @@ static int dovefb_suspend(struct platform_device *pdev, pm_message_t mesg)
 	/* Disable all interrupts */
 	writel( 0x0, dfi->reg_base+SPU_IRQ_ENA);
 
+	/* Save cursor related registers */
+	dfi->LCD_SPU_HWC_HPXL_VLN_saved_value =
+		readl(dfi->reg_base + LCD_SPU_HWC_HPXL_VLN);
+	dfi->LCD_SPU_ALPHA_COLOR1_saved_value =
+		readl(dfi->reg_base + LCD_SPU_ALPHA_COLOR1);
+	dfi->LCD_SPU_ALPHA_COLOR2_saved_value =
+		readl(dfi->reg_base + LCD_SPU_ALPHA_COLOR2);
+
+	/* Save colorkey related regiters */
+	dfi->LCD_SPU_COLORKEY_Y_saved_value =
+		readl(dfi->reg_base + LCD_SPU_COLORKEY_Y);
+	dfi->LCD_SPU_COLORKEY_U_saved_value =
+		readl(dfi->reg_base + LCD_SPU_COLORKEY_U);
+	dfi->LCD_SPU_COLORKEY_V_saved_value =
+		readl(dfi->reg_base + LCD_SPU_COLORKEY_V);
+	dfi->LCD_SPU_DMA_CTRL1_saved_value =
+		readl(dfi->reg_base + LCD_SPU_DMA_CTRL1);
+	dfi->LCD_SPU_ADV_REG_saved_value =
+		readl(dfi->reg_base + LCD_SPU_ADV_REG);
+
+#ifdef CONFIG_ARCH_ARMADA370
 	acquire_console_sem();
+#else
+	console_lock();
+#endif
 
 	if (dovefb_gfx_suspend(dfi->gfx_plane, mesg)) {
 		printk(KERN_INFO "dovefb_suspend(): "
 				"dovefb_gfx_suspend() failed.\n");
+#ifdef CONFIG_ARCH_ARMADA370
 		release_console_sem();
+#else
+		console_unlock();
+#endif
 		return -1;
 	}
 
 	if (dovefb_ovly_suspend(dfi->vid_plane, mesg)) {
 		printk(KERN_INFO "dovefb_suspend(): "
 				"dovefb_ovly_suspend() failed.\n");
+#ifdef CONFIG_ARCH_ARMADA370
 		release_console_sem();
+#else
+		console_unlock();
+#endif
 		return -1;
 	}
 
 	pdev->dev.power.power_state = mesg;
 	if (!IS_ERR(dfi->clk))
 		clk_disable(dfi->clk);
+#ifdef CONFIG_ARCH_ARMADA370
 	release_console_sem();
+#else
+	console_unlock();
+#endif
 
 	return 0;
 }
@@ -1188,7 +1302,11 @@ static int dovefb_resume(struct platform_device *pdev)
 
 	printk(KERN_INFO "dovefb_resume().\n");
 
+#ifdef CONFIG_ARCH_ARMADA370
 	acquire_console_sem();
+#else
+	 console_lock();
+#endif
 	if (!IS_ERR(dfi->clk))
 		clk_enable(dfi->clk);
 
@@ -1212,10 +1330,34 @@ static int dovefb_resume(struct platform_device *pdev)
 		return -1;
 	}
 
+	/* Restore cursor related registers */
+	writel(dfi->LCD_SPU_HWC_HPXL_VLN_saved_value,
+		dfi->reg_base + LCD_SPU_HWC_HPXL_VLN);
+	writel(dfi->LCD_SPU_ALPHA_COLOR1_saved_value,
+		dfi->reg_base + LCD_SPU_ALPHA_COLOR1);
+	writel(dfi->LCD_SPU_ALPHA_COLOR2_saved_value,
+		dfi->reg_base + LCD_SPU_ALPHA_COLOR2);
+
+	/* Restore colorkey related regiters */
+	writel(dfi->LCD_SPU_COLORKEY_Y_saved_value,
+		dfi->reg_base + LCD_SPU_COLORKEY_Y);
+	writel(dfi->LCD_SPU_COLORKEY_U_saved_value,
+		dfi->reg_base + LCD_SPU_COLORKEY_U);
+	writel(dfi->LCD_SPU_COLORKEY_V_saved_value,
+		dfi->reg_base + LCD_SPU_COLORKEY_V);
+	writel(dfi->LCD_SPU_DMA_CTRL1_saved_value,
+		dfi->reg_base + LCD_SPU_DMA_CTRL1);
+	writel(dfi->LCD_SPU_ADV_REG_saved_value,
+		dfi->reg_base + LCD_SPU_ADV_REG);
+
 	/* Disable all interrupts */
 	writel( 0x0, dfi->reg_base + SPU_IRQ_ENA);
 
+#ifdef CONFIG_ARCH_ARMADA370
 	release_console_sem();
+#else
+	 console_unlock();
+#endif
 
 	return 0;
 }

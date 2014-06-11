@@ -123,6 +123,9 @@ start:
 		.rept	7
 		mov	r0, r0
 		.endr
+#ifdef CONFIG_BE8_ON_LE
+		setend	be
+#endif
    ARM(		mov	r0, r0		)
    ARM(		b	1f		)
  THUMB(		adr	r12, BSYM(1f)	)
@@ -621,18 +624,6 @@ __armv4_mmu_cache_on:
 		mov	r12, lr
 #ifdef CONFIG_MMU
 		bl	__setup_mmu
-#ifdef CONFIG_CACHE_FEROCEON_L2
-		/* Cancel L2 prefetch */
-		mrc	p15, 1, r0, c15, c1, 0	@ Read r15 register
-		orr	r0, #0x01000000		@ No prefetching
-		mcr	p15, 1, r0, c15, c1, 0	@ Write r15 register
-/*
- * In this step, the I/DCaches are closed, but L2 cache might be present 
- * containing valid data (from u-boot). We do not assume u-boot invalidates L2, 
- * so we do it ourselves
- */
-		mcr	p15, 1, r0, c15, c11, 0	@ Invalidate whole L2 
-#endif
 		mov	r0, #0
 		mcr	p15, 0, r0, c7, c10, 4	@ drain write buffer
 		mcr	p15, 0, r0, c8, c7, 0	@ flush I,D TLBs
@@ -706,6 +697,13 @@ __arm6_mmu_cache_on:
 
 __common_mmu_cache_on:
 #ifndef CONFIG_THUMB2_KERNEL
+#ifdef CONFIG_ARCH_ARMADA_XP
+#ifdef CONFIG_SHEEVA_ERRATA_ARM_CPU_4948
+		mrc 	p15, 1, r1, c15, c1, 0
+		orr     r1, r1, #1			@ Disable L0 cache.
+		mcr 	p15, 1, r1, c15, c1, 0
+#endif
+#endif
 #ifndef DEBUG
 		orr	r0, r0, #0x000d		@ Write buffer, mmu
 #endif
@@ -864,9 +862,9 @@ proc_types:
 		/* this conflicts with the standard ARMv5TE entry */
 		.long	0x41009260		@ Old Feroceon
 		.long	0xff00fff0
-		W(b)	__armv4_mmu_cache_on
-		W(b)	__armv4_mmu_cache_off
-		W(b)	__armv5tej_mmu_cache_flush
+		b	__armv4_mmu_cache_on
+		b	__armv4_mmu_cache_off
+		b	__armv5tej_mmu_cache_flush
 #endif
 
 		.word	0x66015261		@ FA526
@@ -894,12 +892,24 @@ proc_types:
 		W(b)	__armv4_mmu_cache_on
 		W(b)	__armv4_mmu_cache_off
 		W(b)	__armv5tej_mmu_cache_flush
-
+#ifdef CONFIG_CPU_SHEEVA_PJ4B_V6
+		.word	0x000f0000		@ Marvell PJ4B ARMv6
+		.word	0x000f0000
+#else
 		.word	0x0007b000		@ ARMv6
 		.word	0x000ff000
+#endif
 		W(b)	__armv4_mmu_cache_on
 		W(b)	__armv4_mmu_cache_off
 		W(b)	__armv6_mmu_cache_flush
+
+#ifdef CONFIG_ARCH_ARMADA_XP
+		.word	0x560f5810		@ Marvell PJ4 ARMv6
+		.word	0xff0ffff0
+		W(b)	__armv4_mmu_cache_on
+		W(b)	__armv4_mmu_cache_off
+		W(b)	__armv6_mmu_cache_flush
+#endif
 
 		.word	0x000f0000		@ new CPU Id
 		.word	0x000f0000
@@ -1142,20 +1152,10 @@ no_cache_id:
  THUMB(		add     r1, r1, r11		)
 		teq	r1, r2
 		bne	1b
-#ifdef CONFIG_ARCH_FEROCEON
-                /* 4 way cache, load of new cache lines won't be enough. */
-2:              mrc     p15, 0, r15, c7, c14, 3         @ test,clean,invalidate
-                bne     2b
-#endif
 
 		mcr	p15, 0, r1, c7, c5, 0	@ flush I cache
 		mcr	p15, 0, r1, c7, c6, 0	@ flush D cache
 		mcr	p15, 0, r1, c7, c10, 4	@ drain WB
-#ifdef CONFIG_CACHE_FEROCEON_L2
-		mcr	p15, 1, r1, c15, c9, 0	@ clean entire L2 cache
-		mcr	p15, 1, r1, c15, c11, 0	@ Invalidate entire L2 cache
-		mcr	p15, 0, r1, c7, c10, 4	@ drain WB
-#endif
 		mov	pc, lr
 
 __armv3_mmu_cache_flush:

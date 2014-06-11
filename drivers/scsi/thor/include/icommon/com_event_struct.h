@@ -8,7 +8,7 @@
 #define MAX_EVENTS_RETURNED             6
 
 #ifndef _OS_BIOS
-#pragma pack(8)	
+#pragma pack(8)
 #endif /*  _OS_BIOS */
 
 typedef struct _DriverEvent
@@ -20,9 +20,9 @@ typedef struct _DriverEvent
 			       Event class */
 	MV_U8   Severity;
 	MV_U8   AdapterID;
-	MV_U16  DeviceID;   /* Device ID relate to the event 
+	MV_U16  DeviceID;   /* Device ID relate to the event
 			       class (HD ID, LD ID etc) */
-	MV_U32  Params[MAX_EVENT_PARAMS]; /* Additional information if 
+	MV_U32  Params[MAX_EVENT_PARAMS]; /* Additional information if
 					     ABSOLUTELY necessary. */
 } DriverEvent, * PDriverEvent;
 
@@ -30,7 +30,7 @@ typedef struct _EventRequest
 {
 	MV_U8        Count; /* [OUT] # of actual events returned */
 	MV_U8        Reserved[3];
-	DriverEvent  Events[MAX_EVENTS_RETURNED]; 
+	DriverEvent  Events[MAX_EVENTS_RETURNED];
 } EventRequest, * PEventRequest;
 
 #ifndef _OS_BIOS

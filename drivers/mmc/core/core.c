@@ -524,6 +524,10 @@ void mmc_set_data_timeout(struct mmc_data *data, const struct mmc_card *card)
 			timeout_us += data->timeout_clks * 1000 /
 				(mmc_host_clk_rate(card->host) / 1000);
 
+#ifdef CONFIG_MV_MMC_TIMEOUT_OVERRIDE
+		/* Set to 500ms for both Rd/Wr */
+		limit_us = 500000;
+#else
 		if (data->flags & MMC_DATA_WRITE)
 			/*
 			 * The limit is really 250 ms, but that is
@@ -532,6 +536,7 @@ void mmc_set_data_timeout(struct mmc_data *data, const struct mmc_card *card)
 			limit_us = 300000;
 		else
 			limit_us = 100000;
+#endif
 
 		/*
 		 * SDHC cards always use these fixed values.

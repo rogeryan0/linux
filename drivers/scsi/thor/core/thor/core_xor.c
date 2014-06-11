@@ -18,7 +18,7 @@ void Core_ModuleSendXORRequest(MV_PVOID This, PMV_XOR_Request pXORReq)
 {
 	PCore_Driver_Extension pCore = (PCore_Driver_Extension)This;
 
-	switch (pXORReq->Request_Type) 
+	switch (pXORReq->Request_Type)
 	{
 		case XOR_REQUEST_WRITE:
 			mvXORWrite (pCore, pXORReq);
@@ -49,7 +49,7 @@ void mvXORInit(
 	for ( id=0; id<tableCount; id++ ) {
 		pSGPtr[id] = SGListPtr[id].Entry_Ptr;
 		pVirPtr[id] = (MV_PVOID)
-			( (MV_PTR_INTEGER)pSGPtr[id]->Base_Address 
+			( (MV_PTR_INTEGER)pSGPtr[id]->Base_Address
 			| (MV_PTR_INTEGER)((_MV_U64)pSGPtr[id]->Base_Address_High<<32) );
 		SGSizePtr[id] = pSGPtr[id]->Size;
 		SGOffPtr[id] = 0;
@@ -73,7 +73,7 @@ void mvXORUpdateEntry(
 		else {
 			pSGPtr[id]++;
 			pVirPtr[id] = (MV_PVOID)
-					( (MV_PTR_INTEGER)pSGPtr[id]->Base_Address 
+					( (MV_PTR_INTEGER)pSGPtr[id]->Base_Address
 					| (MV_PTR_INTEGER)((_MV_U64)pSGPtr[id]->Base_Address_High<<32) );
 			SGSizePtr[id] = pSGPtr[id]->Size;
 			SGOffPtr[id] = 0;
@@ -124,7 +124,7 @@ MV_VOID mv_put_kvaddr(PMV_SG_Entry sg_entry, MV_PVOID kvaddr)
 #endif
 }
 
-MV_VOID mv_save_val_8(PMV_SG_Entry sg_entry, MV_U32 sge_off, 
+MV_VOID mv_save_val_8(PMV_SG_Entry sg_entry, MV_U32 sge_off,
 	MV_PU8 kaddr, MV_U8 val)
 {
 #ifdef _OS_LINUX
@@ -154,7 +154,7 @@ MV_VOID mv_save_val_8(PMV_SG_Entry sg_entry, MV_U32 sge_off,
 }
 
 #ifdef SUPPORT_XOR_DWORD
-static MV_VOID mv_save_val_32(PMV_SG_Entry sg_entry, MV_U32 sge_off, 
+static MV_VOID mv_save_val_32(PMV_SG_Entry sg_entry, MV_U32 sge_off,
 	MV_PU32 kaddr, MV_U32 val)
 {
 #ifdef _OS_LINUX
@@ -204,7 +204,7 @@ MV_U8 mvXORByte(
 
 	for ( sId=1; sId<pXORReq->Source_SG_Table_Count; sId++ ) {
 		addr = mv_get_kvaddr(sg_entry[sId], pSourceVirPtr[sId]);
-		xorResult = GF_Add(xorResult, 
+		xorResult = GF_Add(xorResult,
 			GF_Multiply(*(addr + sge_off[sId]), pXORReq->Coef[tId][sId]));
 		mv_put_kvaddr(sg_entry[sId], addr);
 	}
@@ -277,15 +277,15 @@ void mvXORWrite(MV_PVOID This, PMV_XOR_Request pXORReq)
 			  &minSize);
 
 	/* Navigate all the SG table, calculate the target xor value. */
-	while ( remainSize>0 ) 
+	while ( remainSize>0 )
 	{
 		size = minSize;
 #ifdef SUPPORT_XOR_DWORD
 		MV_DASSERT( !(size%4) );
 		Dword_size = size/4;
-		for ( i=0; i<Dword_size; i++ ) 
+		for ( i=0; i<Dword_size; i++ )
 #else
-		for ( i=0; i<size; i++ ) 
+		for ( i=0; i<size; i++ )
 #endif
 		{
 			for ( tId=0; tId<pXORReq->Target_SG_Table_Count; tId++ )
@@ -394,11 +394,11 @@ void mvXORDMA (MV_PVOID This, PMV_XOR_Request pXORReq);
 
 #ifndef SUPPORT_RAID6
 MV_U8 mvXORInitArray (
-	MV_PVOID This, 
-	PMV_XOR_Request pXORReq, 
+	MV_PVOID This,
+	PMV_XOR_Request pXORReq,
 	PMV_SG_Entry *SG_entry,
 	MV_PU32 SG_size,
-	MV_PU8 *pSource, 
+	MV_PU8 *pSource,
 	MV_PU32 table_size);
 #endif
 
@@ -410,7 +410,7 @@ void Core_ModuleSendXORRequest(MV_PVOID This, PMV_XOR_Request pXORReq)
 {
 	PCore_Driver_Extension pCore = (PCore_Driver_Extension)This;
 
-	switch (pXORReq->Request_Type) 
+	switch (pXORReq->Request_Type)
 	{
 		case XOR_REQUEST_WRITE:
 			mvXORWrite (pCore, pXORReq);
@@ -461,32 +461,32 @@ void mvXORCompare (MV_PVOID This, PMV_XOR_Request pXORReq)
 	}
 
 	// init array & error checking
-	if ( mvXORInitArray(pCore, pXORReq, SG_entry, SG_size, pSource, &table_size) != num_sources ) 
+	if ( mvXORInitArray(pCore, pXORReq, SG_entry, SG_size, pSource, &table_size) != num_sources )
 	{
 		pXORReq->Request_Status = XOR_STATUS_INVALID_PARAMETER;
 		return;
 	}
 
-	while (total_byte < table_size) 
+	while (total_byte < table_size)
 	{
 		min_size = SG_size[0];
-		for (sourceCount=1; sourceCount<num_sources; sourceCount++) 
+		for (sourceCount=1; sourceCount<num_sources; sourceCount++)
 		{
 			if (min_size > SG_size[sourceCount])
-				min_size = SG_size[sourceCount];	
+				min_size = SG_size[sourceCount];
 		}
 
-		for (sizeCount=0; sizeCount<min_size; sizeCount++) 
+		for (sizeCount=0; sizeCount<min_size; sizeCount++)
 		{
 			xorResult = *pSource[0];
-			for (sourceCount=1; sourceCount<num_sources; sourceCount++) 
+			for (sourceCount=1; sourceCount<num_sources; sourceCount++)
 			{
 //				*pSource[0] = *pSource[0] ^ *pSource[sourceCount];
 				xorResult = xorResult ^ *pSource[sourceCount];
 				pSource[sourceCount]++;
 			}
 
-//			if (*pSource[0] != 0) 
+//			if (*pSource[0] != 0)
 			if (xorResult != 0)
 			{
 				pXORReq->Request_Status = XOR_STATUS_ERROR;
@@ -499,7 +499,7 @@ void mvXORCompare (MV_PVOID This, PMV_XOR_Request pXORReq)
 
 		if (total_byte<table_size) {
 			// make new size array & increment entry pointer if needed
-			for (sourceCount=0; sourceCount<num_sources; sourceCount++) 
+			for (sourceCount=0; sourceCount<num_sources; sourceCount++)
 			{
 				SG_size[sourceCount] -= min_size;
 				if (SG_size[sourceCount] == 0)
@@ -522,16 +522,16 @@ void mvXORDMA (MV_PVOID This, PMV_XOR_Request pXORReq)
 }
 
 MV_U8 mvXORInitArray (
-	MV_PVOID This, 
-	PMV_XOR_Request pXORReq, 
+	MV_PVOID This,
+	PMV_XOR_Request pXORReq,
 	PMV_SG_Entry *SG_entry,
 	MV_PU32 SG_size,
-	MV_PU8 *pSource, 
+	MV_PU8 *pSource,
 	MV_PU32 table_size)
-{	
+{
 	//PCore_Driver_Extension pCore = (PCore_Driver_Extension)This;
 	PMV_SG_Table current_table = NULL;
-	//MV_U8 j; 
+	//MV_U8 j;
 	MV_U8 i = 0;
 
 	*table_size = 0;
@@ -544,7 +544,7 @@ MV_U8 mvXORInitArray (
 
 		SG_entry[i] = &current_table->Entry_Ptr[0];
 		SG_size[i] = current_table->Entry_Ptr[0].Size;
-//		pSource[i] = (MV_PU8)SG_entry[i]->Base_Address;	
+//		pSource[i] = (MV_PU8)SG_entry[i]->Base_Address;
 		pSource[i] = raid_physical_to_virtual(pXORReq->Cmd_Initiator, current_table->Entry_Ptr[0].Base_Address);
 
 //		i++;
@@ -568,7 +568,7 @@ void mvXORInit(
 	for ( id=0; id<tableCount; id++ ) {
 		pSGPtr[id] = SGListPtr[id].Entry_Ptr;
 		pVirPtr[id] = (MV_PVOID)
-			( (MV_PTR_INTEGER)pSGPtr[id]->Base_Address 
+			( (MV_PTR_INTEGER)pSGPtr[id]->Base_Address
 			| (MV_PTR_INTEGER)pSGPtr[id]->Base_Address_High<<32 );
 		SGSizePtr[id] = pSGPtr[id]->Size;
 		if ( *minSizePtr > SGSizePtr[id] ) *minSizePtr=SGSizePtr[id];
@@ -590,7 +590,7 @@ void mvXORUpdateEntry(
 		else {
 			pSGPtr[id]++;
 			pVirPtr[id] = (MV_PVOID)
-					( (MV_PTR_INTEGER)pSGPtr[id]->Base_Address 
+					( (MV_PTR_INTEGER)pSGPtr[id]->Base_Address
 					| (MV_PTR_INTEGER)pSGPtr[id]->Base_Address_High<<32 );
 			SGSizePtr[id] = pSGPtr[id]->Size;
 		}
@@ -668,23 +668,23 @@ void mvXORWrite(MV_PVOID This, PMV_XOR_Request pXORReq)
 			  &minSize);
 
 /*
-	for ( sId=0; sId<pXORReq->Source_SG_Table_Count; sId++ ) 
+	for ( sId=0; sId<pXORReq->Source_SG_Table_Count; sId++ )
 	{
 		pSourceSG[sId] = pXORReq->Source_SG_Table_List[sId].Entry;
 		sourceSize[sId] = pSourceSG[sId]->Size;
 		pSourceVir[sId] = (MV_PVOID)
-			( (MV_PTR_INTEGER)pSourceSG[sId]->Base_Address 
+			( (MV_PTR_INTEGER)pSourceSG[sId]->Base_Address
 			| (MV_PTR_INTEGER)pSourceSG[sId]->Base_Address_High<<32 );
 		MV_DASSERT( remainSize==pXORReq->Source_SG_Table_List[sId].Byte_Count );
 		if ( minSize>sourceSize[sId] ) minSize=sourceSize[sId];
 	}
 
-	for ( tId=0; tId<pXORReq->Target_SG_Table_Count; tId++ ) 
+	for ( tId=0; tId<pXORReq->Target_SG_Table_Count; tId++ )
 	{
 		pTargetSG[tId] = pXORReq->Target_SG_Table_List[tId].Entry;
 		targetSize[tId] = pTargetSG[tId]->Size;
 		pTargetVir[tId] = (MV_PVOID)
-			( (MV_PTR_INTEGER)pTargetSG[tId]->Base_Address 
+			( (MV_PTR_INTEGER)pTargetSG[tId]->Base_Address
 			| (MV_PTR_INTEGER)pTargetSG[tId]->Base_Address_High<<32 );
 		MV_DASSERT( remainSize==pXORReq->Target_SG_Table_List[tId].Byte_Count );
 		if ( minSize>targetSize[tId] ) minSize=targetSize[tId];
@@ -692,15 +692,15 @@ void mvXORWrite(MV_PVOID This, PMV_XOR_Request pXORReq)
 */
 
 	/* Navigate all the SG table, calculate the target xor value. */
-	while ( remainSize>0 ) 
+	while ( remainSize>0 )
 	{
 		size = minSize;
 #ifdef SUPPORT_XOR_DWORD
 		MV_DASSERT( !(size%4) );
 		Dword_size = size/4;
-		for ( i=0; i<Dword_size; i++ ) 
+		for ( i=0; i<Dword_size; i++ )
 #else
-		for ( i=0; i<size; i++ ) 
+		for ( i=0; i<size; i++ )
 #endif
 		{
 			for ( tId=0; tId<pXORReq->Target_SG_Table_Count; tId++ )

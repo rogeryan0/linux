@@ -1,7 +1,7 @@
 #include "hba_header.h"
 
 MV_U8 ossw_add_timer(struct timer_list *timer,
-		    u32 msec, 
+		    u32 msec,
 		    void (*function)(unsigned long),
 		    unsigned long data)
 {
@@ -55,7 +55,7 @@ static void mv_touch_nmi_watchdog(void)
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 13)
 	touch_softlockup_watchdog();
 #endif /* LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 13) */
-}	
+}
 
 void HBA_SleepMillisecond(MV_PVOID ext, MV_U32 msec)
 {
@@ -109,4 +109,3 @@ void hba_msleep(MV_U32 msec)
 }
 
 #endif
-

@@ -408,6 +408,51 @@ static int rs5c_set_alarm(struct device *dev, struct rtc_wkalrm *t)
 	return 0;
 }
 
+#if defined(CONFIG_BUFFALO_PLATFORM) && defined(CONFIG_USE_RS5C372)
+static int rs5c_set_char(struct device *dev, int addr, uint8_t data)
+{
+	struct i2c_client	*client = to_i2c_client(dev);
+	struct rs5c372		*rs5c = i2c_get_clientdata(client);
+	addr = RS5C_ADDR(addr);
+
+	if (i2c_smbus_write_byte_data(client, addr, data) < 0) {
+		pr_debug("%s: can't set char(0x%x)0x%x\n", rs5c->rtc->name, addr, data);
+		return -EIO;
+	}
+
+	return 0;
+}
+
+static int rs5c_get_char(struct device *dev, int addr)
+{
+	struct i2c_client	*client = to_i2c_client(dev);
+	struct rs5c372		*rs5c = i2c_get_clientdata(client);
+	int			status;
+
+	status  = rs5c_get_regs(rs5c);
+	if (status < 0){
+		printk("Error:rtc_get_char\n");
+		return status;
+	}
+	return rs5c->regs[addr];
+}
+
+static struct device *bfRtc;
+int BufRtcSetPowerStatus(uint8_t type)
+{
+	if (rs5c_set_char(bfRtc, RS5C_REG_ALARM_B_MIN, type) < 0)
+		return -1;
+	return 0;
+}
+EXPORT_SYMBOL(BufRtcSetPowerStatus);/* for buffalo/BuffaloGpio.c */
+int BufRtcGetPowerStatus(uint8_t *type)
+{
+	*type = rs5c_get_char(bfRtc, RS5C_REG_ALARM_B_MIN);
+	return 0;
+}
+EXPORT_SYMBOL(BufRtcGetPowerStatus);
+#endif /*BUFFALO RTC*/
+
 #if defined(CONFIG_RTC_INTF_PROC) || defined(CONFIG_RTC_INTF_PROC_MODULE)
 
 static int rs5c372_rtc_proc(struct device *dev, struct seq_file *seq)
@@ -648,6 +693,9 @@ static int rs5c372_probe(struct i2c_client *client,
 
 	rs5c372->rtc = rtc_device_register(rs5c372_driver.driver.name,
 				&client->dev, &rs5c372_rtc_ops, THIS_MODULE);
+#if defined(CONFIG_BUFFALO_PLATFORM) && defined(CONFIG_USE_RS5C372)
+	bfRtc = &client->dev;
+#endif
 
 	if (IS_ERR(rs5c372->rtc)) {
 		err = PTR_ERR(rs5c372->rtc);

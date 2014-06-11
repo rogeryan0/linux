@@ -64,7 +64,7 @@ static int mv_proc_ld_info(struct Scsi_Host *host)
 {
 	struct hba_extension *hba;
 	PMV_Request req;
-	MV_U8 Cdb[MAX_CDB_SIZE]; 
+	MV_U8 Cdb[MAX_CDB_SIZE];
 	MV_U16 LD_ID = 0XFF;
 	unsigned long flags;
 
@@ -72,7 +72,7 @@ static int mv_proc_ld_info(struct Scsi_Host *host)
 	Cdb[1] = APICDB1_LD_GETINFO;
 	Cdb[2] = LD_ID & 0xff;
 	Cdb[3] = API2Driver_ID(LD_ID)>>8;
-	
+
 	hba = __mv_get_ext_from_host(host);
 	req = res_get_req_from_pool(hba->req_pool);
 	if (req == NULL) {
@@ -89,7 +89,7 @@ static int mv_proc_ld_info(struct Scsi_Host *host)
 		req->Cmd_Flag |= CMD_FLAG_DATA_IN;
 	if (SCSI_IS_READ(Cdb[0]) || SCSI_IS_WRITE(Cdb[0]))
 		req->Cmd_Flag |= CMD_FLAG_DMA;
-	
+
 	req->Data_Transfer_Length = LDINFO_NUM*sizeof(LD_Info);
 	memset(ldinfo, 0, LDINFO_NUM*sizeof(LD_Info));
 	req->Data_Buffer = ldinfo;
@@ -97,8 +97,8 @@ static int mv_proc_ld_info(struct Scsi_Host *host)
 	memcpy(req->Cdb, Cdb, MAX_CDB_SIZE);
 	memset(req->Context, 0, sizeof(MV_PVOID)*MAX_POSSIBLE_MODULE_NUMBER);
 
-	req->LBA.value = 0;    
-	req->Sector_Count = 0; 
+	req->LBA.value = 0;
+	req->Sector_Count = 0;
 	req->Completion = ioctlcallback;
 	req->Req_Type = REQ_TYPE_INTERNAL;
 
@@ -111,10 +111,10 @@ static int mv_proc_ld_info(struct Scsi_Host *host)
 	spin_unlock_irqrestore(&hba->desc->hba_desc->global_lock, flags);
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 11)
-	if ( !__hba_wait_for_atomic_timeout(&hba->hba_sync, 
+	if ( !__hba_wait_for_atomic_timeout(&hba->hba_sync,
 					    HBA_REQ_TIMER_IOCTL*HZ) ) {
 #else
-	if (wait_for_completion_timeout(&hba->cmpl, 
+	if (wait_for_completion_timeout(&hba->cmpl,
 					HBA_REQ_TIMER_IOCTL*HZ) == 0) {
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 11) */
 		MV_DBG(DMSG_HBA, "__MV__ ioctl req timed out.\n");
@@ -131,7 +131,7 @@ static char* mv_ld_status(int status)
 	case LD_STATUS_FUNCTIONAL:
 		return "online";
 	case LD_STATUS_DEGRADE:
-		return "degraded";		
+		return "degraded";
 	case LD_STATUS_DELETED:
 		return "deleted";
 	case LD_STATUS_PARTIALLYOPTIMAL:
@@ -165,7 +165,7 @@ static char* mv_ld_raid_mode(int status)
 	case LD_MODE_JBOD:
 		return "JBOD";
 	default:
-		return "unknown";	
+		return "unknown";
 	}
 }
 
@@ -191,7 +191,7 @@ static int mv_ld_get_status(struct Scsi_Host *host, MV_U16 ldid, LD_Status *ldst
 {
 	struct hba_extension *hba;
 	PMV_Request req;
-	MV_U8 Cdb[MAX_CDB_SIZE]; 
+	MV_U8 Cdb[MAX_CDB_SIZE];
 	MV_U16 LD_ID = ldid;/*0XFF;*/
 	unsigned long flags;
 
@@ -200,7 +200,7 @@ static int mv_ld_get_status(struct Scsi_Host *host, MV_U16 ldid, LD_Status *ldst
 	Cdb[1] = APICDB1_LD_GETSTATUS;
 	Cdb[2] = LD_ID & 0xff;
 	Cdb[3] = API2Driver_ID(LD_ID)>>8;
-	
+
 	req = res_get_req_from_pool(hba->req_pool);
 	if (req == NULL)
 		return -1;
@@ -221,12 +221,12 @@ static int mv_ld_get_status(struct Scsi_Host *host, MV_U16 ldid, LD_Status *ldst
 	memset(ldstatus, 0, sizeof(LD_Status));
 	ldstatus->Status = LD_STATUS_INVALID;
 	req->Data_Buffer = ldstatus;
-	
+
 	SGTable_Init(&req->SG_Table, 0);
 	memcpy(req->Cdb, Cdb, MAX_CDB_SIZE);
 	memset(req->Context, 0, sizeof(MV_PVOID)*MAX_POSSIBLE_MODULE_NUMBER);
-	req->LBA.value = 0;    
-	req->Sector_Count = 0; 
+	req->LBA.value = 0;
+	req->Sector_Count = 0;
 	req->Completion = ioctlcallback;
 	req->Req_Type = REQ_TYPE_INTERNAL;
 	req->Scsi_Status = REQ_STATUS_PENDING;
@@ -240,10 +240,10 @@ static int mv_ld_get_status(struct Scsi_Host *host, MV_U16 ldid, LD_Status *ldst
 	spin_unlock_irqrestore(&hba->desc->hba_desc->global_lock, flags);
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 11)
-	if (!__hba_wait_for_atomic_timeout(&hba->hba_sync, 
+	if (!__hba_wait_for_atomic_timeout(&hba->hba_sync,
 					    HBA_REQ_TIMER_IOCTL*HZ)) {
 #else
-	if (!wait_for_completion_timeout(&hba->cmpl, 
+	if (!wait_for_completion_timeout(&hba->cmpl,
 					  HBA_REQ_TIMER_IOCTL*HZ)) {
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 11) */
 		MV_DBG(DMSG_HBA, "__MV__ ioctl req timed out.\n");
@@ -265,7 +265,7 @@ static int mv_ld_show_status(char *buf, PLD_Status pld_status)
 		else if (LD_BGA_INIT_QUICK == pld_status->Bga ||
 		          LD_BGA_INIT_BACK == pld_status->Bga)
 			str = "initializing";
-		else if (LD_BGA_CONSISTENCY_CHECK == pld_status->Bga || 
+		else if (LD_BGA_CONSISTENCY_CHECK == pld_status->Bga ||
 		          LD_BGA_CONSISTENCY_FIX == pld_status->Bga)
 			str = "synchronizing";
 		else if (LD_BGA_MIGRATION == pld_status->Bga)
@@ -275,7 +275,7 @@ static int mv_ld_show_status(char *buf, PLD_Status pld_status)
 		ret = sprintf(buf, "  %s is %d%% done", str, pld_status->BgaPercentage);
 	}
 	else if ((LD_BGA_STATE_ABORTED == pld_status->BgaState) ||
-	         (LD_BGA_STATE_PAUSED == pld_status->BgaState) || 
+	         (LD_BGA_STATE_PAUSED == pld_status->BgaState) ||
 	         (LD_BGA_STATE_AUTOPAUSED == pld_status->BgaState))
 	{
 		if (LD_BGA_REBUILD == pld_status->Bga)
@@ -305,7 +305,7 @@ static int mv_ld_show_status(char *buf, PLD_Status pld_status)
 }
 #endif /*RAID_DRIVER*/
 
-int mv_linux_proc_info(struct Scsi_Host *pSHost, char *pBuffer, 
+int mv_linux_proc_info(struct Scsi_Host *pSHost, char *pBuffer,
 		       char **ppStart,off_t offset, int length, int inout)
 {
 	int len = 0;
@@ -317,7 +317,7 @@ int mv_linux_proc_info(struct Scsi_Host *pSHost, char *pBuffer,
 	LD_Status ld_status;
 	char *tmp = NULL;
 	int tmplen = 0;
-#endif	
+#endif
 	if (!pSHost || !pBuffer)
 		return (-ENOSYS);
 
@@ -328,7 +328,7 @@ int mv_linux_proc_info(struct Scsi_Host *pSHost, char *pBuffer,
 
 	len = sprintf(pBuffer,"Marvell %s Driver , Version %s\n",
 		      mv_product_name, mv_version_linux);
-	
+
 #ifdef RAID_DRIVER
 	if (mv_proc_ld_info(pSHost) == -1) {
 		len = sprintf(pBuffer,
@@ -349,7 +349,7 @@ int mv_linux_proc_info(struct Scsi_Host *pSHost, char *pBuffer,
 			}
 		}
 	}
-	
+
 	len += sprintf(pBuffer+len,"Index RAID\tStatus  \t\tBGA Status\n");
 	for (i = 0 ; i < LDINFO_NUM ; i++) {
 		if (ldinfo[i].Size.value == 0) {
@@ -395,7 +395,7 @@ int mv_linux_proc_info(struct Scsi_Host *pSHost, char *pBuffer,
 
 out:
 #endif
-		
+
 	datalen = len - offset;
 	if (datalen < 0) {
 		datalen = 0;
@@ -404,7 +404,7 @@ out:
 		*ppStart = pBuffer + offset;
 	}
 	return datalen;
-} 
+}
 
 /*
  *Character Device Interface.
@@ -415,7 +415,7 @@ static int mv_open(struct inode *inode, struct file *file)
 	unsigned int minor_number;
 	int retval = -ENODEV;
 	unsigned long flags = 0;
-	
+
 	spin_lock_irqsave(&inode->i_lock, flags);
 	minor_number = MINOR(inode->i_rdev);
 	if (minor_number >= __mv_get_adapter_count()) {
@@ -451,7 +451,7 @@ int mv_register_chdev(struct hba_extension *hba)
 	if(ret)
 	{
 		MV_DBG(DMSG_KERN, "registered chrdev (%d, %d) failed.\n",
-	       	_mv_major, hba->desc->hba_desc->id);
+		_mv_major, hba->desc->hba_desc->id);
 		return	ret;
 	}
 	if (ret || !_mv_major) {
@@ -462,7 +462,7 @@ int mv_register_chdev(struct hba_extension *hba)
 		if (ret)
 		{
 			MV_DBG(DMSG_KERN, "allocate chrdev (%d, %d) failed.\n",
-		       	MAJOR(num), hba->desc->hba_desc->id);
+			MAJOR(num), hba->desc->hba_desc->id);
 			return ret;
 		}
 		else
@@ -489,9 +489,9 @@ void mv_unregister_chdev(struct hba_extension *hba)
 #ifdef HAVE_UNLOCKED_IOCTL
 static long mv_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 #else
-static int mv_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
+static int mv_ioctl(struct inode *inode, struct file *file, unsigned int cmd,
 		    unsigned long arg)
-#endif /* HAVE_UNLOCKED_IOCTL */ 
+#endif /* HAVE_UNLOCKED_IOCTL */
 {
 	struct hba_extension	*hba;
 	PMV_Request    req = NULL;
@@ -503,20 +503,20 @@ static int mv_ioctl(struct inode *inode, struct file *file, unsigned int cmd,
 	PSCSI_PASS_THROUGH_DIRECT_WITH_BUFFER psptdwb = NULL;
 	int mv_device_count;
 	struct scsi_idlun idlun;
-	
+
 #ifdef HAVE_UNLOCKED_IOCTL
 	hba = container_of(file->f_dentry->d_inode->i_cdev,
 			   struct hba_extension, cdev);
 #else
 	hba = container_of(inode->i_cdev,
 			   struct hba_extension, cdev);
-#endif /* HAVE_UNLOCKED_IOCTL */ 
+#endif /* HAVE_UNLOCKED_IOCTL */
 	/*if the driver is shutdown ,any process shouldn't call mv_ioctl*/
 	if(hba != NULL) {
 		if(DRIVER_STATUS_SHUTDOWN== hba->State ) {
 			MV_DBG(DMSG_IOCTL, "Marvell : Driver had been rmmoded ,Invalid operation.\n");
 			return -EPERM;
-		}	
+		}
 	} else {
 		MV_DBG(DMSG_IOCTL, "Marvell : Driver is not installed ,Invalid operation.\n");
 		return -EPERM;
@@ -526,9 +526,10 @@ static int mv_ioctl(struct inode *inode, struct file *file, unsigned int cmd,
 			MV_DBG(DMSG_IOCTL, "Marvell : Invalid ioctl command.\n");
 			return -EBADF;
 	}
-	
+
 	if (cmd == API_IOCTL_GET_VIRTURL_ID) {
-		if (copy_to_user((void *)arg,(void *)&console_id,sizeof(int)) != 0 ) {
+		if (copy_to_user(((PSCSI_PASS_THROUGH_DIRECT_WITH_BUFFER) arg)->sptd.DataBuffer,
+			(void *)&console_id,sizeof(int)) != 0 ) {
 			MV_DBG(DMSG_IOCTL, "Marvell : Get VIRTUAL_DEVICE_ID Error.\n");
 			return -EIO;
 		}
@@ -536,7 +537,8 @@ static int mv_ioctl(struct inode *inode, struct file *file, unsigned int cmd,
 	}
 
 	if (cmd == API_IOCTL_GET_HBA_COUNT) {
-		if (copy_to_user((void *)arg,(void *)&mv_device_count,sizeof(unsigned int)) != 0) {
+		if (copy_to_user(((PSCSI_PASS_THROUGH_DIRECT_WITH_BUFFER) arg)->sptd.DataBuffer,
+					(void *)&mv_device_count,sizeof(unsigned int)) != 0) {
 			MV_DBG(DMSG_IOCTL, "Marvell : Get Device Number Error.\n");
 			return -EIO;
 		}
@@ -544,11 +546,12 @@ static int mv_ioctl(struct inode *inode, struct file *file, unsigned int cmd,
 	}
 
 	if (cmd == API_IOCTL_LOOKUP_DEV) {
-		if( copy_from_user(&idlun, (void *)arg, sizeof(struct scsi_idlun)) !=0) {
+		if( copy_from_user(&idlun, ((PSCSI_PASS_THROUGH_DIRECT_WITH_BUFFER) arg)->sptd.DataBuffer,
+					sizeof(struct scsi_idlun)) !=0) {
 			MV_DBG(DMSG_IOCTL, "Marvell : Get Device idlun Error.\n");
 			return -EIO;
 		}
-		
+
 		/*To check host no, if fail, return EFAULT (Bad address) */
 		if (hba->host->host_no != ((idlun.dev_id) >> 24)) {
 			MV_DBG(DMSG_IOCTL, "Marvell : lookup device host number error .\n");
@@ -556,11 +559,11 @@ static int mv_ioctl(struct inode *inode, struct file *file, unsigned int cmd,
 		}
 		return 0;
 	}
-	
+
 
 	psptdwb = kmalloc(sptdwb_size, GFP_ATOMIC);
-	
-	if ( NULL == psptdwb ) 
+
+	if ( NULL == psptdwb )
 		return -ENOMEM;
 
 	error = copy_from_user(psptdwb, (void *)arg, sptdwb_size);
@@ -576,10 +579,10 @@ static int mv_ioctl(struct inode *inode, struct file *file, unsigned int cmd,
 			ret = -ENOMEM;
 			goto clean_psp;
 		}
-			
+
 		psptdwb->sptd.DataBuffer = ioctl_buf;
 		memset(ioctl_buf, 0, psptdwb->sptd.DataTransferLength);
-		
+
 		error = copy_from_user( psptdwb->sptd.DataBuffer,
 					((PSCSI_PASS_THROUGH_DIRECT_WITH_BUFFER)arg)->sptd.DataBuffer,
 					psptdwb->sptd.DataTransferLength);
@@ -590,7 +593,7 @@ static int mv_ioctl(struct inode *inode, struct file *file, unsigned int cmd,
 	} else {
 		psptdwb->sptd.DataBuffer = NULL;
 	}
-	
+
 	/*Translate request to MV_REQUEST*/
 	req = res_get_req_from_pool(hba->req_pool);
 	if (NULL == req) {
@@ -619,15 +622,15 @@ static int mv_ioctl(struct inode *inode, struct file *file, unsigned int cmd,
 	req->Sense_Info_Buffer = psptdwb->Sense_Buffer;
 
 	SGTable_Init(&req->SG_Table, 0);
-	
+
 	memcpy(req->Cdb, psptdwb->sptd.Cdb, MAX_CDB_SIZE);
 	memset(req->Context, 0, sizeof(MV_PVOID)*MAX_POSSIBLE_MODULE_NUMBER);
-	req->LBA.value = 0;    
-	req->Sector_Count = 0; 
+	req->LBA.value = 0;
+	req->Sector_Count = 0;
 	req->Completion = ioctlcallback;
 
 	spin_lock_irqsave(&hba->desc->hba_desc->global_lock, flags);
-    	hba->Io_Count++;
+	hba->Io_Count++;
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 11)
 	atomic_set(&hba->hba_sync, 1);
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 11) */
@@ -635,10 +638,10 @@ static int mv_ioctl(struct inode *inode, struct file *file, unsigned int cmd,
 	spin_unlock_irqrestore(&hba->desc->hba_desc->global_lock, flags);
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 11)
-	if (!__hba_wait_for_atomic_timeout(&hba->hba_sync, 
+	if (!__hba_wait_for_atomic_timeout(&hba->hba_sync,
 					    HBA_REQ_TIMER_IOCTL*HZ)) {
 #else
-	if (!wait_for_completion_timeout(&hba->cmpl, 
+	if (!wait_for_completion_timeout(&hba->cmpl,
 					  HBA_REQ_TIMER_IOCTL*HZ)) {
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 11) */
 		MV_DBG(DMSG_HBA, "__MV__ ioctl req timed out.\n");
@@ -657,7 +660,7 @@ static int mv_ioctl(struct inode *inode, struct file *file, unsigned int cmd,
 	}
 
 	error = copy_to_user((void*)arg, psptdwb, sptdwb_size);
-	
+
 	if (error) {
 		ret = -EIO;
 		goto clean_pspbuf;
@@ -665,10 +668,10 @@ static int mv_ioctl(struct inode *inode, struct file *file, unsigned int cmd,
 
 	if (req->Scsi_Status)
 		ret = req->Scsi_Status;
-	
+
 	if (req->Scsi_Status == REQ_STATUS_INVALID_PARAMETER)
 		ret = -EPERM;
-	
+
 clean_pspbuf:
 /* use static buf instead.*/
 clean_psp:

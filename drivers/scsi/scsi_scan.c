@@ -258,19 +258,6 @@ static struct scsi_device *scsi_alloc_sdev(struct scsi_target *starget,
 	sdev->lun = lun;
 	sdev->channel = starget->channel;
 	sdev->sdev_state = SDEV_CREATED;
-    /*
-    * next section is for scattered spinup support.
-    */
-#ifdef CONFIG_MV_SCATTERED_SPINUP
-#ifdef CONFIG_MV_DISKS_POWERUP_TO_STANDBY
-	sdev->sdev_power_state = SDEV_PW_STANDBY;
-#else
-	sdev->sdev_power_state = SDEV_PW_ON;
-#endif
-	init_timer(&sdev->standby_timeout);
-	init_timer(&sdev->spinup_timeout);
-	sdev->standby_timeout_secs = 0;
-#endif
 	INIT_LIST_HEAD(&sdev->siblings);
 	INIT_LIST_HEAD(&sdev->same_target_siblings);
 	INIT_LIST_HEAD(&sdev->cmd_list);
@@ -1888,7 +1875,7 @@ void scsi_scan_host(struct Scsi_Host *shost)
 		return;
 	}
 
- 	p = kthread_run(do_scan_async, data, "scsi_scan_%d", shost->host_no);
+	p = kthread_run(do_scan_async, data, "scsi_scan_%d", shost->host_no);
 	if (IS_ERR(p))
 		do_scan_async(data);
 	/* scsi_autopm_put_host(shost) is called in scsi_finish_async_scan() */

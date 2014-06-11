@@ -23,7 +23,7 @@ void SCSI_ATA_CheckCondition(
 	 pReq->Scsi_Status = SCSI_STATUS_CHECK_CONDITION;
 	 if ( pReq->Sense_Info_Buffer ) {
 		((MV_PU8)pReq->Sense_Info_Buffer)[2] = senseKey;
-		((MV_PU8)pReq->Sense_Info_Buffer)[7] = 0;		// additional sense length 
+		((MV_PU8)pReq->Sense_Info_Buffer)[7] = 0;		// additional sense length
 		((MV_PU8)pReq->Sense_Info_Buffer)[12] = senseCode; //additional sense code
 	 }
 }
@@ -77,11 +77,11 @@ static const MV_U8 info_except_ctrl_mode_page[] = {
 MV_U32 Core_Fill_InfoExcepCtrlModePage(MV_PU8 pBuf, PDomain_Device pDevice,PMV_Request pReq)
 {
 	MV_CopyMemory(pBuf, info_except_ctrl_mode_page, sizeof(info_except_ctrl_mode_page));
-	
+
 	// Setting Extended Self-test Completion time
-	if(!(pDevice->Capacity & DEVICE_CAPACITY_SMART_SUPPORTED))	
+	if(!(pDevice->Capacity & DEVICE_CAPACITY_SMART_SUPPORTED))
 	{
-		SCSI_ATA_CheckCondition(pReq, SCSI_SK_ILLEGAL_REQUEST, 
+		SCSI_ATA_CheckCondition(pReq, SCSI_SK_ILLEGAL_REQUEST,
 				SCSI_ASC_INVALID_FEILD_IN_CDB);
 	}
 	return sizeof( info_except_ctrl_mode_page);	/* Total page length in byte */
@@ -149,7 +149,7 @@ MV_U32 Core_Fill_SelfTestLogPage(MV_PU8 pBuf, MV_U8 pageNum)
 		0x10, 	/* Parameter length */
 		0x81,   /*SELF-TEST CODE=100,RES=0,SELF-TEST RESULTS=0001*/
 		0x08, /*self test number*/
-		0x0, 0x0,0x0,0x0, 
+		0x0, 0x0,0x0,0x0,
 		0x0, 0x0,0x0,0x0
 	};
 
@@ -162,8 +162,8 @@ MV_U32 Core_Fill_SelfTestLogPage(MV_PU8 pBuf, MV_U8 pageNum)
  MV_U32 Core_Fill_TempLogPage(MV_PU8 pBuf)
 {
 	static const MV_U8  temp_log_page[] = {
-		0x0, 0x0, 
-		0x3, 0x2, 0x0, 
+		0x0, 0x0,
+		0x3, 0x2, 0x0,
 		0xFF,/*TEMPERATURE*/
 	       0x0, 0x1, 0x3, 0x2, 0x0,
 	       0xFF /*REFERENCE TEMPERATURE*/
@@ -178,7 +178,7 @@ MV_U32 Core_Fill_SelfTestLogPage(MV_PU8 pBuf, MV_U8 pageNum)
 		0x0, 0x0, /*parameter code*/
 		0x3, /*DU=0 OBS=0 TSD=0 ETC=0 TMC=00 FL=11h*/
 		0x3,/*parampter length*/
-		0x0, 0x0, 
+		0x0, 0x0,
 		38, /*MOST RECENT TEMPERATURE READING*/
 	};
 
@@ -189,7 +189,7 @@ MV_U32 Core_Fill_SelfTestLogPage(MV_PU8 pBuf, MV_U8 pageNum)
 	}
         return sizeof(info_except_log_page);
 }
- 
+
  MV_U32 Core_Fill_StartStopCycleCounterLogPage(MV_PU8 pBuf)
 {
 	static const MV_U8  start_stop_cycle_counter_log_page[] = {
@@ -210,10 +210,10 @@ void  mvScsiLogSenseTranslation(PCore_Driver_Extension pCore,  PMV_Request pReq)
 
 	unsigned char ptmpBuf[512];
 	MV_U8 *buf = pReq->Data_Buffer;
-	
+
 	MV_ZeroMemory(buf, pReq->Data_Transfer_Length);
 	MV_ZeroMemory(ptmpBuf, sizeof(ptmpBuf));
-	
+
 	ppc = pReq->Cdb[1] & 0x2;
 	sp = pReq->Cdb[1] & 0x1;
 	if (ppc || sp) {
@@ -224,7 +224,7 @@ void  mvScsiLogSenseTranslation(PCore_Driver_Extension pCore,  PMV_Request pReq)
 	pcontrol = (pReq->Cdb[2] & 0xc0) >> 6;
 	pageCode = pReq->Cdb[2] & 0x3f;
 	subpcode = pReq->Cdb[3] & 0xff;
-	
+
 	ptmpBuf[0] = pageCode;
 	if (0 == subpcode) {
 		switch (pageCode) {
@@ -234,18 +234,18 @@ void  mvScsiLogSenseTranslation(PCore_Driver_Extension pCore,  PMV_Request pReq)
 			ptmpBuf[1] = 0x00; /*subpage Code */
 			ptmpBuf[2] = 0x00;/*length MSB*/
 			ptmpBuf[n++] = SUPPORTED_LPAGES;		/* this page */
-			ptmpBuf[n++] = WRITE_ERROR_COUNTER_LPAGE;		
-			ptmpBuf[n++] = READ_ERROR_COUNTER_LPAGE;		
-			ptmpBuf[n++] = READ_REVERSE_ERROR_COUNTER_LPAGE;	
-			ptmpBuf[n++] = VERIFY_ERROR_COUNTER_LPAGE;		
-			ptmpBuf[n++] = SELFTEST_RESULTS_LPAGE;		
-			ptmpBuf[n++] = TEMPERATURE_LPAGE;		
-			
-			ptmpBuf[n++] = STARTSTOP_CYCLE_COUNTER_LPAGE;	
-		//	ptmpBuf[n++] = SEAGATE_CACHE_LPAGE;	
-		//	ptmpBuf[n++] = SEAGATE_FACTORY_LPAGE;	
-												
-			ptmpBuf[n++] = IE_LPAGE;	/* Informational exceptions */	
+			ptmpBuf[n++] = WRITE_ERROR_COUNTER_LPAGE;
+			ptmpBuf[n++] = READ_ERROR_COUNTER_LPAGE;
+			ptmpBuf[n++] = READ_REVERSE_ERROR_COUNTER_LPAGE;
+			ptmpBuf[n++] = VERIFY_ERROR_COUNTER_LPAGE;
+			ptmpBuf[n++] = SELFTEST_RESULTS_LPAGE;
+			ptmpBuf[n++] = TEMPERATURE_LPAGE;
+
+			ptmpBuf[n++] = STARTSTOP_CYCLE_COUNTER_LPAGE;
+		//	ptmpBuf[n++] = SEAGATE_CACHE_LPAGE;
+		//	ptmpBuf[n++] = SEAGATE_FACTORY_LPAGE;
+
+			ptmpBuf[n++] = IE_LPAGE;	/* Informational exceptions */
 			ptmpBuf[3] = n - 4; /*length LSB*/
 			pageLen = ptmpBuf[3] ;
 			tmpLen = MV_MIN(pReq->Data_Transfer_Length, (pageLen+4));
@@ -265,19 +265,19 @@ void  mvScsiLogSenseTranslation(PCore_Driver_Extension pCore,  PMV_Request pReq)
 				ptmpBuf[0] = READ_REVERSE_ERROR_COUNTER_LPAGE; // Page Code
 			if (pageCode == VERIFY_ERROR_COUNTER_LPAGE)
 			ptmpBuf[0] = VERIFY_ERROR_COUNTER_LPAGE; // Page Code
-			
+
 			ptmpBuf[1] = 0x00; // subPage Code
 			ptmpBuf[2] = 0x00;
-			
+
 			// Error Counter  log parameter
 			ptmpBuf[3] = Core_Fill_ErrorCounterLogPage(ptmpBuf + 4);
 			pageLen = ptmpBuf[3] ;
 			tmpLen = MV_MIN(pReq->Data_Transfer_Length, pageLen);
-			
+
 			MV_CopyMemory(buf, ptmpBuf, tmpLen);
 			pReq->Data_Transfer_Length = tmpLen;
 			pReq->Scsi_Status = REQ_STATUS_SUCCESS;
-			break;	
+			break;
 		case SELFTEST_RESULTS_LPAGE:
 			ptmpBuf[0] = SELFTEST_RESULTS_LPAGE; // Page Code
 			ptmpBuf[1] = 0x00; // subPage Code
@@ -290,11 +290,11 @@ void  mvScsiLogSenseTranslation(PCore_Driver_Extension pCore,  PMV_Request pReq)
 				pageLen = Core_Fill_SelfTestLogPage(&ptmpBuf[4+(i*20)], i);
 			}
 			tmpLen = MV_MIN(pReq->Data_Transfer_Length, (pageLen*20+4));
-			
+
 			MV_CopyMemory(buf, ptmpBuf, tmpLen);
 			pReq->Data_Transfer_Length = tmpLen;
 			pReq->Scsi_Status = REQ_STATUS_SUCCESS;
-			break;	
+			break;
 		case TEMPERATURE_LPAGE:	/* Temperature log page */
 			ptmpBuf[0] = TEMPERATURE_LPAGE; /* Page Code*/
 			ptmpBuf[1] = 0x00; /* subPage Code*/
@@ -302,11 +302,11 @@ void  mvScsiLogSenseTranslation(PCore_Driver_Extension pCore,  PMV_Request pReq)
 			ptmpBuf[3] = Core_Fill_TempLogPage(ptmpBuf + 4);
 			pageLen = ptmpBuf[3] ;
 			tmpLen = MV_MIN(pReq->Data_Transfer_Length, pageLen);
-			
+
 			MV_CopyMemory(buf, ptmpBuf, tmpLen);
 			pReq->Data_Transfer_Length = tmpLen;
 			pReq->Scsi_Status = REQ_STATUS_SUCCESS;
-			break;	
+			break;
 		case STARTSTOP_CYCLE_COUNTER_LPAGE:	/* Informational exceptions log page */
 			ptmpBuf[0] = STARTSTOP_CYCLE_COUNTER_LPAGE; /* Page Code*/
 			ptmpBuf[1] = 0x00; /* subPage Code*/
@@ -315,7 +315,7 @@ void  mvScsiLogSenseTranslation(PCore_Driver_Extension pCore,  PMV_Request pReq)
 
 			pageLen = ptmpBuf[3] ;
 			tmpLen = MV_MIN(pReq->Data_Transfer_Length, pageLen);
-			
+
 			MV_CopyMemory(buf, ptmpBuf, tmpLen);
 			pReq->Data_Transfer_Length = tmpLen;
 			pReq->Scsi_Status = REQ_STATUS_SUCCESS;
@@ -328,7 +328,7 @@ void  mvScsiLogSenseTranslation(PCore_Driver_Extension pCore,  PMV_Request pReq)
 
 			pageLen = ptmpBuf[3] ;
 			tmpLen = MV_MIN(pReq->Data_Transfer_Length, pageLen);
-			
+
 			MV_CopyMemory(buf, ptmpBuf, tmpLen);
 			pReq->Data_Transfer_Length = tmpLen;
 			pReq->Scsi_Status = REQ_STATUS_SUCCESS;
@@ -501,19 +501,19 @@ MV_BOOLEAN mvScsiModeSelect(PCore_Driver_Extension pCore, PMV_Request pReq)
 	MV_U8   SP = (pReq->Cdb[1] & MV_BIT(0));
 	MV_U32 WCEisEnabled=0;
 	if (length == 0) {
-    		pReq->Scsi_Status = REQ_STATUS_HAS_SENSE;
-        	return MV_TRUE;
-    	}
-   	 if (PF == 0 || SP == 1) {/* Invalid field in CDB,PARAMETER LIST LENGTH ERROR */
+		pReq->Scsi_Status = REQ_STATUS_HAS_SENSE;
+		return MV_TRUE;
+	}
+	 if (PF == 0 || SP == 1) {/* Invalid field in CDB,PARAMETER LIST LENGTH ERROR */
 		pReq->Scsi_Status = REQ_STATUS_HAS_SENSE;
 		Core_FillSenseData(pReq, SCSI_SK_ILLEGAL_REQUEST, SCSI_ADSENSE_INVALID_CDB);
 		return MV_TRUE;
-    	}
+	}
 
 	portId = PATA_MapPortId(pReq->Device_Id);
 	deviceId = PATA_MapDeviceId(pReq->Device_Id);
 	pDevice = &pCore->Ports[portId].Device[deviceId];
-	
+
 	if (mvScsiModeSelectWceGet(pCore, pReq, &WCEisEnabled))
 	{
 		 pReq->Scsi_Status = REQ_STATUS_HAS_SENSE;
@@ -557,14 +557,14 @@ MV_BOOLEAN mvScsiModeSelect(PCore_Driver_Extension pCore, PMV_Request pReq)
             }
             cachePageOffset = offset;
             if(WCEisEnabled){
-            		// enable write cache ,send to hardware
-            		pReq->Cdb[0] = SCSI_CMD_MARVELL_SPECIFIC;
+			// enable write cache ,send to hardware
+			pReq->Cdb[0] = SCSI_CMD_MARVELL_SPECIFIC;
 			pReq->Cdb[1] = CDB_CORE_MODULE;
 			pReq->Cdb[2] = CDB_CORE_ENABLE_WRITE_CACHE;
 			return MV_FALSE;
             } else{
-            		// disable write cache,send to hardware
-            		pReq->Cdb[0] = SCSI_CMD_MARVELL_SPECIFIC;
+			// disable write cache,send to hardware
+			pReq->Cdb[0] = SCSI_CMD_MARVELL_SPECIFIC;
 			pReq->Cdb[1] = CDB_CORE_MODULE;
 			pReq->Cdb[2] = CDB_CORE_DISABLE_WRITE_CACHE;
 			return MV_FALSE;
@@ -586,7 +586,7 @@ void mvScsiReadDefectData(PCore_Driver_Extension pCore, PMV_Request req)
         temp_buf[3] = 0;
         temp_buf[4] = 0;
         temp_buf[5] = 0;
-        
+
         length = MV_MIN(6, req->Data_Transfer_Length);
 
         MV_CopyMemory(req->Data_Buffer, temp_buf, length);
@@ -659,7 +659,7 @@ void mvScsiModeSense(PCore_Driver_Extension pCore, PMV_Request pReq)
 		pReq->Data_Transfer_Length = tmpLen;
 		pReq->Scsi_Status = REQ_STATUS_SUCCESS;
 		break;
-	case 0x19:	/*Protocol Specific Port mode page*/	
+	case 0x19:	/*Protocol Specific Port mode page*/
 		if (pReq->Cdb[0]==SCSI_CMD_MODE_SENSE_6) {
 			pageLen = Core_Fill_ProSpecPortModePage(ptmpBuf+4);
 			ptmpBuf[0] = (MV_U8)(4 + pageLen - 1);	/* Mode data length */
@@ -705,7 +705,7 @@ void mvScsiModeSense(PCore_Driver_Extension pCore, PMV_Request pReq)
 		pReq->Data_Transfer_Length = tmpLen;
 		pReq->Scsi_Status = REQ_STATUS_SUCCESS;
 		break;
-	case 0x0a:  /*Control mode page*/		
+	case 0x0a:  /*Control mode page*/
 		if (pReq->Cdb[0]==SCSI_CMD_MODE_SENSE_6) {
 			pageLen = Core_Fill_CtrlModePage((ptmpBuf+4), pDevice);
 			ptmpBuf[0] = (MV_U8)(4 + pageLen - 1);	/* Mode data length */
@@ -752,7 +752,7 @@ void mvScsiModeSense(PCore_Driver_Extension pCore, PMV_Request pReq)
 		pReq->Data_Transfer_Length = tmpLen;
 		pReq->Scsi_Status = REQ_STATUS_SUCCESS;
 		break;
-		
+
 	default:
 		pReq->Scsi_Status = REQ_STATUS_HAS_SENSE;
 		Core_FillSenseData(pReq, SCSI_SK_ILLEGAL_REQUEST, SCSI_ASC_INVALID_FEILD_IN_CDB);
@@ -764,14 +764,14 @@ void Core_Fill_SendDiagTaskfile( PDomain_Device device,PMV_Request req, PATA_Tas
 {
 
         if ((req->Cdb[1] & 0x04) &&
-                (device->Capacity & 
+                (device->Capacity &
                         DEVICE_CAPACITY_SMART_SELF_TEST_SUPPORTED) &&
                 (device->Setting & DEVICE_SETTING_SMART_ENABLED)) {
-		        
+
                 taskfile->LBA_Low = 0x01;
-        
+
         } else if ((req->Cdb[1] & 0x04) &&
-                !((device->Capacity & 
+                !((device->Capacity &
                         DEVICE_CAPACITY_SMART_SELF_TEST_SUPPORTED) &&
                 (device->Setting & DEVICE_SETTING_SMART_ENABLED))) {
           //      scsi_ata_send_diag_verify_0(root, req);
@@ -834,5 +834,3 @@ void Core_Fill_SendDiagTaskfile( PDomain_Device device,PMV_Request req, PATA_Tas
 }
 
 #endif //#ifdef SUPPORT_ATA_SMART
-
-

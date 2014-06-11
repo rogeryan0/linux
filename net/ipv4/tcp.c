@@ -277,12 +277,12 @@
 #include <asm/uaccess.h>
 #include <asm/ioctls.h>
 
-/* 2012/07/09 t.saito add for patch - 3.3.6 */
+/* 2012/11/06 t.saito add for patch - 3.3.6 */
 /* that is "change tcp_adv_win_scale and tcp_rmem[2]" */
-#if 1 
+#if 1
 #define PATCH_3_3_6_TCP_C
 #endif
-/* 2012/07/09 t.saito add end */
+/* 2012/11/06 t.saito add end */
 
 int sysctl_tcp_fin_timeout __read_mostly = TCP_FIN_TIMEOUT;
 
@@ -1454,6 +1454,20 @@ int tcp_recvmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
 
 		if (skb)
 			available = TCP_SKB_CB(skb)->seq + skb->len - (*seq);
+#ifdef CONFIG_SPLICE_NET_DMA_SUPPORT
+		if (msg->msg_flags & MSG_KERNSPACE) {
+			if ((available >= target) &&
+			    (len > sysctl_tcp_dma_copybreak) && !(flags & MSG_PEEK) &&
+			    !sysctl_tcp_low_latency &&
+			    dma_find_channel(DMA_MEMCPY)) {
+				preempt_enable_no_resched();
+				tp->ucopy.pinned_list =
+						dma_pin_kernel_iovec_pages(msg->msg_iov, len);
+			} else {
+				preempt_enable_no_resched();
+			}
+		}
+#else
 		if ((available < target) &&
 		    (len > sysctl_tcp_dma_copybreak) && !(flags & MSG_PEEK) &&
 		    !sysctl_tcp_low_latency &&
@@ -1464,14 +1478,30 @@ int tcp_recvmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
 		} else {
 			preempt_enable_no_resched();
 		}
+#endif
 	}
 #endif
 
 	do {
 		u32 offset;
 
+		if (flags & MSG_NOCATCHSIG) {
+			if (signal_pending(current)) {
+				if (sigismember(&current->pending.signal, SIGQUIT) ||
+				    sigismember(&current->pending.signal, SIGABRT) ||
+				    sigismember(&current->pending.signal, SIGKILL) ||
+				    sigismember(&current->pending.signal, SIGTERM) ||
+				    sigismember(&current->pending.signal, SIGSTOP)) {
+
+					if (copied)
+						break;
+					copied = timeo ? sock_intr_errno(timeo) : -EAGAIN;
+					break;
+				}
+			}
+		}
 		/* Are we at urgent data? Stop if we have read anything or have SIGURG pending. */
-		if (tp->urg_data && tp->urg_seq == *seq) {
+		else if (tp->urg_data && tp->urg_seq == *seq) {
 			if (copied)
 				break;
 			if (signal_pending(current)) {
@@ -1564,6 +1594,7 @@ int tcp_recvmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
 
 			WARN_ON(tp->copied_seq != tp->rcv_nxt &&
 				!(flags & (MSG_PEEK | MSG_TRUNC)));
+
 
 			/* Ugly... If prequeue is not empty, we have to
 			 * process it before releasing socket, otherwise
@@ -1698,8 +1729,12 @@ do_prequeue:
 			} else
 #endif
 			{
-				err = skb_copy_datagram_iovec(skb, offset,
-						msg->msg_iov, used);
+				if (msg->msg_flags & MSG_KERNSPACE)
+					err = skb_copy_datagram_to_kernel_iovec(skb,
+							offset, msg->msg_iov, used);
+				else
+					err = skb_copy_datagram_iovec(skb, offset,
+							msg->msg_iov, used);
 				if (err) {
 					/* Exception. Bailout! */
 					if (!copied)
@@ -1765,7 +1800,12 @@ skip_copy:
 	tp->ucopy.dma_chan = NULL;
 
 	if (tp->ucopy.pinned_list) {
-		dma_unpin_iovec_pages(tp->ucopy.pinned_list);
+#ifdef CONFIG_SPLICE_NET_DMA_SUPPORT
+		if(msg->msg_flags & MSG_KERNSPACE)
+			dma_unpin_kernel_iovec_pages(tp->ucopy.pinned_list);
+		else
+#endif
+			dma_unpin_iovec_pages(tp->ucopy.pinned_list);
 		tp->ucopy.pinned_list = NULL;
 	}
 #endif
@@ -3317,6 +3357,7 @@ void __init tcp_init(void)
 #else
 	max_share = min(4UL*1024*1024, limit);
 #endif
+
 	sysctl_tcp_wmem[0] = SK_MEM_QUANTUM;
 	sysctl_tcp_wmem[1] = 16*1024;
 #ifdef PATCH_3_3_6_TCP_C
@@ -3324,6 +3365,7 @@ void __init tcp_init(void)
 #else
 	sysctl_tcp_wmem[2] = max(64*1024, max_share);
 #endif
+
 	sysctl_tcp_rmem[0] = SK_MEM_QUANTUM;
 	sysctl_tcp_rmem[1] = 87380;
 #ifdef PATCH_3_3_6_TCP_C

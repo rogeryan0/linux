@@ -33,7 +33,7 @@ static void hba_proc_msg(struct mv_hba_msg *pmsg)
 
 	phba = (PHBA_Extension) pmsg->data;
 
-	
+
 	MV_DBG(DMSG_HBA, "__MV__ In hba_proc_msg.\n");
 
 	MV_ASSERT(pmsg);
@@ -41,7 +41,7 @@ static void hba_proc_msg(struct mv_hba_msg *pmsg)
 	switch (pmsg->msg) {
 	case EVENT_DEVICE_ARRIVAL:
 		if (scsi_add_device(phba->host, 0, pmsg->param, 0))
-			MV_DBG(DMSG_SCSI, 
+			MV_DBG(DMSG_SCSI,
 			       "__MV__ add scsi disk %d-%d-%d failed.\n",
 			       0, pmsg->param, 0);
 		else
@@ -53,7 +53,7 @@ static void hba_proc_msg(struct mv_hba_msg *pmsg)
 		psdev = scsi_device_lookup(phba->host, 0, pmsg->param, 0);
 
 		if (NULL != psdev) {
-			MV_DBG(DMSG_SCSI, 
+			MV_DBG(DMSG_SCSI,
 			       "__MV__ remove scsi disk %d-%d-%d.\n",
 			       0, pmsg->param, 0);
 			scsi_remove_device(psdev);
@@ -75,7 +75,7 @@ static void hba_proc_msg(struct mv_hba_msg *pmsg)
 static void mv_proc_queue(void)
 {
 	struct mv_hba_msg *pmsg;
-	
+
 	/* work on queue non-stop, pre-empty me! */
 	queue_state_set(MSG_QUEUE_PROC);
 
@@ -93,7 +93,7 @@ static void mv_proc_queue(void)
 		spin_unlock_irq(&mv_msg_queue.lock);
 
 		hba_proc_msg(pmsg);
-		
+
 		/* clean the pmsg before returning it to free?*/
 		pmsg->data = NULL;
 		spin_lock_irq(&mv_msg_queue.lock);
@@ -113,11 +113,14 @@ static inline MV_U32 hba_msg_queue_empty(void)
 static int hba_house_keeper(void *data)
 {
 	set_user_nice(current, -15);
-	
-	set_current_state(TASK_INTERRUPTIBLE);
-	while (!kthread_should_stop()) {
 
-		if (!hba_msg_queue_empty() && 
+	set_current_state(TASK_INTERRUPTIBLE);
+#if LINUX_VERSION_CODE >  KERNEL_VERSION(2, 6, 22)
+	set_freezable();
+#endif
+	while (!kthread_should_stop()) {
+		try_to_freeze();
+		if (!hba_msg_queue_empty() &&
 		    MSG_QUEUE_IDLE == queue_state_get()) {
 			set_current_state(TASK_RUNNING);
 			mv_proc_queue();
@@ -126,7 +129,7 @@ static int hba_house_keeper(void *data)
 			set_current_state(TASK_INTERRUPTIBLE);
 		}
 	}
-	
+
 	return 0;
 }
 
@@ -144,9 +147,9 @@ static void mv_wq_handler(struct work_struct *work)
 		MV_DBG(DMSG_KERN,"__MV__  msg queue is empty.\n");
 		return;
 	}
-	else if (!hba_msg_queue_empty() && 
+	else if (!hba_msg_queue_empty() &&
 	    MSG_QUEUE_IDLE == queue_state_get()) {
-	    	MV_DBG(DMSG_KERN,"__MV__  msg queue isn't empty.\n");
+		MV_DBG(DMSG_KERN,"__MV__  msg queue isn't empty.\n");
 		mv_proc_queue();
 	}
 }
@@ -165,7 +168,7 @@ static DECLARE_WORK(mv_wq, mv_wq_handler);
 static void hba_msg_queue_init(void)
 {
 	int i;
-	
+
 	spin_lock_init(&mv_msg_queue.lock);
 
 /* as we're in init, there should be no need to hold the spinlock*/
@@ -173,10 +176,10 @@ static void hba_msg_queue_init(void)
 	INIT_LIST_HEAD(&(mv_msg_queue.tasks));
 
 	for (i = 0; i < MSG_QUEUE_DEPTH; i++) {
-		list_add_tail(&mv_msg_queue.msgs[i].msg_list, 
+		list_add_tail(&mv_msg_queue.msgs[i].msg_list,
 			      &mv_msg_queue.free);
 	}
-	
+
 }
 
 
@@ -277,7 +280,7 @@ void hba_remove_timer(PMV_Request req)
 void hba_add_timer(PMV_Request req, int timeout,
 		   MV_VOID (*function)(MV_PVOID data))
 {
-	WARN_ON(timer_pending(&req->eh_timeout)); 
+	WARN_ON(timer_pending(&req->eh_timeout));
 	hba_remove_timer(req);
 	req->eh_timeout.data = (unsigned long)req;
 	/* timeout is in unit of second */
@@ -287,7 +290,7 @@ void hba_add_timer(PMV_Request req, int timeout,
 	add_timer(&req->eh_timeout);
 	return;
 }
-	
+
 
 void hba_remove_timer_sync(PMV_Request req)
 {
@@ -303,11 +306,10 @@ void hba_remove_timer_sync(PMV_Request req)
 void hba_init_timer(PMV_Request req)
 {
 	/*
-	 * as we have no init routine for req, we'll do init_timer every 
+	 * as we have no init routine for req, we'll do init_timer every
 	 * time it is used until we could uniformly init. all reqs
 	 */
 	req->eh_timeout.function = NULL;
 	init_timer(&req->eh_timeout);
 }
 #endif
-

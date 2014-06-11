@@ -5,7 +5,7 @@ typedef union {
     } parts;
     MV_U8       b[8];
     MV_U16      w[4];
-    MV_U32      d[2];        
+    MV_U32      d[2];
 } SAS_ADDR, *PSAS_ADDR;
 
 typedef struct _PHY_TUNING {
@@ -27,7 +27,7 @@ typedef struct _PHY_TUNING {
 #define NVRAM_DATA_MAJOR_VERSION		0
 #define NVRAM_DATA_MINOR_VERSION		1
 
-/* 
+/*
 	HBA_Info_Page is saved in Flash/NVRAM, total 256 bytes.
 	The data area is valid only Signature="MRVL".
 	If any member fills with 0xFF, the member is invalid.
@@ -53,7 +53,7 @@ typedef struct _HBA_Info_Page{
 	MV_U8		Reserved2[2];
 
 	// Dword 4
-	MV_U32     	HBA_Flag;                     	/* 
+	MV_U32     	HBA_Flag;                     	/*
 													4 bytes, should be 0x0000,0000 at first initial
 	                                                                HBA flag:  refers to HBA_FLAG_XX
 	                                                                bit 0   --- HBA_FLAG_BBS_ENABLE
@@ -64,13 +64,13 @@ typedef struct _HBA_Info_Page{
 	                                                                bit 5   --- HBA_FLAG_ERROR_PASS
 	                                                                bit 6   --- HBA_FLAG_SILENT_MODE_ENABLE
 	                                           */
-	// Dword 5	                                              
+	// Dword 5
 	MV_U32     	Boot_Device;					/* 4 bytes, select boot device */
 												/* for ata device, it is CRC of the serial number + model number. */
 												/* for sas device, it is CRC of sas address */
 												/* for VD, it is VD GUI */
 
-	// Dword 6-8											  
+	// Dword 6-8
 	MV_U32     	Reserved3[3];				  	/* 12 bytes, reserved	*/
 
 	// Dword 9-13
@@ -80,7 +80,7 @@ typedef struct _HBA_Info_Page{
 	SAS_ADDR	SAS_Address[8];               /* 64 bytes, SAS address for each port */
 
 	// Dword 30-43
-	MV_U8     	Reserved4[56];                  /* 56 bytes, reserve space for future,initial as 0xFF */   
+	MV_U8     	Reserved4[56];                  /* 56 bytes, reserve space for future,initial as 0xFF */
 
 	// Dword 44-45
 	MV_U8     	PHY_Rate[8];                  	/* 8 bytes,  0:  1.5G, 1: 3.0G, should be 0x01 at first initial */
@@ -104,5 +104,3 @@ MV_U8 mvui_init_param(MV_PVOID This, pHBA_Info_Page pHBAInfo);//get initial data
 
 MV_U8	mvCaculateChecksum(MV_PU8	Address, MV_U32 Size);
 MV_U8	mvVerifyChecksum(MV_PU8	Address, MV_U32 Size);
-
-

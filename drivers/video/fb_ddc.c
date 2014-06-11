@@ -56,9 +56,7 @@ unsigned char *fb_ddc_read(struct i2c_adapter *adapter)
 	struct i2c_algo_bit_data *algo_data = adapter->algo_data;
 	unsigned char *edid = NULL;
 	int i, j;
-	
 	if (!algo_data) {
-		/* No direct control on I2C bus */
 		for (i = 0; i < 3; i++) {
 			edid = fb_do_probe_ddc_edid(adapter);
 			if (edid)

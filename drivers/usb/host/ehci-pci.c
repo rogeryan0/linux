@@ -55,12 +55,6 @@ static int ehci_pci_setup(struct usb_hcd *hcd)
 	int			retval;
 
 	switch (pdev->vendor) {
-	case PCI_VENDOR_ID_INTEL:
-		if (pdev->device == 0x27cc) {
-			ehci->broken_periodic = 1;
-			ehci_info(ehci, "using broken periodic workaround\n");
-		}
-		break;
 	case PCI_VENDOR_ID_TOSHIBA_2:
 		/* celleb's companion chip */
 		if (pdev->device == 0x01b5) {
@@ -239,6 +233,9 @@ static int ehci_pci_setup(struct usb_hcd *hcd)
 		ehci->frame_index_bug = 1;
 		break;
 	}
+#ifdef CONFIG_BUFFALO_PLATFORM
+    }
+#endif /* CONFIG_BUFFALO_PLATFORM */
 
 	/* optional debug port, normally in the first BAR */
 	temp = pci_find_capability(pdev, 0x0a);
@@ -260,9 +257,6 @@ static int ehci_pci_setup(struct usb_hcd *hcd)
 	}
 
 	ehci_reset(ehci);
-#ifdef CONFIG_BUFFALO_PLATFORM
-    }
-#endif /* CONFIG_BUFFALO_PLATFORM */
 
 	/* at least the Genesys GL880S needs fixup here */
 	temp = HCS_N_CC(ehci->hcs_params) * HCS_N_PCC(ehci->hcs_params);

@@ -28,7 +28,7 @@
        HBA_ModuleNotification(ext, EVENT_LOG_GENERATED, &param);        \
    }
 
-#define core_start_cmpl_notify(_ext)  	HBA_ModuleStarted(_ext) 
+#define core_start_cmpl_notify(_ext)  	HBA_ModuleStarted(_ext)
 #endif /* __MM_SE__ */
 
 
@@ -65,4 +65,3 @@ void RAID_ModuleNotification(MV_PVOID This,
 
 void sata_hotplug(MV_PVOID data,MV_U32 intStatus);
 #endif /* CORE_EXPOSE_H */
-

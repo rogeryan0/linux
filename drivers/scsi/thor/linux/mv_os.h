@@ -5,9 +5,6 @@
 #   include <linux/version.h>
 #endif
 
-#ifndef AUTOCONF_INCLUDED
-#   include <linux/config.h>
-#endif /* AUTOCONF_INCLUDED */
 
 #include <linux/list.h>
 #include <linux/module.h>
@@ -35,7 +32,11 @@
 #include <asm/uaccess.h>
 #include <asm/io.h>
 #include <asm/div64.h>
-
+#if LINUX_VERSION_CODE >  KERNEL_VERSION(2, 6, 19)
+#include <linux/freezer.h>
+#else
+#include <linux/sched.h>
+#endif
 #include <scsi/scsi.h>
 #include <scsi/scsi_cmnd.h>
 #include <scsi/scsi_device.h>
@@ -63,7 +64,7 @@
 #   define __MV_BIG_ENDIAN__     1
 #else
 #   error "error in endianness"
-#endif 
+#endif
 
 #if defined(__LITTLE_ENDIAN_BITFIELD)
 #   define __MV_LITTLE_ENDIAN_BITFIELD__   1
@@ -71,7 +72,7 @@
 #   define __MV_BIG_ENDIAN_BITFIELD__      1
 #else
 #   error "error in endianness"
-#endif 
+#endif
 
 #ifdef __MV_DEBUG__
 #   define MV_DEBUG
@@ -86,7 +87,7 @@
 #endif
 
 /* Values for T10/04-262r7 */
-#ifndef ATA_16 
+#ifndef ATA_16
 #	define ATA_16                0x85      /* 16-byte pass-thru */
 #endif
 #ifndef ATA_12
@@ -98,7 +99,7 @@
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,11)
 #define PCI_D0 0
 #include <linux/suspend.h>
-typedef u32 pm_message_t; 
+typedef u32 pm_message_t;
 
 static inline int try_to_freeze(unsigned long refrigerator_flags)
 {
@@ -112,13 +113,13 @@ static inline int try_to_freeze(unsigned long refrigerator_flags)
 
 /*
  *
- * Primary Data Type Definition 
+ * Primary Data Type Definition
  *
  */
-#include "com_define.h" 
+#include "com_define.h"
 
 #define MV_INLINE inline
-#define CDB_INQUIRY_EVPD    1 
+#define CDB_INQUIRY_EVPD    1
 
 
 typedef void (*OSSW_TIMER_FUNCTION)(unsigned long);
@@ -135,7 +136,7 @@ typedef unsigned long OSSW_TIMER_DATA;
 
 
 #   define VER_MINOR        2
-#   define VER_BUILD        24
+#   define VER_BUILD        30
 
 #ifdef __OEM_INTEL__
 #   define VER_OEM          VER_OEM_INTEL
@@ -188,11 +189,11 @@ typedef unsigned long OSSW_TIMER_DATA;
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24)
-#define map_sg_page(sg)		kmap_atomic(sg->page, KM_IRQ0)	
-#define map_sg_page_sec(sg)		kmap_atomic(sg->page, KM_IRQ1)	
+#define map_sg_page(sg)		kmap_atomic(sg->page, KM_IRQ0)
+#define map_sg_page_sec(sg)		kmap_atomic(sg->page, KM_IRQ1)
 #else
-#define map_sg_page(sg)		kmap_atomic(sg_page(sg), KM_IRQ0)	
-#define map_sg_page_sec(sg)		kmap_atomic(sg_page(sg), KM_IRQ1)	
+#define map_sg_page(sg)		kmap_atomic(sg_page(sg), KM_IRQ0)
+#define map_sg_page_sec(sg)		kmap_atomic(sg_page(sg), KM_IRQ1)
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 25)

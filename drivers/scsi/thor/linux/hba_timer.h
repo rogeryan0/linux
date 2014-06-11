@@ -4,7 +4,7 @@
 #include "hba_header.h"
 
 #define HBA_REQ_TIMER_AFTER_RESET 30
-#define HBA_REQ_TIMER 20 
+#define HBA_REQ_TIMER 20
 #define HBA_REQ_TIMER_IOCTL (HBA_REQ_TIMER_AFTER_RESET+3)
 
 #define __hba_init_timer(x) \

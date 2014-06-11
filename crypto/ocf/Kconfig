@@ -31,16 +31,6 @@ config OCF_CRYPTOSOFT
 	  A software driver for the OCF framework that uses
 	  the kernel CryptoAPI.
 
-config OCF_DM_CRYPT
-	bool "OCF dm_crypt"
-	depends on OCF_OCF && DM_CRYPT
-	help
-	  The dm_crypt device mapper will use the OCF for encryption/decryption,
-	  in case of essiv, the essiv generation will use the kernel crypto APIs.
-	  When using the OCF dm_crypt, only the following encryption algorithms
-	  are supported:
-		DES-CBC, 3DES-CBC and AES-CBC.
-
 config OCF_SAFE
 	tristate "safenet (HW crypto engine)"
 	depends on OCF_OCF

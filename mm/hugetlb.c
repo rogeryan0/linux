@@ -1071,7 +1071,6 @@ int __weak alloc_bootmem_huge_page(struct hstate *h)
 						&node_states[N_HIGH_MEMORY])),
 				huge_page_size(h), huge_page_size(h), 0);
 
-		hstate_next_node(h);
 		if (addr) {
 			/*
 			 * Use the beginning of the huge page to store the

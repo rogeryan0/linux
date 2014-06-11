@@ -28,7 +28,7 @@ void UpdateConsolidateStatistics(Consolidate_Statistics_Enum catogory)
 	if ( gConsolidateStatistics[catogory]==0xFFFFFFFF )
 	{
 		for ( i=0; i<CONSOLIDATE_STATISTICS_COUNT; i++ )
-			MV_DPRINT(("Consolidate statistics[%d]=0x%x.\n", i, 
+			MV_DPRINT(("Consolidate statistics[%d]=0x%x.\n", i,
 			gConsolidateStatistics[i]));
 		MV_ZeroMemory(gConsolidateStatistics, sizeof(MV_U32)*CONSOLIDATE_STATISTICS_COUNT);
 	}
@@ -39,11 +39,11 @@ void UpdateConsolidateStatistics(Consolidate_Statistics_Enum catogory)
 #define UpdateConsolidateStatistics(x)
 #endif
 
-/* 
+/*
  * Instruction: How to plug-in this command consolidate sub module to your own module.
  * 1. Include one .h file which supplies some helper funtions like CONS_GET_EXTENSION
  * 2. Allocate memory resouce for Consolidate_Extension and Consolidate_Device
- * 3. Initialize command consolidate module. 
+ * 3. Initialize command consolidate module.
  * 	Call Consolid_InitializeExtension to initialize Consolidate_Extension
  *	Call Consolid_InitializeDevice for each Consolidate_Device
  * 4. When you request comes call Consolid_ModuleSendRequest
@@ -73,7 +73,7 @@ static MV_VOID __consolid_timer_handler(MV_PVOID data)
 {
 	PMV_Request req = (PMV_Request)data;
 	MV_U8 dev_id = req->Device_Id;
-	PConsolidate_Device cons_dev = 
+	PConsolidate_Device cons_dev =
 		CONS_GET_DEVICE(req->Cmd_Initiator, dev_id);
 	MV_U32 sector = req->Data_Transfer_Length>>9;
 
@@ -105,7 +105,7 @@ static MV_VOID __consolid_del_timer(PMV_Request req)
  * Two parameters:
  * This: is the pointer of the command initiator extention pointer.
  * pReq: request
- * Will send: 
+ * Will send:
  *		a. one internal request
  *		b. this external request and maybe one holding internal request if exists.
  *		c. NULL if consolidate module holds this request.
@@ -130,9 +130,9 @@ void Consolid_ModuleSendRequest(MV_PVOID This, PMV_Request pReq)
 		goto return_original_req;
 	}
 
-	/* 
-	 * We only handle CDB 10 read/write. 
-	 * Otherwise, change the following code which gets the LBA and Sector Count from the CDB. 
+	/*
+	 * We only handle CDB 10 read/write.
+	 * Otherwise, change the following code which gets the LBA and Sector Count from the CDB.
 	 */
 	if ( (pReq->Cdb[0]!=SCSI_CMD_READ_10)&&(pReq->Cdb[0]!=SCSI_CMD_WRITE_10) )
 	{
@@ -148,7 +148,7 @@ void Consolid_ModuleSendRequest(MV_PVOID This, PMV_Request pReq)
 	}
 
 	/* Check whether they are all read requests or write requests. */
-	if ( 
+	if (
 		( (pReq->Cdb[0]==SCSI_CMD_READ_10)&&(!pConsDevice->Is_Read) )
 		||
 		( (pReq->Cdb[0]==SCSI_CMD_WRITE_10)&&(pConsDevice->Is_Read) )
@@ -164,7 +164,7 @@ void Consolid_ModuleSendRequest(MV_PVOID This, PMV_Request pReq)
 	sectorCount = SCSI_CDB10_GET_SECTOR(pReq->Cdb);
 	/* Check whether it's a sequential request. */
 	if ( U64_COMPARE_U64(startLBA, pConsDevice->Last_LBA) )
-		pConsDevice->Sequential = 0; 
+		pConsDevice->Sequential = 0;
 	else
 		pConsDevice->Sequential++;	/* When equals, return 0. */
 
@@ -190,7 +190,7 @@ void Consolid_ModuleSendRequest(MV_PVOID This, PMV_Request pReq)
 	pInternal = pConsDevice->Holding_Request;
 
 	/* Don't accumulate this request too big. */
-	if ( pInternal && 
+	if ( pInternal &&
 		( (pInternal->Data_Transfer_Length+pReq->Data_Transfer_Length>CONS_MAX_INTERNAL_REQUEST_SIZE)
 		  ||
 		  (pInternal->SG_Table.Valid_Entry_Count+pReq->SG_Table.Valid_Entry_Count>pInternal->SG_Table.Max_Entry_Count)
@@ -235,8 +235,8 @@ void Consolid_ModuleSendRequest(MV_PVOID This, PMV_Request pReq)
 	}
 
 return_original_req:
-	/* 
-	 * To keep the command order, 
+	/*
+	 * To keep the command order,
 	 * if we cannot do the consolidate for pReq but we hold some internal request,
 	 * run the internal request and then run the new pReq.
 	 */
@@ -279,7 +279,7 @@ void Consolid_ReleaseInternalRequest(PConsolidate_Extension pCons, PMV_Request p
 
 void Consolid_ConsolidateRequest(
 	IN PConsolidate_Extension pCons,
-	IN OUT PMV_Request pInternal, 
+	IN OUT PMV_Request pInternal,
 	IN PMV_Request pExternal
 	)
 {
@@ -326,7 +326,7 @@ void Consolid_ConsolidateRequest(
 
 #ifdef USE_NEW_SGTABLE
 	sgdt_append_reftbl(
-		&pInternal->SG_Table, 
+		&pInternal->SG_Table,
 		&pExternal->SG_Table,
 		0,
 		pExternal->SG_Table.Byte_Count );
@@ -334,7 +334,7 @@ void Consolid_ConsolidateRequest(
 #else
 	for ( i=0; i<pExternal->SG_Table.Valid_Entry_Count; i++ )
 	{
-		SGTable_Append(&pInternal->SG_Table, 
+		SGTable_Append(&pInternal->SG_Table,
 			pExternal->SG_Table.Entry_Ptr[i].Base_Address,
 			pExternal->SG_Table.Entry_Ptr[i].Base_Address_High,
 			pExternal->SG_Table.Entry_Ptr[i].Size);
@@ -348,8 +348,8 @@ void Consolid_CloseRequest(
 	IN OUT PMV_Request pInternal
 	)
 {
-	/* 
-	 * This internal request is ready for handling now. 
+	/*
+	 * This internal request is ready for handling now.
 	 * Do whatever we need do before we send this request.
 	 */
 	MV_U32 sectorCount = pInternal->Data_Transfer_Length>>9;
@@ -382,7 +382,7 @@ void Consolid_RequestCallBack(MV_PVOID This, PMV_Request pReq)
 	}
 	else
 	{
-		/* Make sure we won't do consolidate again for these requests. */		
+		/* Make sure we won't do consolidate again for these requests. */
 		pConsDevice->Sequential = 0;
 		MV_DPRINT(("Request error in consolidate.\n"));
 
@@ -410,7 +410,7 @@ void Consolid_InitialInternalRequest(
 	)
 {
 	/*
-	 * Link pointer: 
+	 * Link pointer:
 	 * When request is free, Queue_Pointer is linked together in the request pool queue.
 	 * When request is in use, Org_Req is pointer to the first external request.
 	 * This first external request uses Queue_Pointer to link other external requests.
@@ -438,9 +438,9 @@ void Consolid_InitialInternalRequest(
 #else
 	MV_ZeroMemory(pInternal->Context, sizeof(MV_PVOID)*MAX_POSSIBLE_MODULE_NUMBER);
 #endif
-	/* 
-	 * Some variables only need initialization once. 
-	 * It won't change no matter during the life time. 
+	/*
+	 * Some variables only need initialization once.
+	 * It won't change no matter during the life time.
 	 */
 	if ( firstTime )
 	{
@@ -483,7 +483,7 @@ void Consolid_InitializeExtension(MV_PVOID This)
 	}
 }
 
-/* 
+/*
  * Initialize the Consolidate_Device.
  * I don't initialize all the devices at once.
  * Caller should call device one by one.
@@ -522,4 +522,3 @@ Consolid_PushSendRequest(
 	CONS_SEND_REQUEST(This, pInternal);
 }
 #endif
-

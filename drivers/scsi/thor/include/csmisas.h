@@ -11,7 +11,7 @@ Abstract:
    that support the Common Storage Management Interface specification for
    SAS or SATA in either the Windows or Linux.
 
-   This should be considered as a reference implementation only.  Changes may 
+   This should be considered as a reference implementation only.  Changes may
    be necessary to accommodate a specific build environment or target OS.
 
 Revision History:
@@ -54,11 +54,11 @@ Revision History:
    017  SEF   9/17/04  added CSMI_SAS_SATA_PORT_SELECTOR,
                        CSMI_SAS_LINK_VIRTUAL, CSMI_SAS_CON_NOT_PRESENT, and
                        CSMI_SAS_CON_NOT_CONNECTED
-   018  SEF   9/20/04  added CSMI_SAS_PHY_USER_PATTERN, 
+   018  SEF   9/20/04  added CSMI_SAS_PHY_USER_PATTERN,
                        changed definition of CSMI_SAS_PHY_FIXED_PATTERN to not
                        conflict with activate definition
    019  SEF  12/06/04  added CSMI_SAS_GET_LOCATION
-                       added bSSPStatus to CSMI_SAS_SSP_PASSTHRU_STATUS 
+                       added bSSPStatus to CSMI_SAS_SSP_PASSTHRU_STATUS
                        structure
 
 **************************************************************************/
@@ -653,7 +653,7 @@ typedef struct _IOCTL_HEADER {
 // Phy Control Functions
 // (bFunction)
 
-// values 0x00 to 0xFF are consistent in definition with the SMP PHY CONTROL 
+// values 0x00 to 0xFF are consistent in definition with the SMP PHY CONTROL
 // function defined in the SAS spec
 #define CSMI_SAS_PC_NOP                   0x00000000
 #define CSMI_SAS_PC_LINK_RESET            0x00000001

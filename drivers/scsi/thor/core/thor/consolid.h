@@ -31,7 +31,7 @@ typedef struct _Consolidate_Device
 	MV_U16		Sequential;				/* sequential counter */
 	MV_BOOLEAN	Is_Read;				/* The last request is read or write. */
 	MV_U8		Reserved0;
-	MV_U16		Reserved1[2];			
+	MV_U16		Reserved1[2];
 }Consolidate_Device, *PConsolidate_Device;
 
 void
@@ -40,7 +40,7 @@ Consolid_ModuleSendRequest(
 	PMV_Request pReq
 	);
 
-void 
+void
 Consolid_InitializeExtension(
 	MV_PVOID This
 	);
@@ -58,4 +58,3 @@ Consolid_PushSendRequest(
 	);
 
 #endif
-

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2000-2002 by Dima Epshtein
- * 
+ *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
  * Free Software Foundation; either version 2 of the License, or (at your
@@ -44,22 +44,22 @@ static int ehci_marvell_setup(struct usb_hcd *hcd);
 void 	ehci_marvell_port_status_changed(struct ehci_hcd *ehci)
 {
 	/* GL USB-19:USB Configuration for LS Eye Pattern Test - DD and KW */
-#if defined(CONFIG_ARCH_FEROCEON_KW) || defined(CONFIG_ARCH_FEROCEON_MV78XX0)
+#if defined(CONFIG_ARCH_FEROCEON_KW2) || defined(CONFIG_ARCH_FEROCEON_KW) || defined(CONFIG_ARCH_FEROCEON_MV78XX0)
 	u32 __iomem 	*reg_ptr;
 	u32 		port_status, phy_val;
 
 	/* Change PHY Tx Control Register: offset 0x420 = 0x140 + 0x2e0 */
-    	reg_ptr = (u32 __iomem *)(((u8 __iomem *)ehci->regs) + 0x2e0);
-    	phy_val = ehci_readl(ehci, reg_ptr);
+	reg_ptr = (u32 __iomem *)(((u8 __iomem *)ehci->regs) + 0x2e0);
+	phy_val = ehci_readl(ehci, reg_ptr);
 
-	port_status = ehci_readl(ehci, &ehci->regs->port_status[0]); 	
-	if( (port_status & PORT_CONNECT) && 
+	port_status = ehci_readl(ehci, &ehci->regs->port_status[0]);
+	if( (port_status & PORT_CONNECT) &&
             (((port_status >> PORT_SPEED_OFFS) & PORT_SPEED_MASK) == PORT_SPEED_LOW) )
 	{
 		/* If Low speed device is connected - disable autocalibration */
 		/* bits[27-30] = 0, bit[26] = 1 */
 		phy_val &= ~(0xF << 27);
-		phy_val |= (1 << 26);	
+		phy_val |= (1 << 26);
 	}
 	else
 	{
@@ -67,7 +67,7 @@ void 	ehci_marvell_port_status_changed(struct ehci_hcd *ehci)
 		phy_val &= ~(1 << 26);
 	}
 	ehci_writel(ehci, phy_val, reg_ptr);
-#endif /* CONFIG_ARCH_FEROCEON_KW || CONFIG_ARCH_FEROCEON_MV78XX0 */
+#endif /* CONFIG_ARCH_FEROCEON_KW2 || CONFIG_ARCH_FEROCEON_KW || CONFIG_ARCH_FEROCEON_MV78XX0 */
 }
 
 static const struct hc_driver ehci_marvell_hc_driver = {
@@ -99,7 +99,9 @@ static const struct hc_driver ehci_marvell_hc_driver = {
         .urb_enqueue = ehci_urb_enqueue,
         .urb_dequeue = ehci_urb_dequeue,
         .endpoint_disable = ehci_endpoint_disable,
-        .endpoint_reset = ehci_endpoint_reset,
+#ifdef CONFIG_ARCH_ARMADA370
+		.endpoint_reset = ehci_endpoint_reset,
+#endif
 
         /*
          * scheduling support
@@ -113,8 +115,9 @@ static const struct hc_driver ehci_marvell_hc_driver = {
         .hub_control = ehci_hub_control,
         .bus_suspend = ehci_bus_suspend,
         .bus_resume = ehci_bus_resume,
-
-        .clear_tt_buffer_complete = ehci_clear_tt_buffer_complete,
+#ifdef CONFIG_ARCH_ARMADA370
+		.clear_tt_buffer_complete = ehci_clear_tt_buffer_complete,
+#endif
 };
 
 static int ehci_marvell_setup(struct usb_hcd *hcd)
@@ -127,7 +130,7 @@ static int ehci_marvell_setup(struct usb_hcd *hcd)
          */
         ehci->caps = hcd->regs;
         ehci->regs = hcd->regs +
-			HC_LENGTH(ehci, ehci_readl(ehci, &ehci->caps->hc_capbase));
+                HC_LENGTH(ehci,ehci_readl(ehci, &ehci->caps->hc_capbase));
 
         /*
          * cache this readonly data; minimize chip reads
@@ -157,60 +160,58 @@ static int ehci_marvell_setup(struct usb_hcd *hcd)
 }
 
 static int ehci_marvell_probe(struct platform_device *pdev)
-{ 
-    int                     i, retval; 
-    struct usb_hcd          *hcd = NULL; 
- 
+{
+    int                     i, retval;
+    struct usb_hcd          *hcd = NULL;
+
     hcd = usb_create_hcd (&ehci_marvell_hc_driver, &pdev->dev, dev_name(&pdev->dev));
-    if (hcd == NULL) 
-    { 
-        printk("%s: hcd_alloc failed\n", __FUNCTION__); 
-        return -ENOMEM; 
-    } 
- 
+    if (hcd == NULL)
+    {
+        printk("%s: hcd_alloc failed\n", __FUNCTION__);
+        return -ENOMEM;
+    }
+
     for(i=0; i<pdev->num_resources; i++)
     {
         if(pdev->resource[i].flags == IORESOURCE_IRQ)
         {
-            hcd->irq = pdev->resource[i].start; 
+            hcd->irq = pdev->resource[i].start;
         }
         else if(pdev->resource[i].flags == IORESOURCE_DMA)
         {
-            hcd->regs = (void *)pdev->resource[i].start; 
-    	    hcd->rsrc_start = pdev->resource[i].start;
-    	    hcd->rsrc_len = pdev->resource[i].end - hcd->rsrc_start + 1;
+            hcd->regs = (void *)pdev->resource[i].start;
+	    hcd->rsrc_start = pdev->resource[i].start;
+	    hcd->rsrc_len = pdev->resource[i].end - hcd->rsrc_start + 1;
         }
-    }     
+    }
 
     retval = usb_add_hcd (hcd, hcd->irq, IRQF_SHARED);
 	if (retval != 0)
     {
-        printk("%s: usb_add_hcd failed, retval=0x%x\n", __FUNCTION__, retval); 
-        return -ENOMEM; 
-    }    
- 
-    return 0; 
-} 
+        printk("%s: usb_add_hcd failed, retval=0x%x\n", __FUNCTION__, retval);
+        return -ENOMEM;
+    }
+
+    return 0;
+}
 
 static int ehci_marvell_remove(struct platform_device *pdev)
-{ 
+{
     struct usb_hcd *hcd = platform_get_drvdata(pdev);
 
-    printk("USB: ehci_marvell_remove\n"); 
-   
-    usb_remove_hcd (hcd); 
+    printk("USB: ehci_marvell_remove\n");
+
+    usb_remove_hcd (hcd);
     usb_put_hcd (hcd);
 
    return 0;
-} 
- 
- 
-static struct platform_driver ehci_marvell_driver =  
-{ 
-    .driver.name = "ehci_marvell", 
-    .probe = ehci_marvell_probe, 
+}
+
+
+static struct platform_driver ehci_marvell_driver =
+{
+    .driver.name = "ehci_marvell",
+    .probe = ehci_marvell_probe,
     .remove = ehci_marvell_remove,
-    .shutdown = usb_hcd_platform_shutdown, 
-};  
-
-
+    .shutdown = usb_hcd_platform_shutdown,
+};

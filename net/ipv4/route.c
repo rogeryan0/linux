@@ -111,15 +111,12 @@
 #endif
 #include <net/secure_seq.h>
 
-#ifdef CONFIG_MV_ETH_NFP
-extern int fp_rule_db_init(u32 db_size);
-extern int fp_arp_db_init(u32 db_size);
-extern int fp_routing_info_set(u32 src_ip, u32 dst_ip, u32 def_gtw_ip, 
-				int ingress_if, int egress_if);
-extern int fp_routing_info_delete(u32 src_ip, u32 dst_ip);
-extern int fp_is_route_confirmed(u32 src_ip, u32 dst_ip);
-extern int fp_disable_flag;
-#endif /* CONFIG_MV_ETH_NFP */
+#if defined(CONFIG_MV_ETH_NFP_FIB_LEARN)
+extern int nfp_fib_learn_en;
+extern int nfp_hook_fib_rule_add(int family, u8 *src_l3, u8 *dst_l3, u8 *gtw_l3, int iif, int oif);
+extern int nfp_hook_fib_rule_del(int family, u8 *src_l3, u8 *dst_l3, int iif, int oif);
+extern int nfp_hook_fib_rule_age(int family, u8 *src_l3, u8 *dst_l3, int iif, int oif);
+#endif /* CONFIG_MV_ETH_NFP_FIB_LEARN */
 
 #define RT_FL_TOS(oldflp4) \
 	((oldflp4)->flowi4_tos & (IPTOS_RT_MASK | RTO_ONLINK))
@@ -668,12 +665,11 @@ static inline int ip_rt_proc_init(void)
 
 static inline void rt_free(struct rtable *rt)
 {
-#ifdef CONFIG_MV_ETH_NFP
-	if ( !fp_disable_flag &&
-	     !(rt->rt_flags & (RTCF_MULTICAST | RTCF_BROADCAST | RTCF_LOCAL | RTCF_REJECT))) {
-		fp_routing_info_delete(rt->rt_src, rt->rt_dst);
-	}
-#endif /* CONFIG_MV_ETH_NFP */
+#if defined(CONFIG_MV_ETH_NFP_FIB_LEARN)
+		if (rt->nfp)
+			nfp_hook_fib_rule_del(AF_INET, (u8*)(&rt->rt_src),(u8*)(&rt->rt_dst),
+							rt->rt_iif, rt->dst.dev->ifindex);
+#endif /* CONFIG_MV_ETH_NFP_FIB_LEARN */
 
 	call_rcu_bh(&rt->dst.rcu_head, dst_rcu_free);
 }
@@ -706,13 +702,13 @@ static int rt_may_expire(struct rtable *rth, unsigned long tmo1, unsigned long t
 	if (atomic_read(&rth->dst.__refcnt))
 		goto out;
 
-#ifdef CONFIG_MV_ETH_NFP
-	if ( !fp_disable_flag &&
-	     !(rth->rt_flags & (RTCF_MULTICAST | RTCF_BROADCAST | RTCF_LOCAL | RTCF_REJECT))) {
-		if (fp_is_route_confirmed(rth->rt_src, rth->rt_dst))
+#if defined(CONFIG_MV_ETH_NFP_FIB_LEARN)
+	if (rth->nfp) {
+		if (nfp_hook_fib_rule_age(AF_INET,(u8 *)(&rth->rt_src), (u8 *)(&rth->rt_dst),
+						rth->rt_iif, rth->dst.dev->ifindex))
 			rth->dst.lastuse = jiffies;
 	}
-#endif /* CONFIG_MV_ETH_NFP */
+#endif /* CONFIG_MV_ETH_NFP_FIB_LEARN */
 
 	age = jiffies - rth->dst.lastuse;
 	if ((age <= tmo1 && !rt_fast_clean(rth)) ||
@@ -827,6 +823,34 @@ static void rt_do_flush(struct net *net, int process_context)
 		}
 	}
 }
+
+#if defined(CONFIG_MV_ETH_NFP_FIB_LEARN)
+void nfp_fib_sync(void)
+{
+	struct rtable *rt;
+	int h;
+
+	for (h = 0; h <= rt_hash_mask; h++) {
+		if (!rt_hash_table[h].chain)
+			continue;
+
+		rcu_read_lock_bh();
+		for (rt = rcu_dereference_bh(rt_hash_table[h].chain); rt;
+		    rt = rcu_dereference_bh(rt->dst.rt_next)) {
+			if (rt_is_expired(rt))
+				continue;
+
+			rt->nfp = false;
+			if (!(rt->rt_flags & (RTCF_MULTICAST | RTCF_BROADCAST | RTCF_LOCAL | RTCF_REJECT))) {
+				if (!nfp_hook_fib_rule_add(AF_INET, (u8 *)(&rt->rt_src), (u8 *)(&rt->rt_dst),
+					  (u8 *)(&rt->rt_gateway), rt->rt_iif, rt->dst.dev->ifindex))
+					rt->nfp = true;
+			}
+		}
+		rcu_read_unlock_bh();
+	}
+}
+#endif /* CONFIG_MV_ETH_NFP_FIB_LEARN */
 
 /*
  * While freeing expired entries, we compute average chain length
@@ -985,10 +1009,6 @@ static void rt_emergency_hash_rebuild(struct net *net)
 {
 	if (net_ratelimit())
 		printk(KERN_WARNING "Route hash chain too long!\n");
-#ifdef CONFIG_MV_ETH_NFP
-	/* If NFP enabled doesn't flush */
-	if(fp_disable_flag)
-#endif /* CONFIG_MV_ETH_NFP */
 	rt_cache_invalidate(net);
 }
 
@@ -2070,6 +2090,9 @@ static int ip_route_input_mc(struct sk_buff *skb, __be32 daddr, __be32 saddr,
 	if (!rth)
 		goto e_nobufs;
 
+#if defined(CONFIG_MV_ETH_NFP_FIB_LEARN)
+	rth->nfp = false;
+#endif
 #ifdef CONFIG_IP_ROUTE_CLASSID
 	rth->dst.tclassid = itag;
 #endif
@@ -2233,16 +2256,16 @@ static int __mkroute_input(struct sk_buff *skb,
 
 	rt_set_nexthop(rth, NULL, res, res->fi, res->type, itag);
 
-	*result = rth;
-
-#ifdef CONFIG_MV_ETH_NFP
-	if ( !fp_disable_flag &&
-	     !(rth->rt_flags & (RTCF_MULTICAST | RTCF_BROADCAST | RTCF_LOCAL | RTCF_REJECT))) {
-		fp_routing_info_set(	rth->rt_src, rth->rt_dst, 
-					rth->rt_gateway, rth->rt_iif, rth->dst.dev->ifindex);
+#if defined(CONFIG_MV_ETH_NFP_FIB_LEARN)
+	rth->nfp = false;
+	if (!(rth->rt_flags & (RTCF_MULTICAST | RTCF_BROADCAST | RTCF_LOCAL | RTCF_REJECT))) {
+		if (!nfp_hook_fib_rule_add(AF_INET, (u8 *)(&rth->rt_src), (u8 *)(&rth->rt_dst),
+					(u8 *)(&rth->rt_gateway), rth->rt_iif, rth->dst.dev->ifindex))
+			rth->nfp = true;
 	}
-#endif /* CONFIG_MV_ETH_NFP */
+#endif /* CONFIG_MV_ETH_NFP_FIB_LEARN */
 
+	*result = rth;
 	err = 0;
  cleanup:
 	return err;
@@ -2393,6 +2416,9 @@ local_input:
 	if (!rth)
 		goto e_nobufs;
 
+#if defined(CONFIG_MV_ETH_NFP_FIB_LEARN)
+	rth->nfp = false;
+#endif
 	rth->dst.input= ip_local_deliver;
 	rth->dst.output= ip_rt_bug;
 #ifdef CONFIG_IP_ROUTE_CLASSID
@@ -2603,6 +2629,10 @@ static struct rtable *__mkroute_output(const struct fib_result *res,
 			   IN_DEV_CONF_GET(in_dev, NOXFRM));
 	if (!rth)
 		return ERR_PTR(-ENOBUFS);
+
+#if defined(CONFIG_MV_ETH_NFP_FIB_LEARN)
+	rth->nfp = false;
+#endif
 
 	rth->dst.output = ip_output;
 
@@ -2943,6 +2973,9 @@ struct dst_entry *ipv4_blackhole_route(struct net *net, struct dst_entry *dst_or
 		if (new->dev)
 			dev_hold(new->dev);
 
+#if defined(CONFIG_MV_ETH_NFP_FIB_LEARN)
+		rt->nfp = false;
+#endif
 		rt->rt_key_dst = ort->rt_key_dst;
 		rt->rt_key_src = ort->rt_key_src;
 		rt->rt_key_tos = ort->rt_key_tos;
@@ -3534,12 +3567,6 @@ int __init ip_rt_init(void)
 	register_pernet_subsys(&sysctl_route_ops);
 #endif
 	register_pernet_subsys(&rt_genid_ops);
-
-#ifdef CONFIG_MV_ETH_NFP
-	fp_rule_db_init(rt_hash_mask + 1);
-	fp_arp_db_init(rt_hash_mask + 1);	
-#endif /* CONFIG_MV_ETH_NFP */
-
 	return rc;
 }
 

@@ -25,12 +25,6 @@ static inline void flush_kernel_vmap_range(void *vaddr, int size)
 static inline void invalidate_kernel_vmap_range(void *vaddr, int size)
 {
 }
-static inline void flush_kernel_dcache_addr(void *vaddr)
-{
-}
-static inline void invalidate_kernel_dcache_addr(void *vaddr)
-{
-}
 #endif
 
 #include <asm/kmap_types.h>

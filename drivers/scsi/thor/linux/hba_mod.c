@@ -62,7 +62,7 @@ void __hba_dump_req_info(MV_U32 id, PMV_Request preq)
 
 		scmd = (struct scsi_cmnd *) preq->Org_Req;
 		sg   = (struct scatterlist *) mv_rq_bf(scmd);
-		
+
 		/* ignored  */
 		break;
 
@@ -75,7 +75,7 @@ void __hba_dump_req_info(MV_U32 id, PMV_Request preq)
 	default:
 		lba = 0;
 		break;
-	} 
+	}
 #if 0
 	MV_DBG(DMSG_FREQ,
 	       "(%u) req "RED("%p")
@@ -104,7 +104,7 @@ static void generate_sg_table(struct hba_extension *phba,
 		MV_DBG(DMSG_SCSI, "ERROR: request length exceeds "
 		       "the maximum alowed value.\n");
 	}
-	
+
 	if (0 == mv_rq_bf_l(scmd))
 		return ;
 
@@ -137,7 +137,7 @@ static void generate_sg_table(struct hba_extension *phba,
 				MV_DPRINT(("Warning: sg[%i] length %d > 4096\n", i, length));
 	#endif
 			sgdt_append_pctx(sg_table,
-					 LO_BUSADDR(busaddr), 
+					 LO_BUSADDR(busaddr),
 					 HI_BUSADDR(busaddr),
 					 length,
 					 sg + i);
@@ -158,12 +158,12 @@ static void generate_sg_table(struct hba_extension *phba,
 				MV_DPRINT(("Warning: single sg request_bufflen %d > 4096\n", mv_rq_bf_l(scmd)));
 	#endif
 
-		sgdt_append_vp(sg_table, 
+		sgdt_append_vp(sg_table,
 			       mv_rq_bf(scmd),
 			       mv_rq_bf_l(scmd),
-			       LO_BUSADDR(busaddr), 
+			       LO_BUSADDR(busaddr),
 			       HI_BUSADDR(busaddr));
-		
+
 	}
 }
 
@@ -172,12 +172,12 @@ void mv_complete_request(struct hba_extension *phba,
 				PMV_Request pReq)
 {
 	PMV_Sense_Data  senseBuffer = (PMV_Sense_Data) scmd->sense_buffer;
-	
+
 	//MV_POKE();
 	__hba_dump_req_info(phba->desc->module_id, pReq);
 
 	if (mv_rq_bf_l(scmd)) {
-		MV_DBG(DMSG_SCSI_FREQ, "unmap %d bytes.\n", 
+		MV_DBG(DMSG_SCSI_FREQ, "unmap %d bytes.\n",
 		        mv_rq_bf_l(scmd));
 
 	if (MV_SCp(scmd)->mapped) {
@@ -186,7 +186,7 @@ void mv_complete_request(struct hba_extension *phba,
 				pci_unmap_sg(phba->dev,
 					     mv_rq_bf(scmd),
 					     mv_use_sg(scmd),
-					 	scsi_to_pci_dma_dir(scmd->sc_data_direction));
+						scsi_to_pci_dma_dir(scmd->sc_data_direction));
 				#else
 				scsi_dma_unmap(scmd);
 				#endif
@@ -194,13 +194,13 @@ void mv_complete_request(struct hba_extension *phba,
 				dma_unmap_single(&(phba->dev->dev),
 						 MV_SCp(scmd)->bus_address,
 						 mv_rq_bf_l(scmd),
-				     	scsi_to_pci_dma_dir(scmd->sc_data_direction));
+					scsi_to_pci_dma_dir(scmd->sc_data_direction));
 			}
 		}
 	}
 
 	MV_DBG(DMSG_SCSI_FREQ,
-	       " pReq->Scsi_Status = %x pcmd = %p.\n", 
+	       " pReq->Scsi_Status = %x pcmd = %p.\n",
 	        pReq->Scsi_Status, scmd);
 
 #if 0//def MV_DEBUG
@@ -279,7 +279,7 @@ static void mv_pm_ata_16_complete_request(struct hba_extension * phba,
 {
 	PDomain_Device pDevice = NULL;
 	MV_U8 portId, deviceId; /*, temp;*/
-	PCore_Driver_Extension pCore; 
+	PCore_Driver_Extension pCore;
 
 	unsigned char *sb = scmd->sense_buffer;
 	unsigned char *desc = sb + 8;
@@ -290,29 +290,29 @@ static void mv_pm_ata_16_complete_request(struct hba_extension * phba,
 	{
 		portId = PATA_MapPortId(pReq->Device_Id);
 		deviceId = PATA_MapDeviceId(pReq->Device_Id);
-		if ( portId < MAX_PORT_NUMBER )				
+		if ( portId < MAX_PORT_NUMBER )
 			pDevice = &pCore->Ports[portId].Device[deviceId];
 	}
 
 /* !DMA_NONE */
 	if (MV_SCp(scmd)->mapped) {
 		if (mv_use_sg(scmd)){
-			
+
 			#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 23)
 			pci_unmap_sg(phba->dev,mv_rq_bf(scmd),mv_use_sg(scmd),
-					 	scsi_to_pci_dma_dir(scmd->sc_data_direction));
+						scsi_to_pci_dma_dir(scmd->sc_data_direction));
 			#else
 			scsi_dma_unmap(scmd);
 			#endif
 		}
-		else 
+		else
 			dma_unmap_single(&(phba->dev->dev),MV_SCp(scmd)->bus_address,
 						mv_rq_bf_l(scmd),scsi_to_pci_dma_dir(scmd->sc_data_direction));
 	}
-	
+
 
 	memset(sb,0,SCSI_SENSE_BUFFERSIZE);
-	scmd->result = (DRIVER_SENSE << 24) | SAM_STAT_CHECK_CONDITION; 
+	scmd->result = (DRIVER_SENSE << 24) | SAM_STAT_CHECK_CONDITION;
 
 	switch(scmd->cmnd[14]) {
 		case ATA_CMD_CHK_POWER:
@@ -332,15 +332,15 @@ static void mv_pm_ata_16_complete_request(struct hba_extension * phba,
 		case ATA_CMD_SLEEP:
 			pDevice->Status |= DEVICE_STATUS_SLEEP;
 			break;
-			
+
 		default:
 			break;
 	}
-	
+
 	/* Sense Data is current and format is descriptor */
 	sb[0] = 0x72;
 	desc[0] = 0x09;
-	
+
 	/* set length of additional sense data */
 	sb[7] = 14; // 8+14
 
@@ -361,85 +361,57 @@ static void mv_pm_ata_16_complete_request(struct hba_extension * phba,
 	scmd->scsi_done(scmd);
 }
 #ifdef SUPPORT_ATA_SECURITY_CMD
-static void mv_ata_16_complete_request(struct hba_extension * phba,
+ void mv_ata_16_complete_request(struct hba_extension * phba,
 		struct scsi_cmnd *scmd,PMV_Request pReq)
 {
 	PDomain_Device pDevice = NULL;
 	MV_U8 portId, deviceId; /*, temp;*/
-	PCore_Driver_Extension pCore; 
+	PCore_Driver_Extension pCore;
+	PDomain_Port pPort = NULL;
+	MV_LPVOID port_mmio = NULL;
+	MV_U32 tf_fis = 0,sig_fis = 0;
 
 	unsigned char *sb = scmd->sense_buffer;
 	unsigned char *desc = sb + 8;
 
 	pCore = (PCore_Driver_Extension)HBA_GetModuleExtension(phba, MODULE_CORE);
 
-	if ( pReq->Device_Id != VIRTUAL_DEVICE_ID )
-	{
+	if ( pReq->Device_Id != VIRTUAL_DEVICE_ID ){
 		portId = PATA_MapPortId(pReq->Device_Id);
 		deviceId = PATA_MapDeviceId(pReq->Device_Id);
-		if ( portId < MAX_PORT_NUMBER )				
+		if ( portId < MAX_PORT_NUMBER )	{
+			pPort = &pCore->Ports[portId];
 			pDevice = &pCore->Ports[portId].Device[deviceId];
+		}
 	}
-	
+
 	if (MV_SCp(scmd)->mapped) {
 		if (mv_use_sg(scmd)){
-			
-			#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 23)
+	#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 23)
 			pci_unmap_sg(phba->dev,mv_rq_bf(scmd),mv_use_sg(scmd),
-					 	scsi_to_pci_dma_dir(scmd->sc_data_direction));
-			#else
+					 scsi_to_pci_dma_dir(scmd->sc_data_direction));
+	#else
 			scsi_dma_unmap(scmd);
-			#endif
+	#endif
+		}else {
+			dma_unmap_single(&(phba->dev->dev),
+				MV_SCp(scmd)->bus_address,
+				mv_rq_bf_l(scmd),scsi_to_pci_dma_dir(scmd->sc_data_direction));
 		}
-		else 
-			dma_unmap_single(&(phba->dev->dev),MV_SCp(scmd)->bus_address,
-						mv_rq_bf_l(scmd),scsi_to_pci_dma_dir(scmd->sc_data_direction));
 	}
-	
-	memset(sb,0,SCSI_SENSE_BUFFERSIZE);
-	scmd->result = (DRIVER_SENSE << 24) | SAM_STAT_CHECK_CONDITION; 
-	
-	/* Sense Data is current and format is descriptor */
-	sb[0] = 0x72;
-	sb[1]=0x0;
-	desc[0] = 0x09;
-	/* set length of additional sense data */
-	sb[7] = 14; // 8+14
 
-	desc[1] = 12;
-	desc[2] = 0x00;
-	desc[3] = 0; 		// error register
-	desc[13] = 0x04; 	// status register
-	
-	if(scmd->cmnd[14] == ATA_CMD_SMART){
-		desc[9] = scmd->cmnd[10];
-		desc[10] = scmd->cmnd[11];
-		desc[11] = scmd->cmnd[12];
-	} else {
-		desc[12] = scmd->cmnd[13]; //NO_DATA
-	}
-	switch(scmd->cmnd[14]) {
-		case ATA_CMD_SEC_UNLOCK:
-		case ATA_CMD_SEC_ERASE_UNIT:
-			if(pReq->Scsi_Status==REQ_STATUS_SUCCESS){
-				if(pDevice->Capacity & DEVICE_CAPACITY_SECURITY_SUPPORTED){
-					if(pDevice->Setting & DEVICE_SETTING_SECURITY_LOCKED){
-						MV_DPRINT(("securiy: unlocked\n"));
-						pDevice->Setting &= ~DEVICE_SETTING_SECURITY_LOCKED;
-						}
-					}
-			}	
-			break;
-		case ATA_CMD_IDENTIFY_ATA:
-			sb[3]=0x1d;
-			break;
-		case ATA_CMD_SEC_PASSWORD:
-		case ATA_CMD_SEC_DISABLE_PASSWORD:
-		case ATA_CMD_SEC_ERASE_PRE:
-		default:
-			break;
-	}
-	switch(pReq->Scsi_Status) {
+	memset(sb,0,SCSI_SENSE_BUFFERSIZE);
+
+	if (pReq->Scsi_Status != REQ_STATUS_SUCCESS) {
+		scmd->result = (DRIVER_SENSE << 24) | SAM_STAT_CHECK_CONDITION;
+
+		sb[0] = 0x70;
+		sb[2] = SCSI_SK_NO_SENSE;
+		sb[7] = 0;
+		sb[12] = SCSI_ASC_NO_ASC;
+		sb[13] = 0x1D  /*SCSI_ASCQ_ATA_PASSTHRU_INFO*/;
+
+		switch(pReq->Scsi_Status) {
 		case REQ_STATUS_ABORT:
 			sb[1]=SCSI_SK_ABORTED_COMMAND;
 			desc[3]=0x04;
@@ -448,14 +420,96 @@ static void mv_ata_16_complete_request(struct hba_extension * phba,
 		default:
 			break;
 		}
+	} else if (((scmd->cmnd[2] >> 5) & 0x01)
+		&& pReq->Scsi_Status == REQ_STATUS_SUCCESS) {
+		/* if chk_cond is set to 1, then always return check condition */
+		scmd->result = (DRIVER_SENSE << 24) | SAM_STAT_CHECK_CONDITION;
+
+		/* Sense Data is current and format is descriptor */
+		sb[0] = 0x72;
+		sb[1]=0x0;
+		/* set length of additional sense data */
+		sb[7] = 14; // 8+14
+
+		desc[0] = 0x09;
+		desc[1] = 12;
+		desc[2] = 0x00;
+		desc[3] = 0; 		// error register
+		desc[13] = 0x04; 	// status register
+		desc[12] = scmd->cmnd[13]; //device
+
+		switch(scmd->cmnd[14]) {
+		case ATA_CMD_SMART:
+			desc[9] = scmd->cmnd[10];
+			desc[10] = scmd->cmnd[11];
+			desc[11] = scmd->cmnd[12];
+			break;
+		case ATA_CMD_SEC_UNLOCK:
+		case ATA_CMD_SEC_ERASE_UNIT:
+			if(pDevice->Capacity & DEVICE_CAPACITY_SECURITY_SUPPORTED){
+				if(pDevice->Setting & DEVICE_SETTING_SECURITY_LOCKED){
+					MV_DPRINT(("securiy: unlocked\n"));
+					pDevice->Setting &= ~DEVICE_SETTING_SECURITY_LOCKED;
+				}
+			}
+			break;
+		case ATA_CMD_IDENTIFY_ATA:
+			sb[3]=0x1d;
+			break;
+		case ATA_CMD_SEC_PASSWORD:
+		case ATA_CMD_SEC_DISABLE_PASSWORD:
+		case ATA_CMD_SEC_ERASE_PRE:
+			break;
+		case ATA_CMD_DOWNLOAD_MICROCODE:
+		{
+			if(pPort != NULL){
+				port_mmio = pPort->Mmio_Base;
+				sig_fis = MV_REG_READ_DWORD(port_mmio, PORT_SIG);
+				tf_fis  =  MV_REG_READ_DWORD(port_mmio, PORT_TFDATA);
+				tf_fis &= 0xFFFF;
+
+				desc[13]= (MV_U8)(tf_fis & 0xFF);//status
+				desc[3] = (MV_U8)(tf_fis >> 8);//error
+
+				desc[5] = (MV_U8)(sig_fis & 0xFF); //sector count
+				desc[7] = (MV_U8)((sig_fis >> 8) & 0xFF);//lba low
+				desc[9] = (MV_U8)((sig_fis >> 16) & 0xFF);//lba mid
+				desc[11] = (MV_U8)((sig_fis >> 24) & 0xFF);//lba high
+			}else{
+				desc[5] = 0;//scmd->cmnd[6];
+				desc[7] = scmd->cmnd[8];
+				desc[9] = scmd->cmnd[10];
+				desc[11] = scmd->cmnd[12];
+
+				if(pReq->Cmd_Flag & CMD_FLAG_48BIT){
+					desc[4] = scmd->cmnd[5];
+					desc[6] = scmd->cmnd[7];
+					desc[8] = scmd->cmnd[9];
+					desc[10] = scmd->cmnd[11];
+				}else{
+					desc[4] = 0;
+					desc[6] = 0;
+					desc[8] = 0;
+					desc[10] = 0;
+				}
+			}
+		}
+			break;
+		default:
+			break;
+		}
+
+	}
+
 	scmd->scsi_done(scmd);
 }
+
 #endif
 void mv_clear_device_status(struct hba_extension * phba,PMV_Request pReq)
 {
 	PDomain_Device pDevice = NULL;
 	MV_U8 portId, deviceId; /*, temp;*/
-	PCore_Driver_Extension pCore; 
+	PCore_Driver_Extension pCore;
 
 	pCore = (PCore_Driver_Extension)HBA_GetModuleExtension(phba, MODULE_CORE);
 
@@ -463,7 +517,7 @@ void mv_clear_device_status(struct hba_extension * phba,PMV_Request pReq)
 	{
 		portId = PATA_MapPortId(pReq->Device_Id);
 		deviceId = PATA_MapDeviceId(pReq->Device_Id);
-		if ( portId < MAX_PORT_NUMBER )				
+		if ( portId < MAX_PORT_NUMBER )
 			pDevice = &pCore->Ports[portId].Device[deviceId];
 		pDevice->Status &= ~(DEVICE_STATUS_IDLE|DEVICE_STATUS_STANDBY);
 	}
@@ -471,6 +525,7 @@ void mv_clear_device_status(struct hba_extension * phba,PMV_Request pReq)
 }
 
 #endif
+
 /* This should be the _only_ os request exit point. */
 static void hba_req_callback(MV_PVOID This, PMV_Request pReq)
 {
@@ -479,14 +534,14 @@ static void hba_req_callback(MV_PVOID This, PMV_Request pReq)
 
 	/* Return this request to OS. */
 #ifdef SUPPORT_ATA_POWER_MANAGEMENT
-	if(is_ata_16_passthrough_for_pm(scmd) && 
+	if(is_ata_16_passthrough_for_pm(scmd) &&
 		pReq->Scsi_Status == REQ_STATUS_SUCCESS)
 			mv_pm_ata_16_complete_request(phba,scmd,pReq);
 #endif
 #ifdef SUPPORT_ATA_SECURITY_CMD
-	else if(scmd->cmnd[0]==ATA_16){
+	else if(scmd->cmnd[0]== ATA_16){
 		mv_ata_16_complete_request(phba,scmd,pReq);
-		}
+	}
 #endif
 #ifdef SUPPORT_ATA_POWER_MANAGEMENT
 	else{
@@ -501,29 +556,29 @@ static void hba_req_callback(MV_PVOID This, PMV_Request pReq)
 }
 
 
-static int scsi_cmd_to_req_conv(struct hba_extension *phba, 
-				struct scsi_cmnd *scmd, 
+static int scsi_cmd_to_req_conv(struct hba_extension *phba,
+				struct scsi_cmnd *scmd,
 				PMV_Request pReq)
 {
 	/*
-	 * Set three flags: CMD_FLAG_NON_DATA 
-	 *                  CMD_FLAG_DATA_IN 
+	 * Set three flags: CMD_FLAG_NON_DATA
+	 *                  CMD_FLAG_DATA_IN
 	 *                  CMD_FLAG_DMA
 	 * currently data in/out all go thru DMA
 	 */
 	pReq->Cmd_Flag = 0;
 	switch (scmd->sc_data_direction) {
 	case DMA_NONE:
-		pReq->Cmd_Flag |= CMD_FLAG_NON_DATA;
+		pReq->Cmd_Flag = CMD_FLAG_NON_DATA;
 		break;
 	case DMA_FROM_DEVICE:
-		pReq->Cmd_Flag |= CMD_FLAG_DATA_IN;
-	case DMA_TO_DEVICE:
-		pReq->Cmd_Flag |= CMD_FLAG_DMA;
+		pReq->Cmd_Flag = CMD_FLAG_DMA|CMD_FLAG_DATA_IN;
 		break;
-	case DMA_BIDIRECTIONAL : 
-		MV_DBG(DMSG_SCSI, "unexpected DMA_BIDIRECTIONAL.\n"
-		       );
+	case DMA_TO_DEVICE:
+		pReq->Cmd_Flag = CMD_FLAG_DMA|CMD_FLAG_DATA_OUT;
+		break;
+	case DMA_BIDIRECTIONAL :
+		MV_DBG(DMSG_SCSI, "unexpected DMA_BIDIRECTIONAL.\n");
 		break;
 	default:
 		break;
@@ -558,21 +613,23 @@ static int scsi_cmd_to_req_conv(struct hba_extension *phba,
 		break;
 	/*0xA1==SCSI_CMD_BLANK== ATA_12 */
 	case 0xA1:
-		if(IS_ATA_12_CMD(scmd))
-			pReq->Cmd_Flag |= CMD_FLAG_SMART_ATA_12;
-		else{
+		if(!(IS_ATA_12_CMD(scmd))){
 			memcpy(pReq->Cdb, scmd->cmnd, MAX_CDB_SIZE);
 			break;
 		}
 	case ATA_16:
-		pReq->Cmd_Flag |= CMD_FLAG_SMART_ATA_16;
-		
+		pReq->Cmd_Flag = hba_parse_ata_protocol(scmd);
+		if(IS_ATA_12_CMD(scmd))
+			pReq->Cmd_Flag |= CMD_FLAG_ATA_12;
+		else
+			pReq->Cmd_Flag |= CMD_FLAG_ATA_16;
+
 		pReq->Cdb[0] = SCSI_CMD_MARVELL_SPECIFIC;
 		pReq->Cdb[1] = CDB_CORE_MODULE;
 
 		memcpy(&pReq->Cdb[3],&scmd->cmnd[3],13);
 
-		switch(scmd->cmnd[ (pReq->Cmd_Flag & CMD_FLAG_SMART_ATA_12) ?9 : 14])
+		switch(scmd->cmnd[ (pReq->Cmd_Flag & CMD_FLAG_ATA_12) ?9 : 14])
 		{
 		#ifdef SUPPORT_ATA_POWER_MANAGEMENT
 			case 0x08:
@@ -600,12 +657,17 @@ static int scsi_cmd_to_req_conv(struct hba_extension *phba,
 			case 0xEC:
 				pReq->Cdb[2] = CDB_CORE_ATA_IDENTIFY;
 				break;
+			case ATA_CMD_DOWNLOAD_MICROCODE:
+				pReq->Cdb[2] = CDB_CORE_ATA_DOWNLOAD_MICROCODE;
+				if(scmd->cmnd[1]&0x1)
+					pReq->Cmd_Flag |= CMD_FLAG_48BIT;
+				break;
 		#ifdef SUPPORT_ATA_SMART
 			case ATA_IDENTIFY_PACKET_DEVICE:
 				pReq->Cdb[2] = CDB_CORE_ATA_IDENTIFY_PACKET_DEVICE;
 				break;
 			case ATA_SMART_CMD :
-				switch(scmd->cmnd[(pReq->Cmd_Flag & CMD_FLAG_SMART_ATA_12) ?3 : 4])
+				switch(scmd->cmnd[(pReq->Cmd_Flag & CMD_FLAG_ATA_12) ?3 : 4])
 				{
 					case ATA_SMART_ENABLE:
 						pReq->Cdb[2] = CDB_CORE_ENABLE_SMART;
@@ -633,14 +695,14 @@ static int scsi_cmd_to_req_conv(struct hba_extension *phba,
 						break;
 					case  ATA_SMART_AUTOSAVE:
 						pReq->Cdb[2] = CDB_CORE_ATA_SMART_AUTOSAVE;
-						break;	
+						break;
 					case  ATA_SMART_IMMEDIATE_OFFLINE:
 						pReq->Cdb[2] = CDB_CORE_ATA_SMART_IMMEDIATE_OFFLINE;
-						break;	
+						break;
 					default:
 						pReq->Scsi_Status   =REQ_STATUS_INVALID_PARAMETER;
 						MV_PRINT("Unsupported ATA-12 or 16  subcommand =0x%x\n", \
-						scmd->cmnd[(pReq->Cmd_Flag & CMD_FLAG_SMART_ATA_12) ?3 : 4]);
+						scmd->cmnd[(pReq->Cmd_Flag & CMD_FLAG_ATA_12) ?3 : 4]);
 						return -1;
 				}
 				break;
@@ -653,14 +715,14 @@ static int scsi_cmd_to_req_conv(struct hba_extension *phba,
 						pReq->Cdb[2]=CDB_CORE_DISABLE_WRITE_CACHE;
 					break;
 					default:
-					pReq->Scsi_Status   =REQ_STATUS_INVALID_PARAMETER;
+					pReq->Scsi_Status = REQ_STATUS_INVALID_PARAMETER;
 					MV_PRINT("Enable/Disable Write Cache command error: parameter error:%d\n",scmd->cmnd[4]);
 					return -1;
 				}
 			break;
 		#endif /*#ifdef SUPPORT_ATA_SMART*/
 		#ifdef SUPPORT_ATA_SECURITY_CMD
-			case ATA_CMD_SEC_PASSWORD:	
+			case ATA_CMD_SEC_PASSWORD:
 			case ATA_CMD_SEC_UNLOCK:
 					if(0){
 						int i;
@@ -682,14 +744,14 @@ static int scsi_cmd_to_req_conv(struct hba_extension *phba,
 			case ATA_CMD_SEC_ERASE_UNIT:
 			case ATA_CMD_SEC_FREEZE_LOCK:
 			case ATA_CMD_SEC_DISABLE_PASSWORD:
-				pReq->Cmd_Flag &= ~CMD_FLAG_SMART_ATA_16;
+				pReq->Cmd_Flag &= ~CMD_FLAG_ATA_16;
 				memcpy(&pReq->Cdb[0],&scmd->cmnd[0],16);
 				break;
 			#endif
 			default:
-				pReq->Scsi_Status   =REQ_STATUS_INVALID_PARAMETER;
+				pReq->Scsi_Status = REQ_STATUS_INVALID_PARAMETER;
 				MV_PRINT("Unsupported ATA-12 or 16 Command=0x%x\n",\
-				scmd->cmnd[(pReq->Cmd_Flag & CMD_FLAG_SMART_ATA_12) ?9 : 14]);
+				scmd->cmnd[(pReq->Cmd_Flag & CMD_FLAG_ATA_12) ?9 : 14]);
 				return -1;
 		}
 		break;
@@ -697,7 +759,7 @@ static int scsi_cmd_to_req_conv(struct hba_extension *phba,
 		memcpy(pReq->Cdb, scmd->cmnd, MAX_CDB_SIZE);
 		break;
 	}
-	
+
 	pReq->Data_Buffer = mv_rq_bf(scmd);
 	pReq->Data_Transfer_Length = mv_rq_bf_l(scmd);
 	pReq->Sense_Info_Buffer = scmd->sense_buffer;
@@ -746,7 +808,7 @@ static void hba_shutdown_req_cb(MV_PVOID this, PMV_Request req)
 /* return how much 'timeout' is left or 0 if already timed out */
 int __hba_wait_for_atomic_timeout(atomic_t *atomic, unsigned long timeout)
 {
-	unsigned intv = HZ/20; 
+	unsigned intv = HZ/20;
 
 	while (timeout) {
 		if (0 == atomic_read(atomic))
@@ -767,7 +829,7 @@ static void _hba_send_shutdown_req(PHBA_Extension phba)
 	unsigned long flags;
 	PMV_Request pReq;
 
-	/*Send MV_REQUEST to do something.*/	
+	/*Send MV_REQUEST to do something.*/
 	pReq = res_get_req_from_pool(phba->req_pool);
 	if (NULL == pReq) {
 		MV_PRINT("cannot allocate memory for req.\n"
@@ -781,7 +843,7 @@ static void _hba_send_shutdown_req(PHBA_Extension phba)
 	pReq->Req_Type = REQ_TYPE_OS;
 	pReq->Cmd_Flag = 0;
 	pReq->Cmd_Flag |= CMD_FLAG_NON_DATA;
-	pReq->Sense_Info_Buffer_Length = 0;  
+	pReq->Sense_Info_Buffer_Length = 0;
 	pReq->Data_Transfer_Length = 0;
 	pReq->Data_Buffer = NULL;
 	pReq->Sense_Info_Buffer = NULL;
@@ -822,7 +884,7 @@ void hba_send_shutdown_req(struct hba_extension *phba)
 #ifdef CACHE_MODULE_SUPPORT
 	_hba_send_shutdown_req(phba);
 #endif
-	
+
 	pReq = res_get_req_from_pool(phba->req_pool);
 	if (NULL == pReq) {
 		MV_PRINT("cannot allocate memory for req.\n");
@@ -834,7 +896,7 @@ void hba_send_shutdown_req(struct hba_extension *phba)
 	pReq->Req_Type = REQ_TYPE_INTERNAL;
 	pReq->Scsi_Status = REQ_STATUS_INVALID_REQUEST;
 	pReq->Completion = hba_shutdown_req_cb;
-	
+
 #ifdef RAID_DRIVER
 	pReq->Cdb[0] = APICDB0_LD;
 	pReq->Cdb[1] = APICDB1_LD_SHUTDOWN;
@@ -842,7 +904,7 @@ void hba_send_shutdown_req(struct hba_extension *phba)
 	pReq->Device_Id = 0;
 	pReq->Cmd_Flag = 0;
 	pReq->Cmd_Flag |= CMD_FLAG_NON_DATA;
-	pReq->Sense_Info_Buffer_Length = 0;  
+	pReq->Sense_Info_Buffer_Length = 0;
 	pReq->Data_Transfer_Length = 0;
 	pReq->Data_Buffer = NULL;
 	pReq->Sense_Info_Buffer = NULL;
@@ -891,13 +953,13 @@ static enum blk_eh_timer_return mv_linux_timed_out(struct scsi_cmnd *cmd)
 }
 #endif /* LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 7) */
 
-static inline struct mv_mod_desc *
+struct mv_mod_desc *
 __get_lowest_module(struct mv_adp_desc *hba_desc)
 {
 	struct mv_mod_desc *p;
-	
+
 	/* take a random module, and trace through its child */
-	p = list_entry(hba_desc->online_module_list.next, 
+	p = list_entry(hba_desc->online_module_list.next,
 		       struct mv_mod_desc,
 		       mod_entry);
 
@@ -910,7 +972,7 @@ __get_lowest_module(struct mv_adp_desc *hba_desc)
 	return p;
 }
 
-static int mv_linux_queue_command(struct scsi_cmnd *scmd, 
+static int mv_linux_queue_command(struct scsi_cmnd *scmd,
 				  void (*done) (struct scsi_cmnd *))
 {
 	struct Scsi_Host *host = mv_scmd_host(scmd);
@@ -921,26 +983,26 @@ static int mv_linux_queue_command(struct scsi_cmnd *scmd,
 	if (done == NULL) {
 		MV_PRINT( ": in queuecommand, done function can't be NULL\n");
 		return 0;
-    	}
+	}
 
 
 #if 1
 	MV_DBG(DMSG_SCSI_FREQ,
 	       "mv_linux_queue_command %p (%d/%d/%d/%d \
-	       Cdb=(%x-%x-%x-%x-%x-%x-%x-%x-%x-%x-%x-%x-%x-%x-%x-%x))\n", 
-	       scmd, host->host_no, mv_scmd_channel(scmd), 
+	       Cdb=(%x-%x-%x-%x-%x-%x-%x-%x-%x-%x-%x-%x-%x-%x-%x-%x))\n",
+	       scmd, host->host_no, mv_scmd_channel(scmd),
 	       mv_scmd_target(scmd), mv_scmd_lun(scmd),
-	       *(scmd->cmnd), *(scmd->cmnd+1), 
-	       *(scmd->cmnd+2), *(scmd->cmnd+3), 
-	        *(scmd->cmnd+4), *(scmd->cmnd+5), 
-	        *(scmd->cmnd+6), *(scmd->cmnd+7), 
-	        *(scmd->cmnd+8), *(scmd->cmnd+9), 
-	        *(scmd->cmnd+10), *(scmd->cmnd+11), 
-	        *(scmd->cmnd+12), *(scmd->cmnd+13), 
+	       *(scmd->cmnd), *(scmd->cmnd+1),
+	       *(scmd->cmnd+2), *(scmd->cmnd+3),
+	        *(scmd->cmnd+4), *(scmd->cmnd+5),
+	        *(scmd->cmnd+6), *(scmd->cmnd+7),
+	        *(scmd->cmnd+8), *(scmd->cmnd+9),
+	        *(scmd->cmnd+10), *(scmd->cmnd+11),
+	        *(scmd->cmnd+12), *(scmd->cmnd+13),
 	        *(scmd->cmnd+14),*(scmd->cmnd+15));
 #endif
 	scmd->result = 0;
- 	scmd->scsi_done = done;
+	scmd->scsi_done = done;
 	MV_SCp(scmd)->bus_address = 0;
 	MV_SCp(scmd)->mapped = 0;
 	MV_SCp(scmd)->map_atomic = 0;
@@ -961,8 +1023,8 @@ static int mv_linux_queue_command(struct scsi_cmnd *scmd,
 		goto done;
 	}
 
-	/* 
-	 * Get mv_request resource and translate the scsi_cmnd request 
+	/*
+	 * Get mv_request resource and translate the scsi_cmnd request
 	 * to mv_request.
 	 */
 	req = res_get_req_from_pool(hba->req_pool);
@@ -973,8 +1035,8 @@ static int mv_linux_queue_command(struct scsi_cmnd *scmd,
 	}
 	if (scsi_cmd_to_req_conv(hba, scmd, req)) {
 		struct scsi_cmnd *cmd = (struct scsi_cmnd *)req->Org_Req;
-		/* 
-		 * Even TranslateOSRequest failed, 
+		/*
+		 * Even TranslateOSRequest failed,
 		 * it still should set some of the variables to the MV_Request
 		 * especially MV_Request.Org_Req and MV_Request.Scsi_Status;
 		 */
@@ -983,8 +1045,8 @@ static int mv_linux_queue_command(struct scsi_cmnd *scmd,
 			//scmd->result = (DRIVER_INVALID | SUGGEST_ABORT) << 24;
 			scmd->result |= DID_ABORT << 16;
 			scmd->scsi_done(scmd);
-			return 0;			
-		}	
+			return 0;
+		}
 		MV_DBG(DMSG_HBA,
 		       "ERROR - Translation from OS Request failed.\n");
 		hba_req_callback(hba, req);
@@ -1024,6 +1086,155 @@ static int mv_linux_abort(struct scsi_cmnd *cmd)
 	return ret;
 }
 #endif /* 0 */
+static void id_to_string(const u16 *iden, unsigned char *s,
+			unsigned int ofs, unsigned int len)
+{
+	unsigned int c;
+	while (len > 0) {
+		c = iden[ofs] >> 8;
+		*s = c;
+		s++;
+
+		c = iden[ofs] & 0xff;
+		*s = c;
+		s++;
+
+		ofs++;
+		len -= 2;
+	}
+}
+
+static int io_get_identity(void *kbuf)
+{
+	char buf[40];
+	u16 *dst = kbuf;
+	unsigned int i,j;
+
+	if (!dst)
+		return -1;
+
+#ifdef __MV_BIG_ENDIAN_BITFIELD__
+        for (i = 0; i < 256; i++)
+                dst[i] = MV_LE16_TO_CPU(dst[i]);
+#endif
+
+	/*identify data -> model number: word 27-46*/
+	id_to_string(dst, buf, 27, 40);
+	memcpy(&dst[27], buf, 40);
+
+	/*identify data -> firmware revision: word 23-26*/
+	id_to_string(dst, buf, 23, 8);
+	memcpy(&dst[23], buf, 8);
+
+	/*identify data -> serial number: word 10-19*/
+	id_to_string(dst, buf, 10, 20);
+	memcpy(&dst[10], buf, 20);
+
+	return 0;
+}
+
+static int mv_identify_ata_cmd(struct scsi_device *scsidev, void __user *arg)
+{
+	int rc = 0;
+	u8 scsi_cmd[MAX_COMMAND_SIZE];
+	u8 *argbuf = NULL, *sensebuf = NULL;
+	int argsize = 512;
+	enum dma_data_direction data_dir;
+	int cmd_result;
+	char ata_ident[] = {0x85, 0x08, 0x0e, 0x00, 0x00, 0x00, 0x01, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xec, 0x00};
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 14)
+	struct scsi_request *sreq;
+#endif
+	if (arg == NULL)
+		return -EINVAL;
+
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 14)
+	sensebuf = kmalloc(SCSI_SENSE_BUFFERSIZE, GFP_NOIO);
+	if (sensebuf) {
+		memset(sensebuf, 0, SCSI_SENSE_BUFFERSIZE);
+	}
+#else
+	sensebuf = kzalloc(SCSI_SENSE_BUFFERSIZE, GFP_NOIO);
+#endif
+
+	if (!sensebuf)
+		return -ENOMEM;
+
+	memcpy(scsi_cmd,ata_ident, sizeof(scsi_cmd));
+	data_dir = DMA_FROM_DEVICE;
+	argbuf = kmalloc(argsize, GFP_KERNEL);
+		if (argbuf == NULL) {
+			rc = -ENOMEM;
+			goto error;
+			}
+
+	/* Good values for timeout and retries?  Values below
+		from scsi_ioctl_send_command() for default case... */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 14)
+	sreq = scsi_allocate_request(scsidev, GFP_KERNEL);
+	if (!sreq) {
+		rc= -EINTR;
+		goto free_req;
+	}
+	sreq->sr_data_direction = data_dir;
+	scsi_wait_req(sreq, scsi_cmd, argbuf, argsize, (10*HZ), 5);
+
+	/*
+	 * If there was an error condition, pass the info back to the user.
+	 */
+	cmd_result = sreq->sr_result;
+	sensebuf = sreq->sr_sense_buffer;
+
+#elif LINUX_VERSION_CODE >=KERNEL_VERSION(2, 6, 29)
+	cmd_result = scsi_execute(scsidev, scsi_cmd, data_dir, argbuf, argsize,
+                                sensebuf, (10*HZ), 5, 0,0);
+#else
+	cmd_result = scsi_execute(scsidev, scsi_cmd, data_dir, argbuf, argsize,
+                                sensebuf, (10*HZ), 5, 0);
+#endif
+
+
+	if (driver_byte(cmd_result) == DRIVER_SENSE) {/* sense data available */
+		u8 *desc = sensebuf + 8;
+		cmd_result &= ~(0xFF<<24); /* DRIVER_SENSE is not an error */
+
+		/* If we set cc then ATA pass-through will cause a
+		* check condition even if no error. Filter that. */
+		if (cmd_result & SAM_STAT_CHECK_CONDITION) {
+		struct scsi_sense_hdr sshdr;
+		scsi_normalize_sense(sensebuf, SCSI_SENSE_BUFFERSIZE,
+                                   &sshdr);
+		if (sshdr.sense_key==0 &&
+			sshdr.asc==0 && sshdr.ascq==0)
+			cmd_result &= ~SAM_STAT_CHECK_CONDITION;
+		}
+
+		/* Send userspace a few ATA registers (same as drivers/ide) */
+		if (sensebuf[0] == 0x72 &&     /* format is "descriptor" */
+			desc[0] == 0x09 ) {        /* code is "ATA Descriptor" */
+		}
+		if (cmd_result != CONDITION_GOOD) {
+			rc = -EIO;
+			goto free_req;
+		}
+	}
+	if(argbuf)
+		io_get_identity(argbuf);
+	if ((argbuf) && copy_to_user(arg, argbuf, argsize))
+		rc = -EFAULT;
+
+free_req:
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 14)
+	scsi_release_request(sreq);
+#endif
+error:
+	if (sensebuf) kfree(sensebuf);
+	if (argbuf) kfree(argbuf);
+	return rc;
+}
+
 #ifdef IOCTL_TEMPLATE
 /****************************************************************
 *  Name:   mv_ial_ht_ata_cmd
@@ -1039,20 +1250,20 @@ static int mv_linux_abort(struct scsi_cmnd *cmd)
 static int mv_ial_ht_ata_cmd(struct scsi_device *scsidev, void __user *arg)
 {
 	int rc = 0;
-     	u8 scsi_cmd[MAX_COMMAND_SIZE];
-      	u8 args[4] , *argbuf = NULL, *sensebuf = NULL;
-      	int argsize = 0;
-      	enum dma_data_direction data_dir;
-      	int cmd_result;
+	u8 scsi_cmd[MAX_COMMAND_SIZE];
+	u8 args[4] , *argbuf = NULL, *sensebuf = NULL;
+	int argsize = 0;
+	enum dma_data_direction data_dir;
+	int cmd_result;
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 14)
 	struct scsi_request *sreq;
 #endif
-      	if (arg == NULL)
-          	return -EINVAL;
-  
-      	if (copy_from_user(args, arg, sizeof(args)))
-          	return -EFAULT;
-      	
+	if (arg == NULL)
+		return -EINVAL;
+
+	if (copy_from_user(args, arg, sizeof(args)))
+		return -EFAULT;
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 14)
 	sensebuf = kmalloc(SCSI_SENSE_BUFFERSIZE, GFP_NOIO);
 	if (sensebuf) {
@@ -1060,49 +1271,49 @@ static int mv_ial_ht_ata_cmd(struct scsi_device *scsidev, void __user *arg)
 	}
 #else
 	sensebuf = kzalloc(SCSI_SENSE_BUFFERSIZE, GFP_NOIO);
-#endif 
+#endif
 
-      	if (!sensebuf)
-          	return -ENOMEM;
-  
-      	memset(scsi_cmd, 0, sizeof(scsi_cmd));
-      	if (args[3]) {
-          	argsize = SECTOR_SIZE * args[3];
-          	argbuf = kmalloc(argsize, GFP_KERNEL);
-          	if (argbuf == NULL) {
-              		rc = -ENOMEM;
-              		goto error;
-     	}
-  
-     	scsi_cmd[1]  = (4 << 1); /* PIO Data-in */
-     	scsi_cmd[2]  = 0x0e;     /* no off.line or cc, read from dev,
-                                             block count in sector count field */
-      	data_dir = DMA_FROM_DEVICE;
-      	} else {
-       		scsi_cmd[1]  = (3 << 1); /* Non-data */
-       		scsi_cmd[2]  = 0x20;     /* cc but no off.line or data xfer */
-      		data_dir = DMA_NONE;
+	if (!sensebuf)
+		return -ENOMEM;
+
+	memset(scsi_cmd, 0, sizeof(scsi_cmd));
+	if (args[3]) {
+		argsize = SECTOR_SIZE * args[3];
+		argbuf = kmalloc(argsize, GFP_KERNEL);
+		if (argbuf == NULL) {
+			rc = -ENOMEM;
+			goto error;
 	}
-  
+
+	scsi_cmd[1]  = (4 << 1); /* PIO Data-in */
+	scsi_cmd[2]  = 0x0e;     /* no off.line or cc, read from dev,
+                                             block count in sector count field */
+	data_dir = DMA_FROM_DEVICE;
+	} else {
+		scsi_cmd[1]  = (3 << 1); /* Non-data */
+		scsi_cmd[2]  = 0x20;     /* cc but no off.line or data xfer */
+		data_dir = DMA_NONE;
+	}
+
 	scsi_cmd[0] = ATA_16;
-  
-   	scsi_cmd[4] = args[2];
+
+	scsi_cmd[4] = args[2];
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 27)
-    	if (args[0] == WIN_SMART) { /* hack -- ide driver does this too... */
+	if (args[0] == WIN_SMART) { /* hack -- ide driver does this too... */
 #else
-	if (args[0] == ATA_CMD_SMART) { /* hack -- ide driver does this too... */	
-#endif	
-        	scsi_cmd[6]  = args[3];
-       		scsi_cmd[8]  = args[1];
-     		scsi_cmd[10] = 0x4f;
-    		scsi_cmd[12] = 0xc2;
-      	} else {
-          	scsi_cmd[6]  = args[1];
-      	}
-      	scsi_cmd[14] = args[0];
-      	
-      	/* Good values for timeout and retries?  Values below
-         	from scsi_ioctl_send_command() for default case... */
+	if (args[0] == ATA_CMD_SMART) { /* hack -- ide driver does this too... */
+#endif
+		scsi_cmd[6]  = args[3];
+		scsi_cmd[8]  = args[1];
+		scsi_cmd[10] = 0x4f;
+		scsi_cmd[12] = 0xc2;
+	} else {
+		scsi_cmd[6]  = args[1];
+	}
+	scsi_cmd[14] = args[0];
+
+	/* Good values for timeout and retries?  Values below
+		from scsi_ioctl_send_command() for default case... */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 14)
 	sreq = scsi_allocate_request(scsidev, GFP_KERNEL);
 	if (!sreq) {
@@ -1112,63 +1323,63 @@ static int mv_ial_ht_ata_cmd(struct scsi_device *scsidev, void __user *arg)
 	sreq->sr_data_direction = data_dir;
 	scsi_wait_req(sreq, scsi_cmd, argbuf, argsize, (10*HZ), 5);
 
-	/* 
-	 * If there was an error condition, pass the info back to the user. 
+	/*
+	 * If there was an error condition, pass the info back to the user.
 	 */
 	cmd_result = sreq->sr_result;
 	sensebuf = sreq->sr_sense_buffer;
-   
+
 #elif LINUX_VERSION_CODE >=KERNEL_VERSION(2, 6, 29)
-      	cmd_result = scsi_execute(scsidev, scsi_cmd, data_dir, argbuf, argsize,
+	cmd_result = scsi_execute(scsidev, scsi_cmd, data_dir, argbuf, argsize,
                                 sensebuf, (10*HZ), 5, 0,0);
 #else
-      	cmd_result = scsi_execute(scsidev, scsi_cmd, data_dir, argbuf, argsize,
+	cmd_result = scsi_execute(scsidev, scsi_cmd, data_dir, argbuf, argsize,
                                 sensebuf, (10*HZ), 5, 0);
 #endif
 
-  
-      	if (driver_byte(cmd_result) == DRIVER_SENSE) {/* sense data available */
-         	u8 *desc = sensebuf + 8;
-          	cmd_result &= ~(0xFF<<24); /* DRIVER_SENSE is not an error */
-  
-          	/* If we set cc then ATA pass-through will cause a
-          	* check condition even if no error. Filter that. */
-          	if (cmd_result & SAM_STAT_CHECK_CONDITION) {
-              	struct scsi_sense_hdr sshdr;
-              	scsi_normalize_sense(sensebuf, SCSI_SENSE_BUFFERSIZE,
+
+	if (driver_byte(cmd_result) == DRIVER_SENSE) {/* sense data available */
+		u8 *desc = sensebuf + 8;
+		cmd_result &= ~(0xFF<<24); /* DRIVER_SENSE is not an error */
+
+		/* If we set cc then ATA pass-through will cause a
+		* check condition even if no error. Filter that. */
+		if (cmd_result & SAM_STAT_CHECK_CONDITION) {
+		struct scsi_sense_hdr sshdr;
+		scsi_normalize_sense(sensebuf, SCSI_SENSE_BUFFERSIZE,
                                    &sshdr);
-              	if (sshdr.sense_key==0 &&
-                  	sshdr.asc==0 && sshdr.ascq==0)
-                  	cmd_result &= ~SAM_STAT_CHECK_CONDITION;
-          	}
-  
-          	/* Send userspace a few ATA registers (same as drivers/ide) */
-          	if (sensebuf[0] == 0x72 &&     /* format is "descriptor" */
-              		desc[0] == 0x09 ) {        /* code is "ATA Descriptor" */
-              		args[0] = desc[13];    /* status */
-              		args[1] = desc[3];     /* error */
-              		args[2] = desc[5];     /* sector count (0:7) */
-              		if (copy_to_user(arg, args, sizeof(args)))
-                  		rc = -EFAULT;
-          	}
-      	}
-  
-      	if (cmd_result) {
-          	rc = -EIO;
-          	goto free_req;
-      	}
-  
-      	if ((argbuf) && copy_to_user(arg + sizeof(args), argbuf, argsize))
-          	rc = -EFAULT;
-      	
+		if (sshdr.sense_key==0 &&
+			sshdr.asc==0 && sshdr.ascq==0)
+			cmd_result &= ~SAM_STAT_CHECK_CONDITION;
+		}
+
+		/* Send userspace a few ATA registers (same as drivers/ide) */
+		if (sensebuf[0] == 0x72 &&     /* format is "descriptor" */
+			desc[0] == 0x09 ) {        /* code is "ATA Descriptor" */
+			args[0] = desc[13];    /* status */
+			args[1] = desc[3];     /* error */
+			args[2] = desc[5];     /* sector count (0:7) */
+			if (copy_to_user(arg, args, sizeof(args)))
+				rc = -EFAULT;
+		}
+	}
+
+	if (cmd_result) {
+		rc = -EIO;
+		goto free_req;
+	}
+
+	if ((argbuf) && copy_to_user(arg + sizeof(args), argbuf, argsize))
+		rc = -EFAULT;
+
 free_req:
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 14)
 	scsi_release_request(sreq);
-#endif		
+#endif
 error:
-      	if (sensebuf) kfree(sensebuf);
-      	if (argbuf) kfree(argbuf);
-      	return rc;
+	if (sensebuf) kfree(sensebuf);
+	if (argbuf) kfree(argbuf);
+	return rc;
 }
 
 #ifdef SUPPORT_ATA_SECURITY_CMD
@@ -1186,19 +1397,19 @@ static int check_dma (__u8 ata_op)
 			return SG_PIO;
 	}
 }
-unsigned char excute_taskfile(struct scsi_device *dev,ide_task_request_t *req_task,u8 
+unsigned char excute_taskfile(struct scsi_device *dev,ide_task_request_t *req_task,u8
  rw,char *argbuf,unsigned int buff_size)
 {
 	int rc = 0;
-     	u8 scsi_cmd[MAX_COMMAND_SIZE];
-      	u8 *sensebuf = NULL;
-      	int argsize=0;
+	u8 scsi_cmd[MAX_COMMAND_SIZE];
+	u8 *sensebuf = NULL;
+	int argsize=0;
 	enum dma_data_direction data_dir;
-      	int cmd_result;
+	int cmd_result;
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 14)
 	struct scsi_request *sreq;
 #endif
-      	argsize=buff_size;
+	argsize=buff_size;
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 14)
 	sensebuf = kmalloc(SCSI_SENSE_BUFFERSIZE, GFP_NOIO);
 	if (sensebuf) {
@@ -1206,17 +1417,17 @@ unsigned char excute_taskfile(struct scsi_device *dev,ide_task_request_t *req_ta
 	}
 #else
 	sensebuf = kzalloc(SCSI_SENSE_BUFFERSIZE, GFP_NOIO);
-#endif 
-      	if (!sensebuf)
-          	return -ENOMEM;
-  
-      	memset(scsi_cmd, 0, sizeof(scsi_cmd));
+#endif
+	if (!sensebuf)
+		return -ENOMEM;
 
-  	data_dir = DMA_FROM_DEVICE;   // need to fixed
+	memset(scsi_cmd, 0, sizeof(scsi_cmd));
+
+	data_dir = DMA_FROM_DEVICE;   // need to fixed
 	scsi_cmd[0] = ATA_16;
 	scsi_cmd[13] = 0x40;
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(2, 6, 24)
-      	scsi_cmd[14] = ((task_struct_t *)(&req_task->io_ports))->command;
+	scsi_cmd[14] = ((task_struct_t *)(&req_task->io_ports))->command;
 #else
 	scsi_cmd[14] = ((char *)(&req_task->io_ports))[7];
 #endif
@@ -1239,52 +1450,52 @@ unsigned char excute_taskfile(struct scsi_device *dev,ide_task_request_t *req_ta
 	sreq->sr_data_direction = data_dir;
 	scsi_wait_req(sreq, scsi_cmd, argbuf, argsize, (10*HZ), 5);
 
-	/* 
-	 * If there was an error condition, pass the info back to the user. 
+	/*
+	 * If there was an error condition, pass the info back to the user.
 	 */
 	cmd_result = sreq->sr_result;
 	sensebuf = sreq->sr_sense_buffer;
-   
+
 #elif LINUX_VERSION_CODE >=KERNEL_VERSION(2, 6, 29)
-      	cmd_result = scsi_execute(dev, scsi_cmd, data_dir, argbuf, argsize,
+	cmd_result = scsi_execute(dev, scsi_cmd, data_dir, argbuf, argsize,
                                 sensebuf, (10*HZ), 5, 0,0);
 #else
-      	cmd_result = scsi_execute(dev, scsi_cmd, data_dir, argbuf, argsize,
+	cmd_result = scsi_execute(dev, scsi_cmd, data_dir, argbuf, argsize,
                                 sensebuf, (10*HZ), 5, 0);
 #endif
-  
-      	if (driver_byte(cmd_result) == DRIVER_SENSE) {/* sense data available */
-         	u8 *desc = sensebuf + 8;
-          	cmd_result &= ~(0xFF<<24); /* DRIVER_SENSE is not an error */
-  		
-          	/* If we set cc then ATA pass-through will cause a
-          	* check condition even if no error. Filter that. */
-          	if (cmd_result & SAM_STAT_CHECK_CONDITION) {
-              	struct scsi_sense_hdr sshdr;
-              	scsi_normalize_sense(sensebuf, SCSI_SENSE_BUFFERSIZE,
+
+	if (driver_byte(cmd_result) == DRIVER_SENSE) {/* sense data available */
+		u8 *desc = sensebuf + 8;
+		cmd_result &= ~(0xFF<<24); /* DRIVER_SENSE is not an error */
+
+		/* If we set cc then ATA pass-through will cause a
+		* check condition even if no error. Filter that. */
+		if (cmd_result & SAM_STAT_CHECK_CONDITION) {
+		struct scsi_sense_hdr sshdr;
+		scsi_normalize_sense(sensebuf, SCSI_SENSE_BUFFERSIZE,
                                    &sshdr);
-              	if (sshdr.sense_key==0 &&
-                  	sshdr.asc==0 && sshdr.ascq==0)
-                  	cmd_result &= ~SAM_STAT_CHECK_CONDITION;
-          	}
-  
-      	}
-  
-      	if (cmd_result) {
-          	rc = EIO;
+		if (sshdr.sense_key==0 &&
+			sshdr.asc==0 && sshdr.ascq==0)
+			cmd_result &= ~SAM_STAT_CHECK_CONDITION;
+		}
+
+	}
+
+	if (cmd_result) {
+		rc = EIO;
 		MV_PRINT("EIO=%d\n",-EIO);
-          	goto free_req;
-      	}
+		goto free_req;
+	}
 #if 0
-      	if ( copy_to_user(argbuf,sensebuf, argsize))
-       		rc = -EFAULT;
+	if ( copy_to_user(argbuf,sensebuf, argsize))
+		rc = -EFAULT;
 #endif
 free_req:
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 14)
 	scsi_release_request(sreq);
-#endif		
-      	if (sensebuf) kfree(sensebuf);
-      	return rc;
+#endif
+	if (sensebuf) kfree(sensebuf);
+	return rc;
 }
 u8 mv_do_taskfile_ioctl(struct scsi_device *dev,void __user *arg){
 	ide_task_request_t *req_task=NULL;
@@ -1296,7 +1507,7 @@ u8 mv_do_taskfile_ioctl(struct scsi_device *dev,void __user *arg){
 	int taskin	= 0;
 	int taskout	= 0;
 	int rw = SG_READ;
-	
+
 	req_task = kzalloc(tasksize, GFP_KERNEL);
 	if (req_task == NULL) return -ENOMEM;
 	if (copy_from_user(req_task, buf, tasksize)) {
@@ -1341,7 +1552,7 @@ u8 mv_do_taskfile_ioctl(struct scsi_device *dev,void __user *arg){
 			goto abort;
 		}
 	}
-	
+
 	switch(req_task->data_phase) {
 		case TASKFILE_DPHASE_PIO_OUT:
 			err=excute_taskfile(dev,req_task,rw,outbuf,taskout);
@@ -1388,40 +1599,43 @@ abort:
  *  Returns:        0 on success, otherwise of failure.
  *
  ****************************************************************/
-static int mv_ial_ht_ioctl(struct scsi_device *scsidev, int cmd, void __user *arg)
+int mv_ial_ht_ioctl(struct scsi_device *scsidev, int cmd, void __user *arg)
 {
-     	int rc = -ENOTTY;
- 
-     	/* No idea how this happens.... */
-     	if (!scsidev)
-         	return -ENXIO;
- 
-     	if (arg == NULL)
-         	return -EINVAL;
- 
-     	switch (cmd) {
-         	case HDIO_DRIVE_CMD:
-             		if (!capable(CAP_SYS_ADMIN) || !capable(CAP_SYS_RAWIO))
-                 		return -EACCES;
- 
-             		rc =  mv_ial_ht_ata_cmd(scsidev, arg);
-             	break;
+	int rc = -ENOTTY;
+
+	/* No idea how this happens.... */
+	if (!scsidev)
+		return -ENXIO;
+
+	if (arg == NULL)
+		return -EINVAL;
+
+	switch (cmd) {
+		case HDIO_DRIVE_CMD:
+			if (!capable(CAP_SYS_ADMIN) || !capable(CAP_SYS_RAWIO))
+				return -EACCES;
+
+			rc =  mv_ial_ht_ata_cmd(scsidev, arg);
+		break;
 		#ifdef SUPPORT_ATA_SECURITY_CMD
- 		case HDIO_DRIVE_TASKFILE:
+		case HDIO_DRIVE_TASKFILE:
 			rc=mv_do_taskfile_ioctl(scsidev,arg);
 			break;
 		#endif
-         	default:
-             		rc = -ENOTTY;
-     	}
- 
-     	return rc;
+		case HDIO_GET_IDENTITY:
+			rc=mv_identify_ata_cmd(scsidev,arg);
+			break;
+		default:
+			rc = -ENOTTY;
+	}
+
+	return rc;
 }
 #endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 19)
-static irqreturn_t mv_intr_handler(int irq, void *dev_id, struct pt_regs *regs)
+irqreturn_t mv_intr_handler(int irq, void *dev_id, struct pt_regs *regs)
 #else
-static irqreturn_t mv_intr_handler(int irq, void *dev_id)
+irqreturn_t mv_intr_handler(int irq, void *dev_id)
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 19) */
 {
 	/* MV_FALSE should be equal to IRQ_NONE (0) */
@@ -1430,7 +1644,7 @@ static irqreturn_t mv_intr_handler(int irq, void *dev_id)
 
 	struct hba_extension *hba = (struct hba_extension *) dev_id;
 	//MV_DBG(DMSG_FREQ, "__MV__ Enter intr handler.\n");
-	
+
 	spin_lock_irqsave(&hba->desc->hba_desc->global_lock, flags);
 	retval = hba->desc->child->ops->module_service_isr(hba->desc->child->extension);
 	#ifdef SUPPORT_TASKLET
@@ -1471,8 +1685,8 @@ static struct scsi_host_template mv_driver_template = {
 #endif
         .can_queue                   =  MV_MAX_REQUEST_DEPTH,
         .this_id                     =  MV_SHT_THIS_ID,
-        .max_sectors                 =  MV_MAX_TRANSFER_SECTOR,
-        .sg_tablesize                =  MV_MAX_SG_ENTRY,
+        .max_sectors                 =  (256*1024) >> 9,//max os data size 256k
+        .sg_tablesize                =  256*1024/PAGE_SIZE,
         .cmd_per_lun                 =  MV_MAX_REQUEST_PER_LUN,
         .use_clustering              =  MV_SHT_USE_CLUSTERING,
         .emulated                    =  MV_SHT_EMULATED,
@@ -1513,17 +1727,17 @@ int __mv_get_adapter_count(void)
 {
 	struct mv_adp_desc *p;
 	int i = 0;
-	
+
 	list_for_each_entry(p, &mv_online_adapter_list, hba_entry)
 		i++;
-	
+
 	return i;
 }
 
  inline struct mv_adp_desc *__dev_to_desc(struct pci_dev *dev)
 {
 	struct mv_adp_desc *p;
-	
+
 	list_for_each_entry(p, &mv_online_adapter_list, hba_entry)
 		if (p->dev == dev)
 			return p;
@@ -1543,15 +1757,15 @@ MV_PVOID *mv_get_hba_extension(struct mv_adp_desc *hba_desc)
 static inline void __mv_release_hba(struct mv_adp_desc *hba_desc)
 {
 	struct mv_mod_desc *mod_desc, *p;
-	
-	list_for_each_entry_safe(mod_desc, 
-				 p, 
+
+	list_for_each_entry_safe(mod_desc,
+				 p,
 				 &hba_desc->online_module_list,
 				 mod_entry) {
 		list_del(&mod_desc->mod_entry);
 		vfree(mod_desc);
 	}
-	
+
 	list_del(&hba_desc->hba_entry);
 	vfree(hba_desc);
 }
@@ -1559,27 +1773,27 @@ static inline void __mv_release_hba(struct mv_adp_desc *hba_desc)
 static struct mv_adp_desc *mv_hba_init_modmm(struct pci_dev *dev)
 {
 	struct mv_adp_desc *hba_desc;
-	
+
 	hba_desc = vmalloc(sizeof(struct mv_adp_desc));
 	if (NULL == hba_desc) {
 		printk("Unable to get memory at hba init.\n");
 		return NULL;
 	}
 	memset(hba_desc, 0, sizeof(struct mv_adp_desc));
-	
+
 	INIT_LIST_HEAD(&hba_desc->online_module_list);
 	hba_desc->dev = dev;
 	list_add(&hba_desc->hba_entry, &mv_online_adapter_list);
-	
+
 	return hba_desc;
 }
 
 static void mv_hba_release_modmm(struct pci_dev *dev)
 {
 	struct mv_adp_desc *hba_desc;
-	
+
 	hba_desc = __dev_to_desc(dev);
-	
+
 	if (hba_desc)
 		__mv_release_hba(hba_desc);
 	else
@@ -1600,7 +1814,7 @@ static int register_online_modules(struct mv_adp_desc *hba_desc)
 {
 	struct mv_mod_desc *mod_desc, *prev;
 	struct mv_module_ops *ops;
-	
+
 	/*
 	 * iterate through online_module_list manually , from the lowest(CORE)
 	 * to the highest layer (HBA)
@@ -1658,7 +1872,7 @@ static int register_online_modules(struct mv_adp_desc *hba_desc)
 		mod_desc = __alloc_mod_desc();
 		if (NULL == mod_desc)
 			goto disaster;
-		
+
 		mod_desc->hba_desc  = hba_desc;
 		mod_desc->ops       = ops;
 		mod_desc->status    = MV_MOD_REGISTERED;
@@ -1694,7 +1908,7 @@ static int register_online_modules(struct mv_adp_desc *hba_desc)
 	prev->parent        = mod_desc;
 	list_add(&mod_desc->mod_entry, &hba_desc->online_module_list);
 	hba_desc->running_mod_num++;
-	
+
 	return 0;
 disaster:
 	return -1;
@@ -1818,9 +2032,9 @@ static int __alloc_module_resource(struct mv_mod_desc *mod_desc,
 {
 	struct mv_mod_res *mod_res = NULL;
 	unsigned int size = 0;
-	
+
 	/*
-	 * alloc only cached mem at this stage, uncached mem will be alloc'ed 
+	 * alloc only cached mem at this stage, uncached mem will be alloc'ed
 	 * during mod init.
 	 */
 	INIT_LIST_HEAD(&mod_desc->res_list);
@@ -1829,7 +2043,7 @@ static int __alloc_module_resource(struct mv_mod_desc *mod_desc,
 		return -1;
 	memset(mod_res, 0, sizeof(sizeof(struct mv_mod_res)));
 	mod_desc->res_entry = 1;
-	
+
 	size = mod_desc->ops->get_res_desc(RESOURCE_CACHED_MEMORY, max_io);
 	if (size) {
 		mod_res->virt_addr = vmalloc(size);
@@ -1852,7 +2066,7 @@ static void mv_release_module_resource(struct mv_adp_desc *hba_desc)
 {
 	struct mv_mod_desc *mod_desc;
 
-	list_for_each_entry(mod_desc, &hba_desc->online_module_list, 
+	list_for_each_entry(mod_desc, &hba_desc->online_module_list,
 			    mod_entry) {
 		if (mod_desc->status == MV_MOD_INITED) {
 			__release_module_resource(mod_desc);
@@ -1866,7 +2080,7 @@ static int mv_alloc_module_resource(struct mv_adp_desc *hba_desc)
 	struct mv_mod_desc *mod_desc;
 	int ret;
 
-	list_for_each_entry(mod_desc, &hba_desc->online_module_list, 
+	list_for_each_entry(mod_desc, &hba_desc->online_module_list,
 			    mod_entry) {
 		ret = __alloc_module_resource(mod_desc, hba_desc->max_io);
 		if (ret)
@@ -1878,7 +2092,7 @@ static int mv_alloc_module_resource(struct mv_adp_desc *hba_desc)
 err_out:
 	MV_DBG(DMSG_HBA, "error %d allocating resource for mod %d.\n",
 	       ret, mod_desc->module_id);
-	list_for_each_entry(mod_desc, &hba_desc->online_module_list, 
+	list_for_each_entry(mod_desc, &hba_desc->online_module_list,
 			    mod_entry) {
 		if (mod_desc->status == MV_MOD_INITED) {
 			__release_module_resource(mod_desc);
@@ -1894,9 +2108,9 @@ static inline struct mv_mod_desc *
 __get_highest_module(struct mv_adp_desc *hba_desc)
 {
 	struct mv_mod_desc *p;
-	
+
 	/* take a random module, and trace through its parent */
-	p = list_entry(hba_desc->online_module_list.next, 
+	p = list_entry(hba_desc->online_module_list.next,
 		       struct mv_mod_desc,
 		       mod_entry);
 
@@ -1923,9 +2137,9 @@ static void __map_pci_addr(struct pci_dev *dev, MV_PVOID *addr_array)
 			addr_array[i] =(MV_PVOID) ioremap(addr, range);
 		else if (pci_resource_flags(dev, i) & IORESOURCE_IO)
 			addr_array[i] = (MV_PVOID) ioport_map(addr, range);
-			
 
-		MV_DBG(DMSG_HBA, "BAR %d : %p.\n", 
+
+		MV_DBG(DMSG_HBA, "BAR %d : %p.\n",
 		       i, addr_array[i]);
 	}
 }
@@ -1933,8 +2147,8 @@ static void __map_pci_addr(struct pci_dev *dev, MV_PVOID *addr_array)
 static void __unmap_pci_addr(struct pci_dev *dev, MV_PVOID *addr_array)
 {
 	int i;
-	
-	for (i = 0; i < MAX_BASE_ADDRESS; i++) 
+
+	for (i = 0; i < MAX_BASE_ADDRESS; i++)
 		if (pci_resource_flags(dev, i) & IORESOURCE_MEM)
                         iounmap(addr_array[i]);
 		else if (pci_resource_flags(dev, i) & IORESOURCE_IO)
@@ -1944,7 +2158,7 @@ static void __unmap_pci_addr(struct pci_dev *dev, MV_PVOID *addr_array)
 int __mv_is_mod_all_started(struct mv_adp_desc *adp_desc)
 {
 	struct mv_mod_desc *mod_desc;
-	
+
 	mod_desc = __get_lowest_module(adp_desc);
 
 	while (mod_desc) {
@@ -1963,7 +2177,7 @@ struct hba_extension *__mv_get_ext_from_adp_id(int id)
 	list_for_each_entry(p, &mv_online_adapter_list, hba_entry)
 		if (p->id == id)
 			return __get_highest_module(p)->extension;
-	
+
 	return NULL;
 }
 
@@ -2051,7 +2265,7 @@ int mv_hba_init(struct pci_dev *dev, MV_U32 max_io)
 	struct mv_adp_desc *hba_desc;
 	struct mv_mod_desc *mod_desc;
 	int    dbg_ret = 0;
-	
+
 	hba_desc = mv_hba_init_modmm(dev);
 	if (NULL == hba_desc)
 		goto ext_err_init;
@@ -2059,21 +2273,21 @@ int mv_hba_init(struct pci_dev *dev, MV_U32 max_io)
 
 	hba_desc->max_io = max_io;
 	hba_desc->id     = __mv_get_adapter_count() - 1;
-	
-	if (pci_read_config_byte(hba_desc->dev, 
-				 PCI_REVISION_ID, 
+
+	if (pci_read_config_byte(hba_desc->dev,
+				 PCI_REVISION_ID,
 				 &hba_desc->Revision_Id)) {
 		MV_PRINT("Failed to get hba's revision id.\n");
 		goto ext_err_pci;
 	}
-	
+
 	hba_desc->vendor = dev->vendor;
 	hba_desc->device = dev->device;
 	hba_desc->subsystem_vendor = dev->subsystem_vendor;
 	hba_desc->subsystem_device = dev->subsystem_device;
 
 	__map_pci_addr(dev, hba_desc->Base_Address);
-	
+
 	spin_lock_init(&hba_desc->lock);
 	spin_lock_init(&hba_desc->global_lock);
 
@@ -2088,15 +2302,15 @@ int mv_hba_init(struct pci_dev *dev, MV_U32 max_io)
 		if (hba_desc->device == DEVICE_ID_6445)
 			hba_desc->RunAsNonRAID = MV_TRUE;
 
-		MV_DBG(DMSG_HBA, "controller device id 0x%x.\n", 
+		MV_DBG(DMSG_HBA, "controller device id 0x%x.\n",
 	       hba_desc->device);
-		
+
 	}
 #endif
 
 
 
-	MV_DBG(DMSG_HBA, "HBA ext struct init'ed at %p.\n", 
+	MV_DBG(DMSG_HBA, "HBA ext struct init'ed at %p.\n",
 	        hba_desc);
 
 	if (register_online_modules(hba_desc))
@@ -2104,7 +2318,10 @@ int mv_hba_init(struct pci_dev *dev, MV_U32 max_io)
 
 	if (mv_alloc_module_resource(hba_desc))
 		goto ext_err_modmm;
-
+	#ifdef CONFIG_PM
+	mod_desc =  __get_highest_module(hba_desc);
+	pci_set_drvdata(dev,mod_desc);
+	#endif
 	mod_desc = __get_lowest_module(hba_desc);
 	if (NULL == mod_desc)
 		goto ext_err_pci;
@@ -2175,13 +2392,13 @@ static void HBA_ModuleInitialize(MV_PVOID this,
 #ifdef SUPPORT_EVENT
 	PDriver_Event_Entry pEvent = NULL;
 #endif /* SUPPORT_EVENT */
-    
+
 	phba     = (PHBA_Extension) mod_desc->extension;
 	temp     = (MV_PTR_INTEGER) phba->Memory_Pool;
 
 	WARN_ON(sizeof(MV_Request) != ROUNDING(sizeof(MV_Request), 8));
-	/* 
-	 * Initialize data structure however following variables have been 
+	/*
+	 * Initialize data structure however following variables have been
 	 * set already.
 	 *	Device_Extension
 	 *	Is_Dump
@@ -2219,7 +2436,7 @@ static void HBA_ModuleInitialize(MV_PVOID this,
 	phba->Num_Stored_Events = 0;
 	phba->SequenceNumber = 0;	/* Event sequence number */
 
-	MV_ASSERT(sizeof(Driver_Event_Entry) == 
+	MV_ASSERT(sizeof(Driver_Event_Entry) ==
 		  ROUNDING(sizeof(Driver_Event_Entry), 8));
 	temp = ROUNDING(((MV_PTR_INTEGER) temp), 8);
 
@@ -2275,7 +2492,7 @@ static void HBA_ModuleStart(MV_PVOID extension)
 			  mv_driver_name, hba);
 #endif /* LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 19) */
 	if (ret < 0) {
-		MV_PRINT("Error upon requesting IRQ %d.\n", 
+		MV_PRINT("Error upon requesting IRQ %d.\n",
 		       hba->dev->irq);
 		goto  err_request_irq;
 	}
@@ -2291,7 +2508,7 @@ static void HBA_ModuleStart(MV_PVOID extension)
 	}
 
 	core_desc->ops->module_start(core_desc->extension);
-	
+
 
 	HBA_ModuleStarted(hba->desc);
 
@@ -2299,10 +2516,10 @@ static void HBA_ModuleStart(MV_PVOID extension)
 	/* wait for MODULE(CORE,RAID,HBA) init */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 11)
 	atomic_set(&hba->hba_sync, 1);
-	if (0 == __hba_wait_for_atomic_timeout(&hba->hba_sync, 30 * HZ)) 
+	if (0 == __hba_wait_for_atomic_timeout(&hba->hba_sync, 90 * HZ))
 		goto err_wait_cmpl;
 #else
-	if (0 == wait_for_completion_timeout(&hba->cmpl, 30 * HZ)) 
+	if (0 == wait_for_completion_timeout(&hba->cmpl, 90 * HZ))
 		goto err_wait_cmpl;
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 11) */
 
@@ -2312,13 +2529,13 @@ static void HBA_ModuleStart(MV_PVOID extension)
 		goto err_wait_cmpl;
 
 	MV_DPRINT(("Start scsi_scan_host.\n"));
-	
+
 	scsi_scan_host(host);
 
 	if (mv_register_chdev(hba))
 		printk("Unable to register character device interface.\n");
 
-	
+
 	MV_DPRINT(("Finished HBA_ModuleStart.\n"));
 
 	return;
@@ -2368,7 +2585,7 @@ static MV_BOOLEAN add_event(IN MV_PVOID extension,
 		return MV_FALSE;
 
 	if (list_empty(&hba->Free_Events)) {
-		/* No free entry, we need to reuse the oldest entry from 
+		/* No free entry, we need to reuse the oldest entry from
 		 * Stored_Events.
 		 */
 		MV_ASSERT(!list_empty(&hba->Stored_Events));
@@ -2383,7 +2600,7 @@ static MV_BOOLEAN add_event(IN MV_PVOID extension,
 	}
 
 	pEvent->Event.AdapterID  = hba->desc->hba_desc->id;
-	pEvent->Event.EventID    = eventID; 
+	pEvent->Event.EventID    = eventID;
 	pEvent->Event.SequenceNo = sequenceNo++;
 	pEvent->Event.Severity   = severityLevel;
 	pEvent->Event.DeviceID   = deviceID;
@@ -2406,18 +2623,18 @@ static void get_event(MV_PVOID This, PMV_Request pReq)
 	MV_U8 count = 0;
 
 	pEventReq->Count = 0;
-	
+
 	if ( hba->Num_Stored_Events > 0 )
-	{	
+	{
 		MV_DASSERT( !list_empty(&hba->Stored_Events) );
 		while (!list_empty(&hba->Stored_Events) &&
 		       (count < MAX_EVENTS_RETURNED)) {
 			pfirst_event = List_GetFirstEntry((&hba->Stored_Events), Driver_Event_Entry, Queue_Pointer);
-			MV_CopyMemory(&pEventReq->Events[count], 
-				      &pfirst_event->Event, 
+			MV_CopyMemory(&pEventReq->Events[count],
+				      &pfirst_event->Event,
 				      sizeof(DriverEvent));
 			hba->Num_Stored_Events--;
-			list_add_tail(&pfirst_event->Queue_Pointer, 
+			list_add_tail(&pfirst_event->Queue_Pointer,
 				      &hba->Free_Events );
 			count++;
 		}
@@ -2439,13 +2656,13 @@ static inline void get_event(MV_PVOID This, PMV_Request pReq) {}
 #endif /* SUPPORT_EVENT */
 
 
-void HBA_ModuleNotification(MV_PVOID This, 
-			     enum Module_Event event, 
+void HBA_ModuleNotification(MV_PVOID This,
+			     enum Module_Event event,
 			     struct mod_notif_param *event_param)
 {
 	/* "This" passed in is not hba extension, it is caller's extension */
 	/* has to find own extension like the implementation in HBA */
-	MV_PVOID hba = HBA_GetModuleExtension(This, MODULE_HBA);	
+	MV_PVOID hba = HBA_GetModuleExtension(This, MODULE_HBA);
 	MV_DPRINT(("Enter HBA_ModuleNotification event %x\n",event));
 //	MV_POKE();
 	switch (event) {
@@ -2503,36 +2720,55 @@ static void mvGetAdapterInfo( MV_PVOID This, PMV_Request pReq )
 
 	if ( pHBA->device == DEVICE_ID_THORLITE_2S1P||pHBA->device == DEVICE_ID_THORLITE_2S1P_WITH_FLASH ){
 		pAdInfo->PortCount = 3;
-	}else if ( pHBA->device == DEVICE_ID_THORLITE_0S1P ){
+		pAdInfo->MaxHD = 1+2*4;//1PATA + 2SATA * 4 PM disk
+		pAdInfo->MaxPM = 2;
+		pAdInfo->PortSupportType = HD_TYPE_SATA | HD_TYPE_PATA;
+	}else if ( pHBA->device == DEVICE_ID_THORLITE_0S1P){
 		pAdInfo->PortCount = 1;
-	}else if ( (pHBA->device == DEVICE_ID_6440) || 
+		pAdInfo->MaxHD = 1;
+		pAdInfo->MaxPM = 0;
+		pAdInfo->PortSupportType = HD_TYPE_PATA;
+	}else if (pHBA->device == DEVICE_ID_THORLITE_1S1P ){
+		pAdInfo->PortCount = 2;
+		pAdInfo->MaxHD = 1+1*4;
+		pAdInfo->MaxPM = 1;
+		pAdInfo->PortSupportType = HD_TYPE_PATA|HD_TYPE_SATA;
+	}else if ( pHBA->device == DEVICE_ID_THOR_4S1P ||pHBA->device == DEVICE_ID_THOR_4S1P_NEW ){
+		pAdInfo->PortCount = 5;
+		pAdInfo->MaxHD = 1+4*4;
+		pAdInfo->MaxPM = 4;
+		pAdInfo->PortSupportType = HD_TYPE_SATA | HD_TYPE_PATA;
+	}else if ( (pHBA->device == DEVICE_ID_6440) ||
 			   (pHBA->device == DEVICE_ID_6445) ||
 			   (pHBA->device == DEVICE_ID_6340) ){
 		pAdInfo->PortCount = 4;
+		pAdInfo->PortSupportType = HD_TYPE_SATA | HD_TYPE_SAS;
 	}else if ( pHBA->device == DEVICE_ID_6480 ){
-		pAdInfo->PortCount = 8;	
+		pAdInfo->PortCount = 8;
+		pAdInfo->PortSupportType = HD_TYPE_SATA | HD_TYPE_SAS;
 	}else if ( pHBA->device == DEVICE_ID_6320 ){
 		pAdInfo->PortCount = 2;
+		pAdInfo->PortSupportType = HD_TYPE_SATA | HD_TYPE_SAS;
 	}else {
 		pAdInfo->PortCount = 5;
+		pAdInfo->PortSupportType = HD_TYPE_SATA | HD_TYPE_PATA;
 	}
 
-//	pAdInfo->MaxHD = pCore->PD_Count_Supported;
 #ifdef SIMULATOR
 	pAdInfo->MaxHD = MAX_DEVICE_SUPPORTED_PERFORMANCE;
 	pAdInfo->MaxExpander = 0;
+	pAdInfo->MaxPM = MAX_PM_SUPPORTED;
 #elif defined(ODIN_DRIVER)
 	pAdInfo->MaxHD = pCore->PD_Count_Supported;
 	pAdInfo->MaxExpander = pCore->Expander_Count_Supported;
+	pAdInfo->MaxPM = MAX_PM_SUPPORTED;
 #else
-	pAdInfo->MaxHD = 8;
 	pAdInfo->MaxExpander = MAX_EXPANDER_SUPPORTED;
 #endif
-
-	pAdInfo->MaxPM = MAX_PM_SUPPORTED;				// 4 for now
 #ifdef RAID_DRIVER
 	raid_capability(This,  pAdInfo);
 #endif	/* RAID_DRIVER */
+
 	pReq->Scsi_Status = REQ_STATUS_SUCCESS;
 }
 

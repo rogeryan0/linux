@@ -45,6 +45,7 @@ ret_fast_syscall:
 fast_work_pending:
 	str	r0, [sp, #S_R0+S_OFF]!		@ returned r0
 work_pending:
+	enable_irq
 	tst	r1, #_TIF_NEED_RESCHED
 	bne	work_resched
 	tst	r1, #_TIF_SIGPENDING|_TIF_NOTIFY_RESUME
@@ -55,6 +56,13 @@ work_pending:
 	movne	why, #0				@ prevent further restarts
 	bl	do_notify_resume
 	b	ret_slow_syscall		@ Check work again
+
+work_syscall_restart:
+	mov	r0, sp				@ 'regs'
+	bl	syscall_restart			@ process system call restart
+	teq	r0, #0				@ if ret=0 -> success, so
+	beq	ret_restart			@ return to userspace directly
+	b	ret_slow_syscall		@ otherwise, we have a segfault
 
 work_resched:
 	bl	schedule
@@ -69,6 +77,9 @@ ENTRY(ret_to_user_from_irq)
 	tst	r1, #_TIF_WORK_MASK
 	bne	work_pending
 no_work_pending:
+	tst	r1, #_TIF_SYS_RESTART
+	bne	work_syscall_restart
+ret_restart:
 #if defined(CONFIG_IRQSOFF_TRACER)
 	asm_trace_hardirqs_on
 #endif
@@ -585,9 +596,10 @@ ENDPROC(sys_fstatfs64_wrapper)
  * offset, we return EINVAL.
  */
 sys_mmap2:
-#if PAGE_SHIFT > 12
-		tst	r5, #PGOFF_MASK
-		moveq	r5, r5, lsr #PAGE_SHIFT - 12
+#ifdef CONFIG_MV_SUPPORT_64KB_PAGE_SIZE
+               tst     r5, #0xF
+               moveq   r5, r5, lsr #4
+
 		streq	r5, [sp, #4]
 		beq	sys_mmap_pgoff
 		mov	r0, #-EINVAL

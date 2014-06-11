@@ -5,11 +5,11 @@
 MV_VOID Tag_Init( PTag_Stack pTagStack, MV_U16 size )
 {
 	MV_U16 i;
-	
+
 	MV_DASSERT( size == pTagStack->Size );
-	
+
 	pTagStack->Top = size;
-	pTagStack->TagStackType = FILO_TAG; 
+	pTagStack->TagStackType = FILO_TAG;
 	pTagStack->PtrOut = 0;
 	for ( i=0; i<size; i++ )
 	{
@@ -20,11 +20,11 @@ MV_VOID Tag_Init( PTag_Stack pTagStack, MV_U16 size )
 MV_VOID Tag_Init_FIFO( PTag_Stack pTagStack, MV_U16 size )
 {
 	MV_U16 i;
-	
+
 	MV_DASSERT( size == pTagStack->Size );
-	
+
 	pTagStack->Top = size;
-	pTagStack->TagStackType = FIFO_TAG; 
+	pTagStack->TagStackType = FIFO_TAG;
 	pTagStack->PtrOut = 0;
 	for ( i=0; i<size; i++ )
 	{
@@ -69,4 +69,3 @@ MV_BOOLEAN Tag_IsEmpty(PTag_Stack pTagStack)
 	}
 	return MV_FALSE;
 }
-

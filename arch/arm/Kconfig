@@ -269,39 +269,6 @@ config ARCH_INTEGRATOR
 	help
 	  Support for ARM's Integrator platform.
 
-config ARCH_FEROCEON_ORION
-        bool "Feroceon-Orion based"
-	select ARCH_FEROCEON
-        select PCI
-	select GENERIC_TIME
-        select GENERIC_CLOCKEVENTS
-	select MIGHT_HAVE_PCI
-
-config ARCH_FEROCEON_KW
-        bool "Feroceon-KW based"
-	select CPU_FEROCEON
-	select ARCH_FEROCEON
-	select PCI
-	select GENERIC_GPIO
-	select ARCH_REQUIRE_GPIOLIB
-	select GENERIC_TIME
-        select GENERIC_CLOCKEVENTS
-	select ARCH_HAS_CPUFREQ
-	select MIGHT_HAVE_PCI
-
-config ARCH_FEROCEON_MV78XX0
-        bool "Feroceon-MV78XX0 based"
-	select CPU_FEROCEON
-	select ARCH_FEROCEON
-	select PLAT_FEROCEON
-	select PCI
-	select GENERIC_GPIO
-	select ARCH_REQUIRE_GPIOLIB
-	select GENERIC_TIME
-        select GENERIC_CLOCKEVENTS
-	select MIGHT_HAVE_PCI
-
-
 config ARCH_REALVIEW
 	bool "ARM Ltd. RealView family"
 	select ARM_AMBA
@@ -569,6 +536,35 @@ config ARCH_IXP4XX
 	help
 	  Support for Intel's IXP4XX (XScale) family of processors.
 
+config ARCH_ARMADA370
+	bool "Marvell Armada-370"
+	select PCI
+	select ARCH_REQUIRE_GPIOLIB
+	select GENERIC_GPIO
+	select GENERIC_TIME
+	select GENERIC_CLOCKEVENTS
+	select PLAT_ARMADA
+	select HAVE_REGS_AND_STACK_ACCESS_API
+	select COMMON_CLKDEV
+	select NEED_MACH_MEMORY_H
+	help
+	  Support for the Marvell Armada-370 SoC Family
+config ARCH_ARMADA_XP
+	bool "Marvell Armada XP"
+	select PCI
+	select ARCH_SUPPORTS_MSI
+	select ARCH_REQUIRE_GPIOLIB
+	select GENERIC_GPIO
+	select GENERIC_TIME
+	select GENERIC_CLOCKEVENTS
+	select PLAT_ARMADA
+#	select PLAT_ORION
+	select HAVE_REGS_AND_STACK_ACCESS_API
+	select COMMON_CLKDEV
+	select CLKSRC_MMIO
+	select CLKDEV_LOOKUP
+	select HAVE_SMP
+	select NEED_MACH_MEMORY_H
 config ARCH_DOVE
 	bool "Marvell Dove"
 	select CPU_V7
@@ -1023,10 +1019,140 @@ endchoice
 # Kconfigs may be included either alphabetically (according to the
 # plat- suffix) or along side the corresponding mach-* source.
 #
-if ARCH_FEROCEON_ORION || ARCH_FEROCEON_KW || ARCH_FEROCEON_MV78XX0
-source "arch/arm/plat-feroceon/Kconfig"
+
+if PLAT_ARMADA
+config MV_INCLUDE_MFLASH_MTD
+	bool
+                    
+config MTD_NAND_LNC
+	bool
+
+config MTD_NAND_LNC_BOOT
+	bool
+
+config MTD_NAND_LNC_RS_ECC
+	bool
+
+config MTD_NAND_LNC_8BYTE_READ
+	bool
+
+config MTD_NAND_NFC
+	bool
+
+config MTD_NAND_NFC_GANG_SUPPORT
+	bool
+
+config MTD_NAND_NFC_MLC_SUPPORT
+	bool
+
+config MV_USB_HOST
+	bool
+
+config MV_USB_DEVICE
+	bool
+
+config MV_ETH_LEGACY
+	bool
+
+config MV_ETH_NETA
+	bool
+
+if MV_INCLUDE_CESA
+
+config	MV_CESA_OCF
+	bool
+
+config  MV_CESA_TEST
+	bool
+
 endif
 
+if MV_ETH_NFP_BRIDGE
+
+config MV_ETH_NFP_FDB_MODE
+	bool
+
+config  MV_ETH_NFP_BRIDGE_MODE
+	bool
+
+endif
+
+if MV_INCLUDE_TDM
+
+config MV_TDM_SUPPORT
+	bool
+
+config MV_COMM_UNIT_SUPPORT
+	bool
+
+config ZARLINK_SLIC_SUPPORT
+	bool
+
+config SILABS_SLIC_3215
+	bool
+
+config SILABS_SLIC_3217
+	bool
+
+config ZARLINK_SLIC_VE880
+	bool
+
+config ZARLINK_SLIC_VE792
+	bool
+
+endif
+
+if MV_INCLUDE_PON
+
+config  MV_GPON
+	bool
+
+config  MV_EPON
+	bool
+
+endif
+
+config SATA_NO_DEBUG
+	bool
+
+config SATA_DEBUG_ON_ERROR
+	bool
+
+config SATA_FULL_DEBUG
+	bool
+
+if MV_INCLUDE_TS
+
+config TSU_SERIAL_IF
+	bool
+
+config TSU_PARALLEL_IF
+	bool
+
+config TSU_CORE_CLK_71MHZ
+	bool
+
+config TSU_CORE_CLK_83MHZ
+	bool
+
+config TSU_CORE_CLK_91MHZ
+	bool
+
+config TSU_CORE_CLK_100MHZ
+	bool
+
+endif
+
+endif
+
+source "arch/arm/mach-armada370/Kconfig"
+source "arch/arm/mach-armadaxp/Kconfig"
+if ARCH_ARMADA370
+source "arch/arm/plat-armada370/Kconfig"
+endif
+if ARCH_ARMADA_XP
+source "arch/arm/plat-armadaxp/Kconfig"
+endif
 source "arch/arm/mach-at91/Kconfig"
 
 source "arch/arm/mach-bcmring/Kconfig"
@@ -1141,6 +1267,12 @@ source "arch/arm/mach-vt8500/Kconfig"
 source "arch/arm/mach-w90x900/Kconfig"
 
 # Definitions to make life easier
+config PLAT_ARMADA
+	bool
+	select CLKSRC_MMIO if ARCH_ARMADA_XP
+        select GENERIC_IRQ_CHIP if ARCH_ARMADA_XP
+        select HAVE_SCHED_CLOCK if ARCH_ARMADA_XP
+
 config ARCH_ACORN
 	bool
 
@@ -1154,9 +1286,6 @@ config PLAT_ORION
 	select CLKSRC_MMIO
 	select GENERIC_IRQ_CHIP
 	select HAVE_SCHED_CLOCK
-
-config ARCH_FEROCEON
-	bool
 
 config PLAT_PXA
 	bool
@@ -1569,7 +1698,6 @@ config HAVE_ARM_TWD
 
 choice
 	prompt "Memory split"
-	default VMSPLIT_2G if ARCH_FEROCEON_MV78XX0
 	default VMSPLIT_3G
 	help
 	  Select the desired split between kernel and user memory.
@@ -1608,7 +1736,7 @@ config LOCAL_TIMERS
 	bool "Use local timer interrupts"
 	depends on SMP
 	default y
-	select HAVE_ARM_TWD if (!ARCH_MSM_SCORPIONMP && !EXYNOS4_MCT)
+	select HAVE_ARM_TWD if (!ARCH_MSM_SCORPIONMP && !EXYNOS4_MCT && !ARCH_ARMADA_XP)
 	help
 	  Enable support for local timers on SMP platforms, rather then the
 	  legacy IPI broadcast method.  Local timers allows the system
@@ -1717,9 +1845,10 @@ config OABI_COMPAT
 
 config ARCH_HAS_HOLES_MEMORYMODEL
 	bool
-	default n
+	default n if ARCH_ARMADA370
 config REORDER
         bool "Function reordering"
+	depends on ARCH_ARMADA370
         default n
         help
           This option enables the toolchain to reorder functions for a more
@@ -1771,11 +1900,11 @@ source "mm/Kconfig"
 
 config FORCE_MAX_ZONEORDER
 	int "Maximum zone order" if ARCH_SHMOBILE
-        depends on SA1111 || ARCH_FEROCEON_KW || ARCH_SHMOBILE
-	range 11 64 if ARCH_SHMOBILE
+	depends on SA1111 || ARCH_ARMADA_XP || ARCH_ARMADA370
+	range 11 64 if (!ARCH_ARMADA_XP && ARCH_SHMOBILE)
 	default "9" if SA1111
-        default "19" if ARCH_FEROCEON_KW
-	default "11"
+        default "11" if ARCH_ARMADA_XP
+	default "19" if ARCH_ARMADA370
 	help
 	  The kernel memory allocator divides physically contiguous memory
 	  blocks into "zones", where each zone is a power of two number of
@@ -1795,8 +1924,7 @@ config LEDS
 		   ARCH_OMAP || ARCH_P720T || ARCH_PXA_IDP || \
 		   ARCH_SA1100 || ARCH_SHARK || ARCH_VERSATILE || \
 		   ARCH_AT91 || ARCH_DAVINCI || \
-		   ARCH_KS8695 || MACH_RD88F5182 || ARCH_FEROCEON || \
-		   ARCH_REALVIEW
+		   ARCH_KS8695 || MACH_RD88F5182 || ARCH_REALVIEW
 	help
 	  If you say Y here, the LEDs on your machine will be used
 	  to provide useful information about your current system status.
@@ -2205,14 +2333,6 @@ config CPU_FREQ_S3C24XX_DEBUGFS
 	help
 	  Export status information via debugfs.
 
-config CPU_FREQ_FEROCEON_KW
-	tristate "CPUfreq driver for Kirkwood SoC"
-	depends on CPU_FREQ && ARCH_FEROCEON_KW
-	default n
-	help
-	  This enables the CPUfreq driver for Kirkwood SoC.
-
-	  If in doubt, say N.
 endif
 
 source "drivers/cpuidle/Kconfig"
@@ -2273,18 +2393,6 @@ config VFP
 
 	  Say N if your target does not have VFP hardware.
 
-config VFP_FASTVFP
-        bool "FastVFP"
-	depends on VFP
-        help
-          Say Y here to include the FAST Vector Floating Point in the kernel.
-	  This means the VFP co-processor runs in a determinable time without 
-	  support code assistance, regardless of the characteristics of the input data. 
-	  In RunFast mode, no user exception traps are available.
-
-	  It should be sufficient for most programs. It may be not suitable
-	  for scientific calculations, but you have to check this for yourself.
-
 config VFPv3
 	bool
 	depends on VFP
@@ -2344,4 +2452,4 @@ source "crypto/Kconfig"
 
 source "lib/Kconfig"
 
-source "buffalo/drivers/Kconfig"
+source "buffalo/Kconfig"

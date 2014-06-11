@@ -200,4 +200,3 @@ module_exit(dovefb_display_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Display mode driver");
-

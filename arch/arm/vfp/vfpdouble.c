@@ -51,18 +51,29 @@ static void vfp_double_dump(const char *str, struct vfp_double *d)
 		 str, d->sign != 0, d->exponent, d->significand);
 }
 
+#ifdef CONFIG_ARCH_ARMADA370
 static void vfp_double_normalise_denormal(struct vfp_double *vd, u32 fpscr, u32 *exceptions)
+#else /* CONFIG_ARCH_ARMADA370 */
+static void vfp_double_normalise_denormal(struct vfp_double *vd)
+#endif /* CONFIG_ARCH_ARMADA370 */
 {
+#ifdef CONFIG_ARCH_ARMADA370
 	int bits;
+#else /* CONFIG_ARCH_ARMADA370 */
+	int bits = 31 - fls(vd->significand >> 32);
+	if (bits == 31)
+		bits = 63 - fls(vd->significand);
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	vfp_double_dump("normalise_denormal: in", vd);
 
+#ifdef CONFIG_ARCH_ARMADA370
     /* If we are in Flush to zero mode, just zero the fraction */
     if (fpscr & FPSCR_FLUSHTOZERO) {
         vd->significand = 0ULL;
         vfp_double_dump("normalise_denormal: Flushed to zero.", vd);
 
-        /* IDC is set whenever the FPU coprocessor is in flush-to-zero 
+        /* IDC is set whenever the FPU coprocessor is in flush-to-zero
          * mode and a subnormal input operand is replaced by a positive zero.
          */
         *exceptions |= FPSCR_IDC;
@@ -73,7 +84,8 @@ static void vfp_double_normalise_denormal(struct vfp_double *vd, u32 fpscr, u32 
 
 	if (bits == 31)
 		bits = 63 - fls(((u32)(vd->significand)));
-	
+
+#endif /* ! CONFIG_ARCH_ARMADA370 */
 	if (bits) {
 		vd->exponent -= bits - 1;
 		vd->significand <<= bits;
@@ -84,7 +96,11 @@ static void vfp_double_normalise_denormal(struct vfp_double *vd, u32 fpscr, u32 
 
 u32 vfp_double_normaliseround(int dd, struct vfp_double *vd, u32 fpscr, u32 exceptions, const char *func)
 {
+#ifdef CONFIG_ARCH_ARMADA370
+	u64 old_significand, significand, incr;
+#else /* CONFIG_ARCH_ARMADA370 */
 	u64 significand, incr;
+#endif /* CONFIG_ARCH_ARMADA370 */
 	int exponent, shift, underflow;
 	u32 rmode;
 
@@ -107,9 +123,17 @@ u32 vfp_double_normaliseround(int dd, struct vfp_double *vd, u32 fpscr, u32 exce
 	exponent = vd->exponent;
 	significand = vd->significand;
 
-	shift = 32 - fls(((u32)(significand >> 32)));	
+#ifdef CONFIG_ARCH_ARMADA370
+	shift = 32 - fls(((u32)(significand >> 32)));
+#else /* CONFIG_ARCH_ARMADA370 */
+	shift = 32 - fls(significand >> 32);
+#endif /* CONFIG_ARCH_ARMADA370 */
 	if (shift == 32)
+#ifdef CONFIG_ARCH_ARMADA370
 		shift = 64 - fls(((u32)(significand)));
+#else /* CONFIG_ARCH_ARMADA370 */
+		shift = 64 - fls(significand);
+#endif /* CONFIG_ARCH_ARMADA370 */
 	if (shift) {
 		exponent -= shift;
 		significand <<= shift;
@@ -133,30 +157,35 @@ u32 vfp_double_normaliseround(int dd, struct vfp_double *vd, u32 fpscr, u32 exce
 		vd->significand = significand;
 		vfp_double_dump("pack: tiny number", vd);
 #endif
+#ifdef CONFIG_ARCH_ARMADA370
 
-	/* 
-	 * When an underflow trap is not implemented, or is not 
-	 * enabled (the default case), underflow shall be signaled only 
-	 * when both tininess and loss of accuracy have been detected. 
-	 * When an underflow trap has been implemented and is enabled, 
-	 * underflow shall be signaled when tininess is detected 
+	/*
+	 * When an underflow trap is not implemented, or is not
+	 * enabled (the default case), underflow shall be signaled only
+	 * when both tininess and loss of accuracy have been detected.
+	 * When an underflow trap has been implemented and is enabled,
+	 * underflow shall be signaled when tininess is detected
 	 * regardless of loss of accuracy.
 	 */
-		if (!(fpscr & FPSCR_UFE)) 
+		if (!(fpscr & FPSCR_UFE))
             if (!(significand & ((1ULL << (VFP_DOUBLE_LOW_BITS + 1)) - 1)))
                 underflow = 0;
 
-	/* 
+	/*
 	 * Exp = 0 			=> 2^-1022
 	 * significant = 0x40000000	=> 0*(2^1) + 1*(2^0) + 0*(2^-1) + 0*(2^-2) + ....
 	 * Total 			=> 2^-1022 (minimum normal number)
 	 */
-		if (significand >= 0x8000000000000000ULL) 
+		if (significand >= 0x8000000000000000ULL)
+#else /* CONFIG_ARCH_ARMADA370 */
+		if (!(significand & ((1ULL << (VFP_DOUBLE_LOW_BITS + 1)) - 1)))
+#endif /* CONFIG_ARCH_ARMADA370 */
 			underflow = 0;
+#ifdef CONFIG_ARCH_ARMADA370
 
 	/*
-	 * In flush-to-zero mode, UFC is set whenever a result is 
-	 * below the threshold for normal numbers before rounding, and the 
+	 * In flush-to-zero mode, UFC is set whenever a result is
+	 * below the threshold for normal numbers before rounding, and the
 	 * result is flushed to zero.
 	 */
 		if (underflow && (fpscr & FPSCR_FLUSHTOZERO)){
@@ -164,6 +193,7 @@ u32 vfp_double_normaliseround(int dd, struct vfp_double *vd, u32 fpscr, u32 exce
 			exceptions |= FPSCR_UFC;
 			pr_debug("VFP: Flushed to zero.");
 		}
+#endif /* ! CONFIG_ARCH_ARMADA370 */
 	}
 	/*
 	 * Select rounding increment.
@@ -206,6 +236,9 @@ u32 vfp_double_normaliseround(int dd, struct vfp_double *vd, u32 fpscr, u32 exce
 	/*
 	 * Do our rounding.
 	 */
+#ifdef CONFIG_ARCH_ARMADA370
+	old_significand = significand;
+#endif /* ! CONFIG_ARCH_ARMADA370 */
 	significand += incr;
 
 	/*
@@ -223,6 +256,10 @@ u32 vfp_double_normaliseround(int dd, struct vfp_double *vd, u32 fpscr, u32 exce
 	} else {
 		if (significand >> (VFP_DOUBLE_LOW_BITS + 1) == 0)
 			exponent = 0;
+#ifndef CONFIG_ARCH_ARMADA370
+		if (exponent || significand > 0x8000000000000000ULL)
+			underflow = 0;
+#endif /* CONFIG_ARCH_ARMADA370 */
 		if (underflow)
 			exceptions |= FPSCR_UFC;
 		vd->exponent = exponent;
@@ -235,11 +272,15 @@ u32 vfp_double_normaliseround(int dd, struct vfp_double *vd, u32 fpscr, u32 exce
 		s64 d = vfp_double_pack(vd);
 		pr_debug("VFP: %s: d(d%d)=%016llx exceptions=%08x\n", func,
 			 dd, d, exceptions);
-		if (-1 != dd){	
+#ifdef CONFIG_ARCH_ARMADA370
+		if (-1 != dd){
 			vfp_put_double(d, dd);
 		} else {
 			vfp_double_unpack(vd, d);
 		}
+#else /* CONFIG_ARCH_ARMADA370 */
+		vfp_put_double(d, dd);
+#endif /* CONFIG_ARCH_ARMADA370 */
 	}
 	return exceptions;
 }
@@ -313,30 +354,53 @@ static u32 vfp_double_fneg(int dd, int unused, int dm, u32 fpscr)
 static u32 vfp_double_fsqrt(int dd, int unused, int dm, u32 fpscr)
 {
 	struct vfp_double vdm, vdd;
+#ifdef CONFIG_ARCH_ARMADA370
 	int tm;
 	u32 exceptions = 0;
+#else /* CONFIG_ARCH_ARMADA370 */
+	int ret, tm;
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	vfp_double_unpack(&vdm, vfp_get_double(dm));
+#ifdef CONFIG_ARCH_ARMADA370
 
 	if (vdm.exponent == 0 && vdm.significand)
 		vfp_double_normalise_denormal(&vdm, fpscr, &exceptions);
 
     tm = vfp_double_type(&vdm);
+#else /* CONFIG_ARCH_ARMADA370 */
+	tm = vfp_double_type(&vdm);
+#endif /* CONFIG_ARCH_ARMADA370 */
 	if (tm & (VFP_NAN|VFP_INFINITY)) {
 		struct vfp_double *vdp = &vdd;
 
 		if (tm & VFP_NAN)
+#ifdef CONFIG_ARCH_ARMADA370
 			exceptions |= vfp_propagate_nan(vdp, &vdm, NULL, fpscr);
+#else /* CONFIG_ARCH_ARMADA370 */
+			ret = vfp_propagate_nan(vdp, &vdm, NULL, fpscr);
+#endif /* CONFIG_ARCH_ARMADA370 */
 		else if (vdm.sign == 0) {
  sqrt_copy:
 			vdp = &vdm;
+#ifndef CONFIG_ARCH_ARMADA370
+			ret = 0;
+#endif /* CONFIG_ARCH_ARMADA370 */
 		} else {
  sqrt_invalid:
 			vdp = &vfp_double_default_qnan;
+#ifdef CONFIG_ARCH_ARMADA370
 			exceptions |= FPSCR_IOC;
+#else /* CONFIG_ARCH_ARMADA370 */
+			ret = FPSCR_IOC;
+#endif /* CONFIG_ARCH_ARMADA370 */
 		}
 		vfp_put_double(vfp_double_pack(vdp), dd);
+#ifdef CONFIG_ARCH_ARMADA370
 		return exceptions;
+#else /* CONFIG_ARCH_ARMADA370 */
+		return ret;
+#endif /* CONFIG_ARCH_ARMADA370 */
 	}
 
 	/*
@@ -345,6 +409,14 @@ static u32 vfp_double_fsqrt(int dd, int unused, int dm, u32 fpscr)
 	if (tm & VFP_ZERO)
 		goto sqrt_copy;
 
+#ifndef CONFIG_ARCH_ARMADA370
+	/*
+	 * Normalise a denormalised number
+	 */
+	if (tm & VFP_DENORMAL)
+		vfp_double_normalise_denormal(&vdm);
+
+#endif /* CONFIG_ARCH_ARMADA370 */
 	/*
 	 * sqrt(<0) = invalid
 	 */
@@ -423,11 +495,13 @@ static u32 vfp_compare(int dd, int signal_on_qnan, int dm, u32 fpscr)
 			ret |= FPSCR_IOC;
 	}
 
-	if (fpscr & FPSCR_FLUSHTOZERO) 
-		if ((vfp_double_packed_exponent(m) == 0 && vfp_double_packed_mantissa(m)) || 
+#ifdef CONFIG_ARCH_ARMADA370
+	if (fpscr & FPSCR_FLUSHTOZERO)
+		if ((vfp_double_packed_exponent(m) == 0 && vfp_double_packed_mantissa(m)) ||
 		    (vfp_double_packed_exponent(d) == 0 && vfp_double_packed_mantissa(d)))
 			ret |= FPSCR_IDC;
 
+#endif /* ! CONFIG_ARCH_ARMADA370 */
 	if (ret == 0) {
 		if (d == m || vfp_double_packed_abs(d | m) == 0) {
 			/*
@@ -498,10 +572,18 @@ static u32 vfp_double_fcvts(int sd, int unused, int dm, u32 fpscr)
 	 * If we have a signalling NaN, signal invalid operation.
 	 */
 	if (tm == VFP_SNAN)
+#ifdef CONFIG_ARCH_ARMADA370
 		exceptions |= FPSCR_IOC;
+#else /* CONFIG_ARCH_ARMADA370 */
+		exceptions = FPSCR_IOC;
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	if (tm & VFP_DENORMAL)
+#ifdef CONFIG_ARCH_ARMADA370
 		vfp_double_normalise_denormal(&vdm, fpscr, &exceptions);
+#else /* CONFIG_ARCH_ARMADA370 */
+		vfp_double_normalise_denormal(&vdm);
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	vsd.sign = vdm.sign;
 	vsd.significand = vfp_hi64to32jamming(vdm.significand);
@@ -558,21 +640,31 @@ static u32 vfp_double_ftoui(int sd, int unused, int dm, u32 fpscr)
 	int tm;
 
 	vfp_double_unpack(&vdm, vfp_get_double(dm));
+#ifdef CONFIG_ARCH_ARMADA370
 	vfp_double_dump("VDM", &vdm);
-	
+#endif /* ! CONFIG_ARCH_ARMADA370 */
+
 	/*
 	 * Do we have a denormalised number?
 	 */
 	tm = vfp_double_type(&vdm);
 	if (tm & VFP_DENORMAL)
+#ifdef CONFIG_ARCH_ARMADA370
 		vfp_double_normalise_denormal(&vdm, fpscr, &exceptions);
+#else /* CONFIG_ARCH_ARMADA370 */
+		exceptions |= FPSCR_IDC;
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	if (tm & VFP_NAN)
 		vdm.sign = 0;
 
 	if (vdm.exponent >= 1023 + 32) {
 		d = vdm.sign ? 0 : 0xffffffff;
+#ifdef CONFIG_ARCH_ARMADA370
 		exceptions |= FPSCR_IOC;
+#else /* CONFIG_ARCH_ARMADA370 */
+		exceptions = FPSCR_IOC;
+#endif /* CONFIG_ARCH_ARMADA370 */
 	} else if (vdm.exponent >= 1023 - 1) {
 		int shift = 1023 + 63 - vdm.exponent;
 		u64 rem, incr = 0;
@@ -596,10 +688,16 @@ static u32 vfp_double_ftoui(int sd, int unused, int dm, u32 fpscr)
 		if ((rem + incr) < rem) {
 			if (d < 0xffffffff)
 				d += 1;
+#ifdef CONFIG_ARCH_ARMADA370
 			else{
+#else /* CONFIG_ARCH_ARMADA370 */
+			else
+#endif /* CONFIG_ARCH_ARMADA370 */
 				exceptions |= FPSCR_IOC;
+#ifdef CONFIG_ARCH_ARMADA370
 				rem = 0; /* Make sure IXC will not raise */
 			}
+#endif /* ! CONFIG_ARCH_ARMADA370 */
 		}
 
 		if (d && vdm.sign) {
@@ -610,14 +708,24 @@ static u32 vfp_double_ftoui(int sd, int unused, int dm, u32 fpscr)
 	} else {
 		d = 0;
 		if (vdm.exponent | vdm.significand) {
+#ifdef CONFIG_ARCH_ARMADA370
 			if (rmode == FPSCR_ROUND_MINUSINF && vdm.sign) {
+#else /* CONFIG_ARCH_ARMADA370 */
+			exceptions |= FPSCR_IXC;
+			if (rmode == FPSCR_ROUND_PLUSINF && vdm.sign == 0)
+				d = 1;
+			else if (rmode == FPSCR_ROUND_MINUSINF && vdm.sign) {
+				d = 0;
+#endif /* CONFIG_ARCH_ARMADA370 */
 				exceptions |= FPSCR_IOC;
 			}
+#ifdef CONFIG_ARCH_ARMADA370
 			else {
-				exceptions |= FPSCR_IXC; 
+				exceptions |= FPSCR_IXC;
 				if (rmode == FPSCR_ROUND_PLUSINF && vdm.sign == 0)
 					d = 1;
 			}
+#endif /* ! CONFIG_ARCH_ARMADA370 */
 		}
 	}
 
@@ -630,7 +738,11 @@ static u32 vfp_double_ftoui(int sd, int unused, int dm, u32 fpscr)
 
 static u32 vfp_double_ftouiz(int sd, int unused, int dm, u32 fpscr)
 {
+#ifdef CONFIG_ARCH_ARMADA370
 	return vfp_double_ftoui(sd, unused, dm, (fpscr | FPSCR_ROUND_TOZERO));
+#else /* CONFIG_ARCH_ARMADA370 */
+	return vfp_double_ftoui(sd, unused, dm, FPSCR_ROUND_TOZERO);
+#endif /* CONFIG_ARCH_ARMADA370 */
 }
 
 static u32 vfp_double_ftosi(int sd, int unused, int dm, u32 fpscr)
@@ -648,7 +760,11 @@ static u32 vfp_double_ftosi(int sd, int unused, int dm, u32 fpscr)
 	 */
 	tm = vfp_double_type(&vdm);
 	if (tm & VFP_DENORMAL)
+#ifdef CONFIG_ARCH_ARMADA370
 		vfp_double_normalise_denormal(&vdm, fpscr, &exceptions);
+#else /* CONFIG_ARCH_ARMADA370 */
+		exceptions |= FPSCR_IDC;
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	if (tm & VFP_NAN) {
 		d = 0;
@@ -705,7 +821,11 @@ static u32 vfp_double_ftosi(int sd, int unused, int dm, u32 fpscr)
 
 static u32 vfp_double_ftosiz(int dd, int unused, int dm, u32 fpscr)
 {
+#ifdef CONFIG_ARCH_ARMADA370
 	return vfp_double_ftosi(dd, unused, dm, (fpscr | FPSCR_ROUND_TOZERO));
+#else /* CONFIG_ARCH_ARMADA370 */
+	return vfp_double_ftosi(dd, unused, dm, FPSCR_ROUND_TOZERO);
+#endif /* CONFIG_ARCH_ARMADA370 */
 }
 
 
@@ -719,8 +839,13 @@ static struct op fops_ext[32] = {
 	[FEXT_TO_IDX(FEXT_FCMPZ)]	= { vfp_double_fcmpz,  OP_SCALAR },
 	[FEXT_TO_IDX(FEXT_FCMPEZ)]	= { vfp_double_fcmpez, OP_SCALAR },
 	[FEXT_TO_IDX(FEXT_FCVT)]	= { vfp_double_fcvts,  OP_SCALAR|OP_SD },
+#ifdef CONFIG_ARCH_ARMADA370
+	[FEXT_TO_IDX(FEXT_FUITO)]	= { vfp_double_fuito,  OP_SCALAR },
+	[FEXT_TO_IDX(FEXT_FSITO)]	= { vfp_double_fsito,  OP_SCALAR },
+#else /* CONFIG_ARCH_ARMADA370 */
 	[FEXT_TO_IDX(FEXT_FUITO)]	= { vfp_double_fuito,  OP_SCALAR|OP_SM },
 	[FEXT_TO_IDX(FEXT_FSITO)]	= { vfp_double_fsito,  OP_SCALAR|OP_SM },
+#endif /* CONFIG_ARCH_ARMADA370 */
 	[FEXT_TO_IDX(FEXT_FTOUI)]	= { vfp_double_ftoui,  OP_SCALAR|OP_SD },
 	[FEXT_TO_IDX(FEXT_FTOUIZ)]	= { vfp_double_ftouiz, OP_SCALAR|OP_SD },
 	[FEXT_TO_IDX(FEXT_FTOSI)]	= { vfp_double_ftosi,  OP_SCALAR|OP_SD },
@@ -738,11 +863,13 @@ vfp_double_fadd_nonnumber(struct vfp_double *vdd, struct vfp_double *vdn,
 	u32 exceptions = 0;
 	int tn, tm;
 
+#ifdef CONFIG_ARCH_ARMADA370
 	pr_debug("VFP: in fadd_nonnumber\n");
 
 	vfp_double_dump("VDN", vdn);
 	vfp_double_dump("VDM", vdm);
 
+#endif /* ! CONFIG_ARCH_ARMADA370 */
 	tn = vfp_double_type(vdn);
 	tm = vfp_double_type(vdm);
 
@@ -754,7 +881,11 @@ vfp_double_fadd_nonnumber(struct vfp_double *vdd, struct vfp_double *vdn,
 			/*
 			 * different signs -> invalid
 			 */
+#ifdef CONFIG_ARCH_ARMADA370
 			exceptions |= FPSCR_IOC;
+#else /* CONFIG_ARCH_ARMADA370 */
+			exceptions = FPSCR_IOC;
+#endif /* CONFIG_ARCH_ARMADA370 */
 			vdp = &vfp_double_default_qnan;
 		} else {
 			/*
@@ -800,7 +931,9 @@ vfp_double_add(struct vfp_double *vdd, struct vfp_double *vdn,
 		struct vfp_double *t = vdn;
 		vdn = vdm;
 		vdm = t;
+#ifdef CONFIG_ARCH_ARMADA370
 		pr_debug("VFP: swapping M <-> N\n");
+#endif /* ! CONFIG_ARCH_ARMADA370 */
 	}
 
 	/*
@@ -908,14 +1041,23 @@ static u32
 vfp_double_multiply_accumulate(int dd, int dn, int dm, u32 fpscr, u32 negate, char *func)
 {
 	struct vfp_double vdd, vdp, vdn, vdm;
+#ifdef CONFIG_ARCH_ARMADA370
 	u32 exceptions = 0;
+#else /* CONFIG_ARCH_ARMADA370 */
+	u32 exceptions;
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	vfp_double_unpack(&vdn, vfp_get_double(dn));
 	if (vdn.exponent == 0 && vdn.significand)
+#ifdef CONFIG_ARCH_ARMADA370
 		vfp_double_normalise_denormal(&vdn, fpscr, &exceptions);
+#else /* CONFIG_ARCH_ARMADA370 */
+		vfp_double_normalise_denormal(&vdn);
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	vfp_double_unpack(&vdm, vfp_get_double(dm));
 	if (vdm.exponent == 0 && vdm.significand)
+#ifdef CONFIG_ARCH_ARMADA370
 		vfp_double_normalise_denormal(&vdm, fpscr, &exceptions);
 
 	exceptions |= vfp_double_multiply(&vdp, &vdn, &vdm, fpscr);
@@ -923,21 +1065,33 @@ vfp_double_multiply_accumulate(int dd, int dn, int dm, u32 fpscr, u32 negate, ch
 
 	if (vdp.exponent == 0 && vdp.significand)
 		vfp_double_normalise_denormal(&vdp, fpscr, &exceptions);
+#else /* CONFIG_ARCH_ARMADA370 */
+		vfp_double_normalise_denormal(&vdm);
+#endif /* CONFIG_ARCH_ARMADA370 */
 
+#ifndef CONFIG_ARCH_ARMADA370
+	exceptions = vfp_double_multiply(&vdp, &vdn, &vdm, fpscr);
+#endif /* CONFIG_ARCH_ARMADA370 */
 	if (negate & NEG_MULTIPLY)
 		vdp.sign = vfp_sign_negate(vdp.sign);
 
 	vfp_double_unpack(&vdn, vfp_get_double(dd));
+#ifdef CONFIG_ARCH_ARMADA370
 
 	if (vdn.exponent == 0 && vdn.significand)
 		vfp_double_normalise_denormal(&vdn, fpscr, &exceptions);
 
+#endif /* ! CONFIG_ARCH_ARMADA370 */
 	if (negate & NEG_SUBTRACT)
 		vdn.sign = vfp_sign_negate(vdn.sign);
 
 	exceptions |= vfp_double_add(&vdd, &vdn, &vdp, fpscr);
 
+#ifdef CONFIG_ARCH_ARMADA370
 	return vfp_double_normaliseround(dd, &vdd, fpscr, exceptions, "fmac-add");
+#else /* CONFIG_ARCH_ARMADA370 */
+	return vfp_double_normaliseround(dd, &vdd, fpscr, exceptions, func);
+#endif /* CONFIG_ARCH_ARMADA370 */
 }
 
 /*
@@ -982,17 +1136,33 @@ static u32 vfp_double_fnmsc(int dd, int dn, int dm, u32 fpscr)
 static u32 vfp_double_fmul(int dd, int dn, int dm, u32 fpscr)
 {
 	struct vfp_double vdd, vdn, vdm;
+#ifdef CONFIG_ARCH_ARMADA370
 	u32 exceptions = 0;
+#else /* CONFIG_ARCH_ARMADA370 */
+	u32 exceptions;
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	vfp_double_unpack(&vdn, vfp_get_double(dn));
 	if (vdn.exponent == 0 && vdn.significand)
+#ifdef CONFIG_ARCH_ARMADA370
 		vfp_double_normalise_denormal(&vdn, fpscr, &exceptions);
+#else /* CONFIG_ARCH_ARMADA370 */
+		vfp_double_normalise_denormal(&vdn);
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	vfp_double_unpack(&vdm, vfp_get_double(dm));
 	if (vdm.exponent == 0 && vdm.significand)
+#ifdef CONFIG_ARCH_ARMADA370
 		vfp_double_normalise_denormal(&vdm, fpscr, &exceptions);
+#else /* CONFIG_ARCH_ARMADA370 */
+		vfp_double_normalise_denormal(&vdm);
+#endif /* CONFIG_ARCH_ARMADA370 */
 
+#ifdef CONFIG_ARCH_ARMADA370
 	exceptions |= vfp_double_multiply(&vdd, &vdn, &vdm, fpscr);
+#else /* CONFIG_ARCH_ARMADA370 */
+	exceptions = vfp_double_multiply(&vdd, &vdn, &vdm, fpscr);
+#endif /* CONFIG_ARCH_ARMADA370 */
 	return vfp_double_normaliseround(dd, &vdd, fpscr, exceptions, "fmul");
 }
 
@@ -1002,22 +1172,37 @@ static u32 vfp_double_fmul(int dd, int dn, int dm, u32 fpscr)
 static u32 vfp_double_fnmul(int dd, int dn, int dm, u32 fpscr)
 {
 	struct vfp_double vdd, vdn, vdm;
+#ifdef CONFIG_ARCH_ARMADA370
 	u32 exceptions = 0;
+#else /* CONFIG_ARCH_ARMADA370 */
+	u32 exceptions;
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	vfp_double_unpack(&vdn, vfp_get_double(dn));
 	if (vdn.exponent == 0 && vdn.significand)
+#ifdef CONFIG_ARCH_ARMADA370
 		vfp_double_normalise_denormal(&vdn, fpscr, &exceptions);
+#else /* CONFIG_ARCH_ARMADA370 */
+		vfp_double_normalise_denormal(&vdn);
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	vfp_double_unpack(&vdm, vfp_get_double(dm));
 	if (vdm.exponent == 0 && vdm.significand)
+#ifdef CONFIG_ARCH_ARMADA370
 		vfp_double_normalise_denormal(&vdm, fpscr, &exceptions);
 
 	exceptions |= vfp_double_multiply(&vdd, &vdn, &vdm, fpscr);
 	exceptions |= vfp_double_normaliseround(-1, &vdd, fpscr, exceptions, "fnmul-mul");
-	
+
 	if (vdd.exponent == 0 && vdd.significand)
 		vfp_double_normalise_denormal(&vdd, fpscr, &exceptions);
+#else /* CONFIG_ARCH_ARMADA370 */
+		vfp_double_normalise_denormal(&vdm);
+#endif /* CONFIG_ARCH_ARMADA370 */
 
+#ifndef CONFIG_ARCH_ARMADA370
+	exceptions = vfp_double_multiply(&vdd, &vdn, &vdm, fpscr);
+#endif /* CONFIG_ARCH_ARMADA370 */
 	vdd.sign = vfp_sign_negate(vdd.sign);
 	return vfp_double_normaliseround(dd, &vdd, fpscr, exceptions, "fnmul");
 }
@@ -1028,25 +1213,41 @@ static u32 vfp_double_fnmul(int dd, int dn, int dm, u32 fpscr)
 static u32 vfp_double_fadd(int dd, int dn, int dm, u32 fpscr)
 {
 	struct vfp_double vdd, vdn, vdm;
+#ifdef CONFIG_ARCH_ARMADA370
 	u32 exceptions = 0;
 	pr_debug("VFP: fadd: dn %d\n", dn);
 	pr_debug("VFP: fadd: dm %d\n", dm);
 
 	pr_debug("VFP: fadd: dn=%016llx\n", vfp_get_double(dn));
 	pr_debug("VFP: fadd: dm=%016llx\n", vfp_get_double(dm));
+#else /* CONFIG_ARCH_ARMADA370 */
+	u32 exceptions;
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	vfp_double_unpack(&vdn, vfp_get_double(dn));
 	if (vdn.exponent == 0 && vdn.significand)
+#ifdef CONFIG_ARCH_ARMADA370
 		vfp_double_normalise_denormal(&vdn, fpscr, &exceptions);
+#else /* CONFIG_ARCH_ARMADA370 */
+		vfp_double_normalise_denormal(&vdn);
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	vfp_double_unpack(&vdm, vfp_get_double(dm));
 	if (vdm.exponent == 0 && vdm.significand)
+#ifdef CONFIG_ARCH_ARMADA370
 		vfp_double_normalise_denormal(&vdm, fpscr, &exceptions);
+#else /* CONFIG_ARCH_ARMADA370 */
+		vfp_double_normalise_denormal(&vdm);
+#endif /* CONFIG_ARCH_ARMADA370 */
 
+#ifdef CONFIG_ARCH_ARMADA370
 	vfp_double_dump("VDN", &vdn);
 	vfp_double_dump("VDM", &vdm);
 
 	exceptions |= vfp_double_add(&vdd, &vdn, &vdm, fpscr);
+#else /* CONFIG_ARCH_ARMADA370 */
+	exceptions = vfp_double_add(&vdd, &vdn, &vdm, fpscr);
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	return vfp_double_normaliseround(dd, &vdd, fpscr, exceptions, "fadd");
 }
@@ -1057,34 +1258,53 @@ static u32 vfp_double_fadd(int dd, int dn, int dm, u32 fpscr)
 static u32 vfp_double_fsub(int dd, int dn, int dm, u32 fpscr)
 {
 	struct vfp_double vdd, vdn, vdm;
+#ifdef CONFIG_ARCH_ARMADA370
 	u32 exceptions = 0;
 	int tn, tm;
 
 	pr_debug("VFP: fsub: dd=%d, dn=%d, dm=%d\n",dd, dn, dm);
 	pr_debug("VFP: fsub: dn=%016llx\n", vfp_get_double(dn));
 	pr_debug("VFP: fsub: dm=%016llx\n", vfp_get_double(dm));
+#else /* CONFIG_ARCH_ARMADA370 */
+	u32 exceptions;
+#endif /* CONFIG_ARCH_ARMADA370 */
 
+#ifdef CONFIG_ARCH_ARMADA370
 	/*
 	 * Subtraction is like addition, but with a negated operand.
-	 * Problem is when you use same register as source operands. 
-	 * For example fsub d6, d7, d7. In that case negate d7  
+	 * Problem is when you use same register as source operands.
+	 * For example fsub d6, d7, d7. In that case negate d7
 	 * operand will result wrong value...
 	 */
-  	vfp_double_unpack(&vdn, vfp_get_double(dn));
+#endif /* ! CONFIG_ARCH_ARMADA370 */
+	vfp_double_unpack(&vdn, vfp_get_double(dn));
 	if (vdn.exponent == 0 && vdn.significand)
+#ifdef CONFIG_ARCH_ARMADA370
 		vfp_double_normalise_denormal(&vdn, fpscr, &exceptions);
+#else /* CONFIG_ARCH_ARMADA370 */
+		vfp_double_normalise_denormal(&vdn);
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	vfp_double_unpack(&vdm, vfp_get_double(dm));
 	if (vdm.exponent == 0 && vdm.significand)
+#ifdef CONFIG_ARCH_ARMADA370
 		vfp_double_normalise_denormal(&vdm, fpscr, &exceptions);
 
 	vfp_double_dump("VDN", &vdn);
 	vfp_double_dump("VDM", &vdm);
+#else /* CONFIG_ARCH_ARMADA370 */
+		vfp_double_normalise_denormal(&vdm);
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	/*
+#ifdef CONFIG_ARCH_ARMADA370
 	 * Is either of parameters is NaN do not negate their sign.
 	 * In that case result is based on the input NaN.
+#else // CONFIG_ARCH_ARMADA370
+	 * Subtraction is like addition, but with a negated operand.
+#endif // CONFIG_ARCH_ARMADA370
 	 */
+#ifdef CONFIG_ARCH_ARMADA370
 	tn = vfp_double_type(&vdn);
 	tm = vfp_double_type(&vdm);
 
@@ -1093,11 +1313,17 @@ static u32 vfp_double_fsub(int dd, int dn, int dm, u32 fpscr)
 		vdm.sign = vfp_sign_negate(vdm.sign);
 	else
 		pr_debug("VFP: SUB canceled minus signe. One of parameters is NaN tn=0x%x tm=0x%x\n", tn, tm);
-       
+#else /* CONFIG_ARCH_ARMADA370 */
+	vdm.sign = vfp_sign_negate(vdm.sign);
+#endif /* CONFIG_ARCH_ARMADA370 */
+
+#ifdef CONFIG_ARCH_ARMADA370
 	exceptions |= vfp_double_add(&vdd, &vdn, &vdm, fpscr);
+#else /* CONFIG_ARCH_ARMADA370 */
+	exceptions = vfp_double_add(&vdd, &vdn, &vdm, fpscr);
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	return vfp_double_normaliseround(dd, &vdd, fpscr, exceptions, "fsub");
-
 }
 
 /*
@@ -1112,11 +1338,13 @@ static u32 vfp_double_fdiv(int dd, int dn, int dm, u32 fpscr)
 	vfp_double_unpack(&vdn, vfp_get_double(dn));
 	vfp_double_unpack(&vdm, vfp_get_double(dm));
 
+#ifdef CONFIG_ARCH_ARMADA370
 	if (vdn.exponent == 0 && vdn.significand)
 		vfp_double_normalise_denormal(&vdn, fpscr, &exceptions);
 	if (vdm.exponent == 0 && vdm.significand)
 		vfp_double_normalise_denormal(&vdm, fpscr, &exceptions);
 
+#endif /* ! CONFIG_ARCH_ARMADA370 */
 	vdd.sign = vdn.sign ^ vdm.sign;
 
 	tn = vfp_double_type(&vdn);
@@ -1159,6 +1387,13 @@ static u32 vfp_double_fdiv(int dd, int dn, int dm, u32 fpscr)
 	if (tm & VFP_INFINITY || tn & VFP_ZERO)
 		goto zero;
 
+#ifndef CONFIG_ARCH_ARMADA370
+	if (tn & VFP_DENORMAL)
+		vfp_double_normalise_denormal(&vdn);
+	if (tm & VFP_DENORMAL)
+		vfp_double_normalise_denormal(&vdm);
+
+#endif /* CONFIG_ARCH_ARMADA370 */
 	/*
 	 * Ok, we have two numbers, we can perform division.
 	 */
@@ -1182,13 +1417,21 @@ static u32 vfp_double_fdiv(int dd, int dn, int dm, u32 fpscr)
 	return vfp_double_normaliseround(dd, &vdd, fpscr, 0, "fdiv");
 
  vdn_nan:
+#ifdef CONFIG_ARCH_ARMADA370
 	exceptions |= vfp_propagate_nan(&vdd, &vdn, &vdm, fpscr);
+#else /* CONFIG_ARCH_ARMADA370 */
+	exceptions = vfp_propagate_nan(&vdd, &vdn, &vdm, fpscr);
+#endif /* CONFIG_ARCH_ARMADA370 */
  pack:
 	vfp_put_double(vfp_double_pack(&vdd), dd);
 	return exceptions;
 
  vdm_nan:
+#ifdef CONFIG_ARCH_ARMADA370
 	exceptions |= vfp_propagate_nan(&vdd, &vdm, &vdn, fpscr);
+#else /* CONFIG_ARCH_ARMADA370 */
+	exceptions = vfp_propagate_nan(&vdd, &vdm, &vdn, fpscr);
+#endif /* CONFIG_ARCH_ARMADA370 */
 	goto pack;
 
  zero:
@@ -1197,7 +1440,11 @@ static u32 vfp_double_fdiv(int dd, int dn, int dm, u32 fpscr)
 	goto pack;
 
  divzero:
+#ifdef CONFIG_ARCH_ARMADA370
 	exceptions |= FPSCR_DZC;
+#else /* CONFIG_ARCH_ARMADA370 */
+	exceptions = FPSCR_DZC;
+#endif /* CONFIG_ARCH_ARMADA370 */
  infinity:
 	vdd.exponent = 2047;
 	vdd.significand = 0;
@@ -1205,7 +1452,11 @@ static u32 vfp_double_fdiv(int dd, int dn, int dm, u32 fpscr)
 
  invalid:
 	vfp_put_double(vfp_double_pack(&vfp_double_default_qnan), dd);
+#ifdef CONFIG_ARCH_ARMADA370
     return (exceptions | FPSCR_IOC);
+#else /* CONFIG_ARCH_ARMADA370 */
+	return FPSCR_IOC;
+#endif /* CONFIG_ARCH_ARMADA370 */
 }
 
 static struct op fops[16] = {
@@ -1229,24 +1480,47 @@ u32 vfp_double_cpdo(u32 inst, u32 fpscr)
 	u32 exceptions = 0;
 	unsigned int dest;
 	unsigned int dn = vfp_get_dn(inst);
+#ifdef CONFIG_ARCH_ARMADA370
 	unsigned int dm = vfp_get_dm(inst);
+#else /* CONFIG_ARCH_ARMADA370 */
+	unsigned int dm;
+#endif /* CONFIG_ARCH_ARMADA370 */
 	unsigned int vecitr, veclen, vecstride;
 	struct op *fop;
 
+#ifdef CONFIG_ARCH_ARMADA370
 	vecstride = (1 + ((fpscr & FPSCR_STRIDE_MASK) == FPSCR_STRIDE_MASK)) * 2;
+#else /* CONFIG_ARCH_ARMADA370 */
+	vecstride = (1 + ((fpscr & FPSCR_STRIDE_MASK) == FPSCR_STRIDE_MASK));
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	fop = (op == FOP_EXT) ? &fops_ext[FEXT_TO_IDX(inst)] : &fops[FOP_TO_IDX(op)];
 
 	/*
-	 * fcvtds, ftosid, ftosizd, ftouid and ftouizd takes an sN 
-	 * register number as destination, not dN. It also always 
+#ifdef CONFIG_ARCH_ARMADA370
+	 * fcvtds, ftosid, ftosizd, ftouid and ftouizd takes an sN
+	 * register number as destination, not dN. It also always
          * operates on scalars.
+#else // CONFIG_ARCH_ARMADA370
+	 * fcvtds takes an sN register number as destination, not dN.
+	 * It also always operates on scalars.
+#endif // CONFIG_ARCH_ARMADA370
 	 */
 	if (fop->flags & OP_SD)
 		dest = vfp_get_sd(inst);
 	else
 		dest = vfp_get_dd(inst);
 
+#ifndef CONFIG_ARCH_ARMADA370
+	/*
+	 * f[us]ito takes a sN operand, not a dN operand.
+	 */
+	if (fop->flags & OP_SM)
+		dm = vfp_get_sm(inst);
+	else
+		dm = vfp_get_dm(inst);
+
+#endif /* CONFIG_ARCH_ARMADA370 */
 	/*
 	 * If destination bank is zero, vector length is always '1'.
 	 * ARM DDI0100F C5.1.3, C5.3.2.
@@ -1286,10 +1560,19 @@ u32 vfp_double_cpdo(u32 inst, u32 fpscr)
 		 * CHECK: It appears to be undefined whether we stop when
 		 * we encounter an exception.  We continue.
 		 */
+#ifdef CONFIG_ARCH_ARMADA370
 		dest = FREG_BANK(dest) + ((FREG_IDX(dest) + vecstride) & 6);
 		dn = FREG_BANK(dn) + ((FREG_IDX(dn) + vecstride) & 6);
+#else /* CONFIG_ARCH_ARMADA370 */
+		dest = FREG_BANK(dest) + ((FREG_IDX(dest) + vecstride) & 3);
+		dn = FREG_BANK(dn) + ((FREG_IDX(dn) + vecstride) & 3);
+#endif /* CONFIG_ARCH_ARMADA370 */
 		if (FREG_BANK(dm) != 0)
+#ifdef CONFIG_ARCH_ARMADA370
 			dm = FREG_BANK(dm) + ((FREG_IDX(dm) + vecstride) & 6);
+#else /* CONFIG_ARCH_ARMADA370 */
+			dm = FREG_BANK(dm) + ((FREG_IDX(dm) + vecstride) & 3);
+#endif /* CONFIG_ARCH_ARMADA370 */
 	}
 	return exceptions;
 

@@ -20,7 +20,7 @@ struct _Tag_Stack
 	MV_U16   PtrOut;
 	MV_U8    TagStackType;
 #ifndef _OS_BIOS
-	MV_U8    Reserved[1];	
+	MV_U8    Reserved[1];
 #endif
 };
 

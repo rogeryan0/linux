@@ -1,15 +1,8 @@
 #
 # Makefile for the linux arm-specific parts of the memory manager.
 #
-     
-ifeq ($(CONFIG_ARCH_FEROCEON_ORION),y)
-	include $(srctree)/arch/arm/mach-feroceon-orion/config/mvRules.mk
-endif
-ifeq ($(CONFIG_ARCH_FEROCEON_KW),y)
-	include $(srctree)/arch/arm/mach-feroceon-kw/config/mvRules.mk
-endif
-ifeq ($(CONFIG_ARCH_FEROCEON_MV78XX0),y)
-	include $(srctree)/arch/arm/mach-feroceon-mv78xx0/config/mvRules.mk
+ifeq ($(CONFIG_PLAT_ARMADA),y)
+	include $(srctree)/$(MACHINE)/config/mvRules.mk
 endif
 
 obj-y				:= dma-mapping.o extable.o fault.o init.o \
@@ -99,14 +92,20 @@ obj-$(CONFIG_CPU_XSCALE)	+= proc-xscale.o
 obj-$(CONFIG_CPU_XSC3)		+= proc-xsc3.o
 obj-$(CONFIG_CPU_MOHAWK)	+= proc-mohawk.o
 obj-$(CONFIG_CPU_FEROCEON)	+= proc-feroceon.o
-obj-$(CONFIG_CPU_V6)		+= proc-v6.o
-obj-$(CONFIG_CPU_V6K)		+= proc-v6.o
-obj-$(CONFIG_CPU_V7)		+= proc-v7.o
+#obj-$(CONFIG_CPU_V6)		+= proc-v6.o
+#obj-$(CONFIG_CPU_V6K)		+= proc-v6.o
+#obj-$(CONFIG_CPU_V7)		+= proc-v7.o
+obj-$(CONFIG_CPU_SHEEVA_PJ4B_V6)	+= proc-sheeva_pj4bv6.o
+obj-$(CONFIG_CPU_SHEEVA_PJ4B_V7)	+= proc-sheeva_pj4bv7.o
 
 AFLAGS_proc-v6.o	:=-Wa,-march=armv6
 AFLAGS_proc-v7.o	:=-Wa,-march=armv7-a
+
+AFLAGS_proc-sheeva_pj4bv7.o        :=-Wa,-march=armv6
+AFLAGS_proc-sheeva_pj4bv7.o        :=-Wa,-march=armv7-a
 
 obj-$(CONFIG_CACHE_FEROCEON_L2)	+= cache-feroceon-l2.o
 obj-$(CONFIG_CACHE_L2X0)	+= cache-l2x0.o
 obj-$(CONFIG_CACHE_XSC3L2)	+= cache-xsc3l2.o
 obj-$(CONFIG_CACHE_TAUROS2)	+= cache-tauros2.o
+obj-$(CONFIG_CACHE_AURORA_L2)	+= cache-aurora-l2.o

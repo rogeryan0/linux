@@ -3162,6 +3162,24 @@ void netdev_rx_handler_unregister(struct net_device *dev)
 }
 EXPORT_SYMBOL_GPL(netdev_rx_handler_unregister);
 
+#ifdef CONFIG_ARCH_ARMADA370
+#ifdef CONFIG_MV_ETH_NFP_EXT
+static struct sk_buff *handle_nfp_extrcv(struct sk_buff *skb, struct net_device *dev)
+{
+	MV_EXT_PKT_INFO *pktInfo;
+
+	pktInfo = (MV_EXT_PKT_INFO *)&skb->cb;
+	if (pktInfo->flags == 0)
+		pktInfo = NULL;
+
+	if (!mv_eth_nfp_ext(skb->dev, skb, pktInfo))
+		return NULL;
+
+	return skb;
+}
+#endif /* CONFIG_MV_ETH_NFP_EXT */
+#endif
+
 static int __netif_receive_skb(struct sk_buff *skb)
 {
 	struct packet_type *ptype, *pt_prev;
@@ -3207,6 +3225,14 @@ another_round:
 		skb->tc_verd = CLR_TC_NCLS(skb->tc_verd);
 		goto ncls;
 	}
+#endif
+
+#ifdef CONFIG_ARCH_ARMADA370
+#ifdef CONFIG_MV_ETH_NFP_EXT
+	skb = handle_nfp_extrcv(skb, orig_dev);
+	if (!skb)
+		goto out;
+#endif /* CONFIG_MV_ETH_NFP_EXT */
 #endif
 
 	list_for_each_entry_rcu(ptype, &ptype_all, list) {

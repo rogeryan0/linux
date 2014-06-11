@@ -1695,7 +1695,7 @@ static const struct amd_flash_info jedec_table[] = {
 #ifdef CONFIG_BUFFALO_PLATFORM
 	}, {
 		/* 2006.2.2 buffalo: add */
-		.mfr_id		= MANUFACTURER_ST,
+		.mfr_id		= CFI_MFR_ST,
 		.dev_id		= M29W323DT,
 		.name		= "ST M29W323DT",
 		.devtypes	= CFI_DEVICETYPE_X16|CFI_DEVICETYPE_X8,
@@ -1709,7 +1709,7 @@ static const struct amd_flash_info jedec_table[] = {
 		}
 	}, {
 		/* 2006.2.2 buffalo: add */
-		.mfr_id		= MANUFACTURER_ST,
+		.mfr_id		= CFI_MFR_ST,
 		.dev_id		= M29W323DB,
 		.name		= "ST M29W323DB",
 		.devtypes	= CFI_DEVICETYPE_X16|CFI_DEVICETYPE_X8,

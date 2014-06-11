@@ -48,7 +48,9 @@
 #include <linux/leds.h>
 #include <linux/io.h>
 #include <linux/mtd/partitions.h>
-
+#ifdef CONFIG_MTD_NAND_NFC_GANG_SUPPORT
+static char nand_name[128];
+#endif
 #if defined(CONFIG_BUFFALO_PLATFORM)
   #define BIP(x,fmt...) printk(x,##fmt)
   #if defined(CONFIG_BUFFALO_DEBUG)
@@ -2995,10 +2997,21 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 	if (!type->name)
 		return ERR_PTR(-ENODEV);
 
-	if (!mtd->name)
+	if (!mtd->name) {
+#ifdef CONFIG_MTD_NAND_NFC_GANG_SUPPORT
+		sprintf(nand_name, "%s%s", type->name,
+				(chip->num_devs == 2) ? " - Ganged" : "");
+		type->name = nand_name;
+#endif
 		mtd->name = type->name;
+	}
 
 	chip->chipsize = (uint64_t)type->chipsize << 20;
+#ifdef CONFIG_MTD_NAND_NFC_GANG_SUPPORT
+	chip->chipsize *= chip->num_devs;
+	if(chip->num_devs > 1)
+		type->options |= NAND_BUSWIDTH_16;
+#endif
 
 	if (!type->pagesize && chip->init_size) {
 		/* Set the pagesize, oobsize, erasesize by the driver */
@@ -3048,6 +3061,9 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 		} else {
 			/* Calc pagesize */
 			mtd->writesize = 1024 << (extid & 0x03);
+#ifdef CONFIG_MTD_NAND_NFC_GANG_SUPPORT
+			mtd->writesize *= chip->num_devs;
+#endif
 			extid >>= 2;
 			/* Calc oobsize */
 			mtd->oobsize = (8 << (extid & 0x01)) *
@@ -3055,9 +3071,16 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 			extid >>= 2;
 			/* Calc blocksize. Blocksize is multiples of 64KiB */
 			mtd->erasesize = (64 * 1024) << (extid & 0x03);
+#ifdef CONFIG_MTD_NAND_NFC_GANG_SUPPORT
+			mtd->erasesize *= chip->num_devs;
+#endif
 			extid >>= 2;
 			/* Get buswidth information */
 			busw = (extid & 0x01) ? NAND_BUSWIDTH_16 : 0;
+#ifdef CONFIG_MTD_NAND_NFC_GANG_SUPPORT
+			if(chip->num_devs > 1)
+				busw = NAND_BUSWIDTH_16;
+#endif
 		}
 	} else {
 		/*
@@ -3066,7 +3089,17 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 		mtd->erasesize = type->erasesize;
 		mtd->writesize = type->pagesize;
 		mtd->oobsize = mtd->writesize / 32;
+#ifdef CONFIG_MTD_NAND_NFC_MLC_SUPPORT
+		if (chip->oobsize_ovrd)
+			mtd->oobsize = chip->oobsize_ovrd;
+#endif
 		busw = type->options & NAND_BUSWIDTH_16;
+
+#ifdef CONFIG_MTD_NAND_NFC_GANG_SUPPORT
+		mtd->erasesize *= chip->num_devs;
+		mtd->writesize *= chip->num_devs;
+#endif
+
 
 		/*
 		 * Check for Spansion/AMD ID + repeating 5th, 6th byte since
@@ -3117,25 +3150,7 @@ ident_done:
 			   busw ? 16 : 8);
 		return ERR_PTR(-EINVAL);
 	}
-#if defined(CONFIG_BUFFALO_NOT_IMPLEMENTED_NAND_FLASH_DETECT_FIX)
-	else {
-		int mvBoardNandWidthGet(void);
-		int devWidth = mvBoardNandWidthGet();
-        int buswidth = (busw)? 2 : 1;
-		if (devWidth < 0 || buswidth != devWidth) {
-			pr_info("NAND device: Manufacturer ID:"
-					" 0x%02x, Chip ID: 0x%02x (%s %s)\n", *maf_id,
-					*dev_id, nand_manuf_ids[maf_idx].name, mtd->name);
-			pr_warn("NAND bus width %d instead %d bit\n",
-					devWidth*8, buswidth*8);
-			return ERR_PTR(-EINVAL);
-		}
-	}
 
-	if (nand_manuf_ids[maf_idx].id == 0x0) { /* Mafufacture Unknown */
-		return ERR_PTR(-EINVAL);
-	}
-#endif
 	/* Calculate the address shift from the page size */
 	chip->page_shift = ffs(mtd->writesize) - 1;
 	/* Convert chipsize to number of pages per chip -1 */

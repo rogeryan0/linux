@@ -12,6 +12,9 @@ endif
 CFLAGS_REMOVE_return_address.o = -pg
 
 # Object file lists.
+ifeq ($(CONFIG_PLAT_ARMADA),y)
+	include $(srctree)/$(MACHINE)/config/mvRules.mk
+endif
 
 obj-y		:= elf.o entry-armv.o entry-common.o irq.o opcodes.o \
 		   process.o ptrace.o return_address.o setup.o signal.o \

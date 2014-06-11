@@ -28,7 +28,7 @@ MV_VOID SCSI_To_FIS(MV_PVOID This, PMV_Request pReq, MV_U8 tag, PATA_TaskFile pT
 #ifdef SUPPORT_PM
 	PDomain_Device pDevice = &pPort->Device[PATA_MapDeviceId(pReq->Device_Id)];
 #endif
-	/* 
+	/*
 	 * 1. SoftReset is not supported yet.
 	 * 2. PM_Port
 	 */
@@ -72,12 +72,12 @@ MV_BOOLEAN Category_CDB_Type(
 		case SCSI_CMD_READ_10:
 		case SCSI_CMD_READ_16:
 			pReq->Cmd_Flag |= CMD_FLAG_DATA_IN;
-			
+
 		case SCSI_CMD_WRITE_10:
 		case SCSI_CMD_WRITE_16:
 		case SCSI_CMD_VERIFY_10:
-			/* 
-			 * 
+			/*
+			 *
 			 * CMD_FLAG_DATA_IN
 			 * CMD_FLAG_NON_DATA
 			 * CMD_FLAG_DMA
@@ -91,7 +91,7 @@ MV_BOOLEAN Category_CDB_Type(
 			if ( pDevice->Capacity&DEVICE_CAPACITY_NCQ_SUPPORTED )
 			{
 				// might be a PM - assert is no longer true
-				//MV_DASSERT( pPort->Type==PORT_TYPE_SATA );		
+				//MV_DASSERT( pPort->Type==PORT_TYPE_SATA );
 #if 0
 				if ( (pReq->Cdb[0]==SCSI_CMD_READ_10)
 					|| (pReq->Cdb[0]==SCSI_CMD_WRITE_10) )
@@ -104,7 +104,7 @@ MV_BOOLEAN Category_CDB_Type(
 					{
 						/* hardware workaround:
 						 * don't do NCQ on silicon image PM */
-						if( !((pPort->Setting & PORT_SETTING_PM_EXISTING) && 
+						if( !((pPort->Setting & PORT_SETTING_PM_EXISTING) &&
 							(pPort->PM_Vendor_Id == 0x1095 )) )
 						{
 							if ( pReq->Scsi_Status!=REQ_STATUS_RETRY )
@@ -143,7 +143,7 @@ MV_BOOLEAN Category_CDB_Type(
 					case CDB_CORE_DISABLE_SMART:
 					case CDB_CORE_SMART_RETURN_STATUS:
 					case  CDB_CORE_ATA_SMART_AUTO_OFFLINE:
-					case CDB_CORE_ATA_SMART_AUTOSAVE:      
+					case CDB_CORE_ATA_SMART_AUTOSAVE:
 					case CDB_CORE_ATA_SMART_IMMEDIATE_OFFLINE:
 						pReq->Cmd_Flag |= (CMD_FLAG_NON_DATA | CMD_FLAG_SMART);
 						break;
@@ -158,6 +158,8 @@ MV_BOOLEAN Category_CDB_Type(
 				#endif
 					case CDB_CORE_ATA_IDENTIFY:
 						pReq->Cmd_Flag |= (CMD_FLAG_DATA_IN | CMD_FLAG_SMART);
+						break;
+					case CDB_CORE_ATA_DOWNLOAD_MICROCODE:
 						break;
 					case CDB_CORE_SHUTDOWN:
 						if ( pDevice->Device_Type&DEVICE_TYPE_ATAPI )
@@ -192,14 +194,14 @@ MV_BOOLEAN Category_CDB_Type(
 			return MV_TRUE;
 			break;
 #endif
-		case SCSI_CMD_START_STOP_UNIT:	
+		case SCSI_CMD_START_STOP_UNIT:
 		case SCSI_CMD_SYNCHRONIZE_CACHE_10:
 			if ( !(pDevice->Device_Type & DEVICE_TYPE_ATAPI )){
 				if ( pDevice->Capacity&DEVICE_CAPACITY_48BIT_SUPPORTED )
 					pReq->Cmd_Flag |= CMD_FLAG_48BIT;
 				pReq->Cmd_Flag |= CMD_FLAG_NON_DATA;
 				break;
-			}	//We will send this command to CD drive directly if it is ATAPI device.	
+			}	//We will send this command to CD drive directly if it is ATAPI device.
 		case SCSI_CMD_SND_DIAG:
 			pReq->Cmd_Flag |= CMD_FLAG_DATA_OUT;
 		case SCSI_CMD_INQUIRY:
@@ -229,12 +231,12 @@ MV_BOOLEAN Category_CDB_Type(
 static void rw16_taskfile(PMV_Request req, PATA_TaskFile tf, int tag)
 {
 	if (req->Cmd_Flag & CMD_FLAG_NCQ) {
-		
+
 		tf->Features = req->Cdb[13];
 		tf->Feature_Exp = req->Cdb[12];
 
 		tf->Sector_Count = tag<<3;
-		
+
 		tf->LBA_Low = req->Cdb[9];
 		tf->LBA_Mid = req->Cdb[8];
 		tf->LBA_High = req->Cdb[7];
@@ -269,8 +271,26 @@ static void rw16_taskfile(PMV_Request req, PATA_TaskFile tf, int tag)
 			tf->Command = ATA_CMD_WRITE_DMA_EXT;
 	}
 }
-#ifdef SUPPORT_ATA_SECURITY_CMD
-void scsi_ata_ata_passthru_16_fill_taskfile(MV_Request *req, OUT PATA_TaskFile  taskfile)
+void scsi_ata_passthru_12_fill_taskfile(MV_Request *req, OUT PATA_TaskFile  taskfile)
+{
+	taskfile->Command = req->Cdb[9];
+	taskfile->Features = req->Cdb[3];
+	taskfile->Device = req->Cdb[8];
+
+	taskfile->LBA_Low = req->Cdb[5];
+	taskfile->LBA_Mid = req->Cdb[6];
+	taskfile->LBA_High = req->Cdb[7];
+	taskfile->Sector_Count = req->Cdb[4];
+	taskfile->Control = req->Cdb[11];
+
+	taskfile->LBA_Low_Exp = 0;
+	taskfile->LBA_Mid_Exp = 0;
+	taskfile->LBA_High_Exp = 0;
+	taskfile->Sector_Count_Exp = 0;
+	taskfile->Feature_Exp = 0;
+}
+
+void scsi_ata_passthru_16_fill_taskfile(MV_Request *req, OUT PATA_TaskFile  taskfile)
 {
 	taskfile->Command = req->Cdb[14];
 	taskfile->Features = req->Cdb[4];
@@ -281,7 +301,7 @@ void scsi_ata_ata_passthru_16_fill_taskfile(MV_Request *req, OUT PATA_TaskFile  
 	taskfile->LBA_High = req->Cdb[12];
 	taskfile->Sector_Count = req->Cdb[6];
 	taskfile->Control = req->Cdb[15];
-	if (req->Cdb[1] & 0x01) {
+	if ((req->Cdb[1] & 0x01) ||(req->Cmd_Flag & CMD_FLAG_48BIT)){
 		taskfile->LBA_Low_Exp = req->Cdb[7];
 		taskfile->LBA_Mid_Exp = req->Cdb[9];
 		taskfile->LBA_High_Exp = req->Cdb[11];
@@ -295,10 +315,10 @@ void scsi_ata_ata_passthru_16_fill_taskfile(MV_Request *req, OUT PATA_TaskFile  
 		taskfile->Feature_Exp = 0;
 	}
 }
-#endif
+
 MV_BOOLEAN ATA_CDB2TaskFile(
 	IN PDomain_Device pDevice,
-	IN PMV_Request pReq, 
+	IN PMV_Request pReq,
 	IN MV_U8 tag,
 	OUT PATA_TaskFile pTaskFile
 	)
@@ -310,22 +330,22 @@ MV_BOOLEAN ATA_CDB2TaskFile(
 		case SCSI_CMD_READ_10:
 		case SCSI_CMD_WRITE_10:
 			{
-				
-				/* 
+
+				/*
 				 * The OS maximum tranfer length is set to 128K.
 				 * For ATA_CMD_READ_DMA and ATA_CMD_WRITE_DMA,
 				 * the max size they can handle is 256 sectors.
 				 * And Sector_Count==0 means 256 sectors.
 				 * If OS request max lenght>128K, for 28 bit device, we have to split requests.
 				 */
-#ifndef _OS_LINUX  //Avoid keneral panic 
+#ifndef _OS_LINUX  //Avoid keneral panic
 				MV_DASSERT( ( (((MV_U16)pReq->Cdb[7])<<8) | (pReq->Cdb[8]) ) <= 256 );
 #endif
 				/*
 				 * 24 bit LBA can express 128GB.
 				 * 4 bytes LBA like SCSI_CMD_READ_10 can express 2TB.
 				 */
-			
+
 				/* Make sure Cmd_Flag has set already. */
 				#ifdef SUPPORT_ATA_SECURITY_CMD
 				if ( pReq->Cmd_Flag&CMD_FLAG_NCQ && !((pDevice->Setting&DEVICE_SETTING_SECURITY_LOCKED)==0x10))
@@ -333,17 +353,17 @@ MV_BOOLEAN ATA_CDB2TaskFile(
 				if ( pReq->Cmd_Flag&CMD_FLAG_NCQ)
 				#endif
 				{
-					
+
 					pTaskFile->Features = pReq->Cdb[8];
 					pTaskFile->Feature_Exp = pReq->Cdb[7];
 
 					pTaskFile->Sector_Count = tag<<3;
-					
+
 					pTaskFile->LBA_Low = pReq->Cdb[5];
 					pTaskFile->LBA_Mid = pReq->Cdb[4];
 					pTaskFile->LBA_High = pReq->Cdb[3];
 					pTaskFile->LBA_Low_Exp = pReq->Cdb[2];
-		
+
 					pTaskFile->Device = MV_BIT(6);
 
 					if ( pReq->Cdb[0]==SCSI_CMD_READ_10 )
@@ -374,13 +394,13 @@ MV_BOOLEAN ATA_CDB2TaskFile(
 				{
 					/* 28 bit DMA */
 					pTaskFile->Sector_Count = pReq->Cdb[8];		/* Could be zero */
-	
+
 					pTaskFile->LBA_Low = pReq->Cdb[5];
 					pTaskFile->LBA_Mid = pReq->Cdb[4];
 					pTaskFile->LBA_High = pReq->Cdb[3];
-			
+
 					pTaskFile->Device = MV_BIT(6) | (pReq->Cdb[2]&0xF);
-					
+
 					MV_DASSERT( (pReq->Cdb[2]&0xF0)==0 );
 
 					if ( pReq->Cdb[0]==SCSI_CMD_READ_10 )
@@ -393,7 +413,7 @@ MV_BOOLEAN ATA_CDB2TaskFile(
 			}
 #ifdef SUPPORT_ATA_SECURITY_CMD
 		case ATA_16:
-			scsi_ata_ata_passthru_16_fill_taskfile(pReq,pTaskFile);
+			scsi_ata_passthru_16_fill_taskfile(pReq,pTaskFile);
 			break;
 #endif
 		case SCSI_CMD_READ_16:
@@ -402,7 +422,7 @@ MV_BOOLEAN ATA_CDB2TaskFile(
 			break;
 
 		case SCSI_CMD_VERIFY_10:
-			/* 
+			/*
 			 * For verify command, the size may need use two MV_U8, especially Windows.
 			 * For 28 bit device, we have to split the request.
 			 * For 48 bit device, we use ATA_CMD_VERIFY_EXT.
@@ -424,16 +444,16 @@ MV_BOOLEAN ATA_CDB2TaskFile(
 			else
 			{
 				pTaskFile->Sector_Count = pReq->Cdb[8];
-				
+
 				pTaskFile->LBA_Low = pReq->Cdb[5];
 				pTaskFile->LBA_Mid = pReq->Cdb[4];
 				pTaskFile->LBA_High = pReq->Cdb[3];
 
 				pTaskFile->Device = MV_BIT(6) | (pReq->Cdb[2]&0xF);
-				
+
 				MV_DASSERT( (pReq->Cdb[2]&0xF0)==0 );
 
-				pTaskFile->Command = ATA_CMD_VERIFY;				
+				pTaskFile->Command = ATA_CMD_VERIFY;
 			}
 
 			break;
@@ -443,7 +463,7 @@ MV_BOOLEAN ATA_CDB2TaskFile(
 				/* This request should be for core module */
 				if ( pReq->Cdb[1]!=CDB_CORE_MODULE )
 					return MV_FALSE;
-				
+
 				switch ( pReq->Cdb[2] )
 				{
 					case CDB_CORE_IDENTIFY:
@@ -467,13 +487,13 @@ MV_BOOLEAN ATA_CDB2TaskFile(
 						pTaskFile->Features = ATA_CMD_ENABLE_WRITE_CACHE;
 						 pDevice->Setting |= DEVICE_SETTING_WRITECACHE_ENABLED;
 						break;
-			
+
 					case CDB_CORE_DISABLE_WRITE_CACHE:
 						pTaskFile->Command = ATA_CMD_SET_FEATURES;
 						pTaskFile->Features = ATA_CMD_DISABLE_WRITE_CACHE;
 						 pDevice->Setting &= ~DEVICE_SETTING_WRITECACHE_ENABLED;
 						break;
-						
+
 					case CDB_CORE_SHUTDOWN:
 						if ( pDevice->Capacity&DEVICE_CAPACITY_48BIT_SUPPORTED )
 							pTaskFile->Command = ATA_CMD_FLUSH_EXT;
@@ -481,10 +501,10 @@ MV_BOOLEAN ATA_CDB2TaskFile(
 							pTaskFile->Command = ATA_CMD_FLUSH;
 						break;
 
-                      	 #ifdef SUPPORT_ATA_POWER_MANAGEMENT
+			 #ifdef SUPPORT_ATA_POWER_MANAGEMENT
 					case CDB_CORE_ATA_IDLE:
 						pTaskFile->Command = 0xe3;
-						pTaskFile->Sector_Count = pReq->Cdb[(pReq->Cmd_Flag & CMD_FLAG_SMART_ATA_12) ?4:6];
+						pTaskFile->Sector_Count = pReq->Cdb[(pReq->Cmd_Flag & CMD_FLAG_ATA_12) ?4:6];
 							break;
 					case CDB_CORE_ATA_STANDBY:
 						pTaskFile->Command = 0xe2;
@@ -498,15 +518,15 @@ MV_BOOLEAN ATA_CDB2TaskFile(
 					case CDB_CORE_ATA_CHECK_POWER_MODE:
 						pTaskFile->Command = 0xe5;
 							break;
-                         	        case CDB_CORE_ATA_SLEEP:
-                                               	pTaskFile->Command = 0xe6;
-                                               	break;
+				        case CDB_CORE_ATA_SLEEP:
+						pTaskFile->Command = 0xe6;
+						break;
                          #endif
 					case CDB_CORE_ATA_IDENTIFY:
 						pTaskFile->Command = 0xec;
 						break;
 
-					case CDB_CORE_ENABLE_READ_AHEAD:	
+					case CDB_CORE_ENABLE_READ_AHEAD:
 						pTaskFile->Command = ATA_CMD_SET_FEATURES;
 						pTaskFile->Features = ATA_CMD_ENABLE_READ_LOOK_AHEAD;
 						break;
@@ -515,7 +535,7 @@ MV_BOOLEAN ATA_CDB2TaskFile(
 						pTaskFile->Command = ATA_CMD_SET_FEATURES;
 						pTaskFile->Features = ATA_CMD_DISABLE_READ_LOOK_AHEAD;
 						break;
-					
+
 					case CDB_CORE_READ_LOG_EXT:
 						pTaskFile->Command = ATA_CMD_READ_LOG_EXT;
 						pTaskFile->Sector_Count = 1;	/* Read one sector */
@@ -555,7 +575,7 @@ MV_BOOLEAN ATA_CDB2TaskFile(
 						pTaskFile->Features = ATA_CMD_SMART_RETURN_STATUS;
 						pTaskFile->LBA_Mid = 0x4F;
 						pTaskFile->LBA_High = 0xC2;
-						break;	
+						break;
 					case CDB_CORE_ATA_SMART_READ_VALUES:
 						pTaskFile->Command = ATA_CMD_SMART;
 						pTaskFile->Features = ATA_SMART_READ_VALUES;
@@ -576,7 +596,7 @@ MV_BOOLEAN ATA_CDB2TaskFile(
 						pTaskFile->LBA_Mid = 0x4F;
 						pTaskFile->LBA_High = 0xC2;
 						pTaskFile->Sector_Count = 0x1;
-						pTaskFile->LBA_Low = pReq->Cdb[(pReq->Cmd_Flag & CMD_FLAG_SMART_ATA_12) ?5:8];
+						pTaskFile->LBA_Low = pReq->Cdb[(pReq->Cmd_Flag & CMD_FLAG_ATA_12) ?5:8];
 						break;
 					case CDB_CORE_ATA_SMART_WRITE_LOG_SECTOR :
 						pTaskFile->Command = ATA_CMD_SMART;
@@ -584,33 +604,38 @@ MV_BOOLEAN ATA_CDB2TaskFile(
 						pTaskFile->LBA_Mid = 0x4F;
 						pTaskFile->LBA_High = 0xC2;
 						pTaskFile->Sector_Count = 0x1;
-						pTaskFile->LBA_Low = pReq->Cdb[(pReq->Cmd_Flag & CMD_FLAG_SMART_ATA_12) ?5:8];
+						pTaskFile->LBA_Low = pReq->Cdb[(pReq->Cmd_Flag & CMD_FLAG_ATA_12) ?5:8];
 						break;
 					case  CDB_CORE_ATA_SMART_AUTO_OFFLINE:
 						pTaskFile->Command = ATA_CMD_SMART;
 						pTaskFile->Features = ATA_SMART_AUTO_OFFLINE;
 						pTaskFile->LBA_Mid = 0x4F;
 						pTaskFile->LBA_High = 0xC2;
-						pTaskFile->LBA_Low= pReq->Cdb[(pReq->Cmd_Flag & CMD_FLAG_SMART_ATA_12) ?5:8];
-						pTaskFile->Sector_Count = pReq->Cdb[(pReq->Cmd_Flag & CMD_FLAG_SMART_ATA_12) ?4:6];
+						pTaskFile->LBA_Low= pReq->Cdb[(pReq->Cmd_Flag & CMD_FLAG_ATA_12) ?5:8];
+						pTaskFile->Sector_Count = pReq->Cdb[(pReq->Cmd_Flag & CMD_FLAG_ATA_12) ?4:6];
 						break;
-					case CDB_CORE_ATA_SMART_AUTOSAVE:    
+					case CDB_CORE_ATA_SMART_AUTOSAVE:
 						pTaskFile->Command = ATA_CMD_SMART;
 						pTaskFile->Features = ATA_SMART_AUTOSAVE;
 						pTaskFile->LBA_Mid = 0x4F;
 						pTaskFile->LBA_High = 0xC2;
-						pTaskFile->Sector_Count =  pReq->Cdb[(pReq->Cmd_Flag & CMD_FLAG_SMART_ATA_12) ?4 : 6];
+						pTaskFile->Sector_Count =  pReq->Cdb[(pReq->Cmd_Flag & CMD_FLAG_ATA_12) ?4 : 6];
 						break;
 					case CDB_CORE_ATA_SMART_IMMEDIATE_OFFLINE:
 						pTaskFile->Command = ATA_CMD_SMART;
 						pTaskFile->Features = ATA_SMART_IMMEDIATE_OFFLINE;
 						pTaskFile->LBA_Mid = 0x4F;
 						pTaskFile->LBA_High = 0xC2;
-						pTaskFile->LBA_Low= pReq->Cdb[(pReq->Cmd_Flag & CMD_FLAG_SMART_ATA_12) ?5:8];
-						pTaskFile->Sector_Count =  pReq->Cdb[(pReq->Cmd_Flag & CMD_FLAG_SMART_ATA_12) ?4 : 6];
+						pTaskFile->LBA_Low= pReq->Cdb[(pReq->Cmd_Flag & CMD_FLAG_ATA_12) ?5:8];
+						pTaskFile->Sector_Count =  pReq->Cdb[(pReq->Cmd_Flag & CMD_FLAG_ATA_12) ?4 : 6];
 						break;
 				#endif /*#ifdef SUPPORT_ATA_SMART*/
-										
+					case CDB_CORE_ATA_DOWNLOAD_MICROCODE:
+						if(pReq->Cmd_Flag & CMD_FLAG_ATA_12)
+							scsi_ata_passthru_12_fill_taskfile(pReq,pTaskFile);
+						else
+							scsi_ata_passthru_16_fill_taskfile(pReq,pTaskFile);
+						break;
 					default:
 						return MV_FALSE;
 				}
@@ -647,11 +672,11 @@ MV_BOOLEAN ATA_CDB2TaskFile(
 			return MV_FALSE;
 	}
 
-	/* 
+	/*
 	 * Attention: Never return before this line if your return is MV_TRUE.
-	 * We need set the slave DEV bit here. 
+	 * We need set the slave DEV bit here.
 	 */
-	if ( pDevice->Is_Slave )		
+	if ( pDevice->Is_Slave )
 		pTaskFile->Device |= MV_BIT(4);
 
 	return MV_TRUE;
@@ -659,7 +684,7 @@ MV_BOOLEAN ATA_CDB2TaskFile(
 
 MV_BOOLEAN ATAPI_CDB2TaskFile(
 	IN PDomain_Device pDevice,
-	IN PMV_Request pReq, 
+	IN PMV_Request pReq,
 	OUT PATA_TaskFile pTaskFile
 	)
 {
@@ -678,7 +703,7 @@ MV_BOOLEAN ATAPI_CDB2TaskFile(
 		case CDB_CORE_IDENTIFY:
 			pTaskFile->Command = ATA_CMD_IDENTIY_ATAPI;
 			break;
-					
+
 		case CDB_CORE_SET_UDMA_MODE:
 			pTaskFile->Command = ATA_CMD_SET_FEATURES;
 			pTaskFile->Features = ATA_CMD_SET_TRANSFER_MODE;
@@ -688,7 +713,7 @@ MV_BOOLEAN ATAPI_CDB2TaskFile(
 				pTaskFile->Sector_Count = 0x40 | pReq->Cdb[3];	/* UDMA mode*/
 
 			break;
-					
+
 		case CDB_CORE_SET_PIO_MODE:
 			pTaskFile->Command = ATA_CMD_SET_FEATURES;
 			pTaskFile->Features = ATA_CMD_SET_TRANSFER_MODE;
@@ -719,8 +744,8 @@ MV_BOOLEAN ATAPI_CDB2TaskFile(
 	case SCSI_CMD_SYNCHRONIZE_CACHE_10:
 	case SCSI_CMD_REQUEST_SENSE:
 	default:
-		/* 
-		 * Use packet command 
+		/*
+		 * Use packet command
 		 */
 		/* Features: DMA, OVL, DMADIR */
 #if defined(USE_DMA_FOR_ALL_PACKET_COMMAND)
@@ -751,13 +776,12 @@ MV_BOOLEAN ATAPI_CDB2TaskFile(
 		break;
 	}
 
-	/* 
+	/*
 	 * Attention: Never return before this line if your return is MV_TRUE.
-	 * We need set the slave DEV bit here. 
+	 * We need set the slave DEV bit here.
 	 */
-	if ( pDevice->Is_Slave )		
+	if ( pDevice->Is_Slave )
 		pTaskFile->Device |= MV_BIT(4);
 
 	return MV_TRUE;
 }
-

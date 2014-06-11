@@ -27,6 +27,11 @@
 #include <asm/pmu.h>
 #include <asm/stacktrace.h>
 
+#ifdef CONFIG_ARCH_ARMADA_XP
+int pmu_request_irq(int irq, irq_handler_t handler);
+void pmu_free_irq(int irq);
+#endif
+
 /*
  * ARMv6 supports a maximum of 3 events, starting from index 0. If we add
  * another platform that supports more, we need to increase this to be the
@@ -379,7 +384,11 @@ armpmu_release_hardware(struct arm_pmu *armpmu)
 		if (irq >= 0) {
 			if (plat && plat->disable_irq)
 				plat->disable_irq(irq);
+#ifdef CONFIG_ARCH_ARMADA_XP
+			pmu_free_irq(irq);
+#else
 			free_irq(irq, armpmu);
+#endif
 		}
 	}
 
@@ -432,9 +441,13 @@ armpmu_reserve_hardware(struct arm_pmu *armpmu)
 			continue;
 		}
 
+#ifdef CONFIG_ARCH_ARMADA_XP
+		err = pmu_request_irq(irq, handle_irq);
+#else
 		err = request_irq(irq, handle_irq,
 				  IRQF_DISABLED | IRQF_NOBALANCING,
 				  "arm-pmu", armpmu);
+#endif
 		if (err) {
 			pr_err("unable to request IRQ%d for ARM PMU counters\n",
 				irq);
@@ -607,6 +620,7 @@ int __init armpmu_register(struct arm_pmu *armpmu, char *name, int type)
 #include "perf_event_xscale.c"
 #include "perf_event_v6.c"
 #include "perf_event_v7.c"
+#include "perf_event_pj4b.c"
 
 /*
  * Ensure the PMU has sane values out of reset.
@@ -720,7 +734,13 @@ init_hw_perf_events(void)
 			cpu_pmu = armv6pmu_init();
 			break;
 		case 0xB020:	/* ARM11mpcore */
+#ifdef CONFIG_ARCH_ARMADA_XP
+			mrvl_pj4b_read_reset_pmnc();
+			printk(KERN_INFO "Armada-XP Performance Monitor Unit detected (ARM MPcore ID)!!!\n");
+			cpu_pmu = mrvl_pj4b_pmu_init();
+#else
 			cpu_pmu = armv6mpcore_pmu_init();
+#endif
 			break;
 		case 0xC080:	/* Cortex-A8 */
 			cpu_pmu = armv7_a8_pmu_init();
@@ -746,7 +766,22 @@ init_hw_perf_events(void)
 			cpu_pmu = xscale2pmu_init();
 			break;
 		}
+#ifdef CONFIG_ARCH_ARMADA_XP
+	/* Marvell Armada XP CPUs */
+	} else if (0x56 == implementor) {
+		part_number = (cpuid >> 4) & 0xFFF;
+		switch (part_number) {
+		case 0x581:
+		case 0x584:
+			printk(KERN_INFO "Armada-XP Performance Monitor Unit detected (Marvell ID)!!!\n");
+			mrvl_pj4b_read_reset_pmnc();
+			cpu_pmu = mrvl_pj4b_pmu_init();
+			break;
+		}
 	}
+#else
+	}
+#endif
 
 	if (cpu_pmu) {
 		pr_info("enabled with %s PMU driver, %d counters available\n",

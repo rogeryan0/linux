@@ -272,7 +272,7 @@ static const struct iw_ioctl_description standard_event[] = {
 	[IW_EVENT_IDX(IWEVCUSTOM)] = {
 		.header_type	= IW_HEADER_TYPE_POINT,
 		.token_size	= 1,
-		.max_tokens	= IW_CUSTOM_MAX,
+		.max_tokens	= (IW_CUSTOM_MAX * 2),
 	},
 	[IW_EVENT_IDX(IWEVREGISTERED)] = {
 		.header_type	= IW_HEADER_TYPE_ADDR,

@@ -150,6 +150,7 @@
 #      define   CDB_CORE_ATA_SMART_AUTOSAVE          0x23
 #      define   CDB_CORE_ATA_SMART_IMMEDIATE_OFFLINE    0x24
 #      define   CDB_CORE_ATA_IDENTIFY                 0x25
+#      define   CDB_CORE_ATA_DOWNLOAD_MICROCODE       0x26
 
 
 #      define SMP_CDB_USE_ADDRESS               0x01
@@ -185,7 +186,7 @@
 #define SCSI_SK_HARDWARE_ERROR                  0x04
 #define SCSI_SK_ILLEGAL_REQUEST                 0x05
 #define SCSI_SK_UNIT_ATTENTION                  0x06
-#define SCSI_SK_DATA_PROTECT                    0x07 
+#define SCSI_SK_DATA_PROTECT                    0x07
 #define SCSI_SK_BLANK_CHECK                     0x08
 #define SCSI_SK_VENDOR_SPECIFIC                 0x09
 #define SCSI_SK_COPY_ABORTED                    0x0A
@@ -214,8 +215,8 @@
 #define SCSI_ASC_FAILURE_PREDICTION_THRESHOLD_EXCEEDED	0x5D
 
 #ifdef _OS_LINUX	/* below is defined in Windows DDK scsi.h */
-#define SCSI_ADSENSE_NO_SENSE  0x98    
-#define SCSI_ADSENSE_INVALID_CDB 0x99  
+#define SCSI_ADSENSE_NO_SENSE  0x98
+#define SCSI_ADSENSE_INVALID_CDB 0x99
 #endif
 
 /*

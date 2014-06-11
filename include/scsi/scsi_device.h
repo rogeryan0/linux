@@ -9,11 +9,6 @@
 #include <scsi/scsi.h>
 #include <linux/atomic.h>
 
-#ifdef CONFIG_MV_SCATTERED_SPINUP
-#include <linux/timer.h>
-#include <scsi/scsi_spinup.h>
-#endif
-
 struct request_queue;
 struct scsi_cmnd;
 struct scsi_lun;
@@ -181,13 +176,6 @@ struct scsi_device {
 #if defined(CONFIG_BUFFALO_IGNORE_LUN) // BUFFALO_PLATFORM
 	int ignore_lun;
 #endif // CONFIG_BUFFALO_IGNORE_LUN
-
-#ifdef CONFIG_MV_SCATTERED_SPINUP
-	enum scsi_device_power_state sdev_power_state;  /*Used to save the disk current power state*/
-	struct timer_list spinup_timeout;	/* Used to time out the spinup process when done. */
-	unsigned int standby_timeout_secs;
-	struct timer_list standby_timeout;	/* Used to time out the standby timeout command. */
-#endif
 
 	unsigned long		sdev_data[0];
 } __attribute__((aligned(sizeof(unsigned long))));

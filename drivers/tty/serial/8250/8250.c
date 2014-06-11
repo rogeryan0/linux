@@ -394,10 +394,51 @@ static unsigned int mem_serial_in(struct uart_port *p, int offset)
 	return readb(p->membase + offset);
 }
 
+#ifdef CONFIG_PLAT_ARMADA
+/* Save the LCR value so it can be re-written when a Busy Detect IRQ occurs. */
+static inline void mem_save_out_value(struct uart_port *p, int offset,
+					int value)
+{
+	struct uart_8250_port *up =
+		container_of(p, struct uart_8250_port, port);
+
+	if (offset == UART_LCR)
+		up->lcr = value;
+}
+
+/* Read the IER to ensure any interrupt is cleared before returning from ISR. */
+static inline void mem_check_clear_ier(struct uart_port *p, int offset)
+{
+	if (offset == UART_TX || offset == UART_IER)
+		p->serial_in(p, UART_IER);
+}
+#endif
+
 static void mem_serial_out(struct uart_port *p, int offset, int value)
 {
+#ifdef CONFIG_PLAT_ARMADA
+	int save_offset = offset;
+#endif
 	offset = map_8250_out_reg(p, offset) << p->regshift;
+#ifdef CONFIG_PLAT_ARMADA
+	/* If we are accessing DLH (0x4), DLL (0x0), LCR(0xC) or 0x1C
+	** we need to make sure that the busy bit is cleared in USR register.
+	*/
+	if ((((readb(p->membase + 0xC) & 0x80) &&
+	     ((save_offset == UART_DLL) || (save_offset == UART_DLM) ||
+	      (offset == 0x1C))) ||
+	     (save_offset == UART_LCR)) && !(readb(p->membase + 0x14) & 0x1)) {
+		unsigned int status;
+		do {
+			status = *((volatile u32 *)p->private_data);
+		} while (status & 0x1);
+	}
+	mem_save_out_value(p, save_offset, value);
+#endif
 	writeb(value, p->membase + offset);
+#ifdef CONFIG_PLAT_ARMADA
+	mem_check_clear_ier(p, save_offset);
+#endif
 }
 
 static void mem32_serial_out(struct uart_port *p, int offset, int value)
@@ -1020,7 +1061,7 @@ static void autoconfig_16550a(struct uart_8250_port *up)
 			 */
 			DEBUG_AUTOCONF("Xscale ");
 			up->port.type = PORT_XSCALE;
-			up->capabilities |= UART_CAP_UUE | UART_CAP_RTOIE;
+			up->capabilities |= UART_CAP_UUE;
 			return;
 		}
 	} else {
@@ -2788,20 +2829,14 @@ serial8250_register_ports(struct uart_driver *drv, struct device *dev)
 			serial8250_init_fixed_type_port(up, up->port.type);
 
 		uart_add_one_port(drv, &up->port);
-#if (defined(CONFIG_BUFFALO_PLATFORM) && defined(CONFIG_ARCH_FEROCEON_MV78XX0)) || defined(CONFIG_BUFFALO_USE_UPS)
-		{
-			extern struct uart_port *uart_ports[];
-
-			uart_ports[i] = &up->port;
-		}
-#endif 
+#if defined(CONFIG_BUFFALO_USE_UPS) && defined(CONFIG_ARCH_ARMADA_XP)
+		extern struct uart_port *uart_ports[]; /*buffalo/buffaloUart.h*/
+		uart_ports[i] = &up->port;
+#endif
 	}
-#if defined(CONFIG_BUFFALO_PLATFORM) && defined(CONFIG_ARCH_FEROCEON_MV78XX0)
-	{
-		extern void BuffaloInitUpsUartPort(void);
-
-		BuffaloInitUpsUartPort();
-	}
+#if defined(CONFIG_BUFFALO_USE_UPS) && defined(CONFIG_ARCH_ARMADA_XP)
+        extern void BuffaloInitUpsUartPort(void);
+        BuffaloInitUpsUartPort();
 #endif
 }
 

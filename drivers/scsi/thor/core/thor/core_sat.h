@@ -4,7 +4,7 @@
 #include "core_inter.h"
 
 // ATA Specification Command Register Values (Commands)
-#define ATA_IDENTIFY_DEVICE             0xec                                              
+#define ATA_IDENTIFY_DEVICE             0xec
 #define ATA_IDENTIFY_PACKET_DEVICE      0xa1
 #define ATA_SMART_CMD                   0xb0
 #define ATA_CHECK_POWER_MODE            0xe5
@@ -75,4 +75,3 @@ void mvScsiModeSense(PCore_Driver_Extension pCore, PMV_Request pReq);
 void Core_Fill_SendDiagTaskfile( PDomain_Device device,PMV_Request req, PATA_TaskFile taskfile);
 
 #endif /* __CORE_SAT_H__ */
-  

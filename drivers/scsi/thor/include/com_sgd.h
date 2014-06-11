@@ -283,7 +283,7 @@ typedef int (*sgd_visitor_t)(sgd_t* sgd, MV_PVOID pContext);
 int sgd_table_walk(
 	sgd_tbl_t*		sgdt,
 	sgd_visitor_t	visitor,
-	MV_PVOID		ctx 
+	MV_PVOID		ctx
 	);
 
 /*---------------------------------------------------------------------------*/
@@ -299,7 +299,7 @@ void  sgd_iter_init(
 	sgd_iter_t*	iter,
 	sgd_t*		sgd,
 	MV_U32		offset,
-	MV_U32		count 
+	MV_U32		count
 	);
 
 int sgd_iter_get_next(
@@ -333,7 +333,7 @@ int sgdt_append_virtual(
 	sgd_tbl_t* sgdt,
 	MV_PVOID virtual_address,
 	MV_PVOID translation_ctx,
-	MV_U32 size 
+	MV_U32 size
 	);
 
 int sgdt_append_ref(

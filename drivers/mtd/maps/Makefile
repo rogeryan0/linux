@@ -57,17 +57,12 @@ obj-$(CONFIG_MTD_VMU)		+= vmu-flash.o
 obj-$(CONFIG_MTD_GPIO_ADDR)	+= gpio-addr-flash.o
 obj-$(CONFIG_MTD_LATCH_ADDR)	+= latch-addr-flash.o
 obj-$(CONFIG_MTD_LANTIQ)	+= lantiq-flash.o
-
-obj-$(CONFIG_MTD)		+= flashmap.o
-ifeq ($(CONFIG_ARCH_FEROCEON_ORION),y)
-	include $(srctree)/arch/arm/mach-feroceon-orion/config/mvRules.mk
-	flashmap-objs = ../../../arch/arm/mach-feroceon-orion/flashmap.o
+ifeq ($(CONFIG_PLAT_ARMADA),y)
+	include $(srctree)/$(MACHINE)/config/mvRules.mk
 endif
-ifeq ($(CONFIG_ARCH_FEROCEON_KW),y)
-	include $(srctree)/arch/arm/mach-feroceon-kw/config/mvRules.mk
-	flashmap-objs = ../../../arch/arm/mach-feroceon-kw/flashmap.o
+ifeq ($(CONFIG_ARCH_ARMADA370),y)
+	obj-y += ../../../$(MACHINE)/flashmap.o
 endif
-ifeq ($(CONFIG_ARCH_FEROCEON_MV78XX0),y)
-	include $(srctree)/arch/arm/mach-feroceon-mv78xx0/config/mvRules.mk
-	flashmap-objs = ../../../arch/arm/mach-feroceon-mv78xx0/flashmap.o
+ifeq ($(CONFIG_ARCH_ARMADA_XP),y)
+	obj-$(CONFIG_MV_INCLUDE_SPI) += ../../../arch/arm/mach-armadaxp/flashmap.o
 endif

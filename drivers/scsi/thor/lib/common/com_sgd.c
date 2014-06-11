@@ -11,12 +11,12 @@
 #define USES_64B_POINTER
 #endif
 
-int sg_iter_walk( 
-	IN sgd_t* sgd, 
-	IN MV_U32 offset, 
-	IN MV_U32 count, 
-	IN sgd_visitor_t visitor, 
-	IN MV_PVOID context 
+int sg_iter_walk(
+	IN sgd_t* sgd,
+	IN MV_U32 offset,
+	IN MV_U32 count,
+	IN sgd_visitor_t visitor,
+	IN MV_PVOID context
 	)
 {
 	sgd_t	sg[2];
@@ -77,7 +77,7 @@ int sg_iter_walk(
 
 				if( sgd->flags & SGD_VP )
 				{
-					((sgd_vp_t*)sg)->u.vaddr = ((MV_U8*) ((sgd_vp_t*)sg)->u.vaddr) + 
+					((sgd_vp_t*)sg)->u.vaddr = ((MV_U8*) ((sgd_vp_t*)sg)->u.vaddr) +
 						offset;
 				}
 
@@ -99,7 +99,7 @@ int sg_iter_walk(
 
 		sg_cnt++;
 
-		if( sgd_eot(sgd) 
+		if( sgd_eot(sgd)
 			|| count==0 )
 		{
 			MV_ASSERT( count == 0 );
@@ -116,10 +116,10 @@ int sg_iter_walk(
 int sgd_table_walk(
 	sgd_tbl_t*		sgdt,
 	sgd_visitor_t	visitor,
-	MV_PVOID		ctx 
+	MV_PVOID		ctx
 	)
 {
-	return sg_iter_walk( 
+	return sg_iter_walk(
 		sgdt->Entry_Ptr,
 		0,
 		sgdt->Byte_Count,
@@ -131,7 +131,7 @@ void  sgd_iter_init(
 	sgd_iter_t*	iter,
 	sgd_t*		sgd,
 	MV_U32		offset,
-	MV_U32		count 
+	MV_U32		count
 	)
 {
 	MV_U32	sz;
@@ -194,8 +194,8 @@ again:
 
 		sgd_get_refoff(iter->sgd,offRef);
 
-		sgd_iter_init( 
-			&sub_iter, 
+		sgd_iter_init(
+			&sub_iter,
 			refSgd,
 			offRef + iter->offset,
 			sub_cnt );
@@ -235,7 +235,7 @@ again:
 
 		if( sgd->flags & SGD_VP )
 		{
-			((sgd_vp_t*)sgd)->u.vaddr = ((MV_U8*) ((sgd_vp_t*)sgd)->u.vaddr) + 
+			((sgd_vp_t*)sgd)->u.vaddr = ((MV_U8*) ((sgd_vp_t*)sgd)->u.vaddr) +
 				iter->offset;
 		}
 
@@ -255,7 +255,7 @@ again:
 
 	iter->remainCnt -= sz;
 
-	if( sgd_eot(iter->sgd) 
+	if( sgd_eot(iter->sgd)
 		|| iter->remainCnt == 0 )
 	{
 		iter->remainCnt = 0;
@@ -311,7 +311,7 @@ void sgd_dump(sgd_t* sg, char* prefix)
 	else if( sg->flags & SGD_NEXT_TBL )
 	{
 		MV_PVOID nexttbl;
-		
+
 		sgd_get_nexttbl(sg, nexttbl);
 
 		MV_PRINT( "\tN %p F %08x\n"
@@ -407,7 +407,7 @@ void sgdt_dump(sgd_tbl_t *SgTbl, char* prefix)
 }
 
 void sgdt_clear_eot(
-	sgd_tbl_t*	sgdt 
+	sgd_tbl_t*	sgdt
 	)
 {
 	if( sgdt->Valid_Entry_Count )
@@ -497,7 +497,7 @@ void sgdt_append_sgd(
 static int sgdt_append_virtual_wo_xctx(
 	sgd_tbl_t* sgdt,
 	MV_PVOID virtual_address,
-	MV_U32 size 
+	MV_U32 size
 	)
 {
 	sgd_t* sg = &sgdt->Entry_Ptr[sgdt->Valid_Entry_Count];
@@ -524,7 +524,7 @@ int sgdt_append_virtual(
 	sgd_tbl_t* sgdt,
 	MV_PVOID virtual_address,
 	MV_PVOID translation_ctx,
-	MV_U32 size 
+	MV_U32 size
 	)
 {
 	sgd_t* sg;
@@ -626,7 +626,7 @@ int sgdt_append_ref(
 		{
 			MV_PVOID lastRef;
 			MV_U32 lastOffset;
-			
+
 			sgd_get_ref(sg, lastRef);
 			sgd_get_refoff(sg, lastOffset);
 
@@ -638,7 +638,7 @@ int sgdt_append_ref(
 				sgdt->Byte_Count += size;
 				return 0;
 			}
-		}				
+		}
 	}
 
 	sg = &sgdt->Entry_Ptr[sgdt->Valid_Entry_Count];
@@ -721,7 +721,7 @@ sgdt_copy_partial(
 					}
 
 					if (sgd->flags & SGD_PCTX) {
-						sgd_pctx_t *pctx = 
+						sgd_pctx_t *pctx =
 							(sgd_pctx_t *)sgd;
 						pctx->rsvd += (*poff);
 					}
@@ -732,7 +732,7 @@ sgdt_copy_partial(
 
 		}
 
-		if( size == sgdsz - *poff 
+		if( size == sgdsz - *poff
 			|| tmpSize == sgdsz - *poff )
 		{
 			sgd_inc( *ppsgd );
@@ -862,7 +862,7 @@ static int PRDTablePrepareVisitor(sgd_t* sg, MV_PVOID _ctx)
 			thisSize = totalSize;
 
 			if( !HBA_ModuleGetPhysicalAddress(
-					ctx->pCore, 
+					ctx->pCore,
 					vaddr,
 					xctx,
 					&paddr,

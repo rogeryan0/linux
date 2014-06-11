@@ -11,7 +11,11 @@
 /*
  * Time out in seconds for disks and Magneto-opticals (which are slower).
  */
+#ifdef CONFIG_BUFFALO_PLATFORM
 #define SD_TIMEOUT		(120 * HZ)
+#else // CONFIG_BUFFALO_PLATFORM
+#define SD_TIMEOUT		(30 * HZ)
+#endif // CONFIG_BUFFALO_PLATFORM
 #define SD_MOD_TIMEOUT		(75 * HZ)
 #define SD_FLUSH_TIMEOUT	(60 * HZ)
 

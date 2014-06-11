@@ -46,12 +46,6 @@
 #define arch_rebalance_pgtables(addr, len)		(addr)
 #endif
 
-/* 2012/07/11 t.saito add for page_alloc(watermark) change */
-#if 1
-#define CHANGE_MMAP_C
-#endif
-/* 2012/07/11 t.saito add end */
-
 static void unmap_region(struct mm_struct *mm,
 		struct vm_area_struct *vma, struct vm_area_struct *prev,
 		unsigned long start, unsigned long end);
@@ -90,11 +84,7 @@ pgprot_t vm_get_page_prot(unsigned long vm_flags)
 }
 EXPORT_SYMBOL(vm_get_page_prot);
 
-#ifdef CHANGE_MMAP_C
-int sysctl_overcommit_memory __read_mostly = OVERCOMMIT_ALWAYS;  /* always overcommit */
-#else
 int sysctl_overcommit_memory __read_mostly = OVERCOMMIT_GUESS;  /* heuristic overcommit */
-#endif
 int sysctl_overcommit_ratio __read_mostly = 50;	/* default is 50% */
 int sysctl_max_map_count __read_mostly = DEFAULT_MAX_MAP_COUNT;
 /*
@@ -1599,10 +1589,18 @@ struct vm_area_struct *find_vma(struct mm_struct *mm, unsigned long addr)
 				vma_tmp = rb_entry(rb_node,
 						struct vm_area_struct, vm_rb);
 
-				if (vma_tmp->vm_end > addr) {
-					vma = vma_tmp;
-					if (vma_tmp->vm_start <= addr)
-						break;
+#ifdef CONFIG_MV_SUPPORT_64KB_PAGE_SIZE
+		/* Take into account a wrap-around of the
+		** vm_end field to 0x0. e.g. vm_start =
+		** 0xFFFF0000 size PAGE_SIZE.
+		*/
+		if ((vma_tmp->vm_end - 1) >= addr) {
+#else
+		if (vma_tmp->vm_end > addr) {
+#endif
+			vma = vma_tmp;
+			if (vma_tmp->vm_start <= addr)
+				break;
 					rb_node = rb_node->rb_left;
 				} else
 					rb_node = rb_node->rb_right;

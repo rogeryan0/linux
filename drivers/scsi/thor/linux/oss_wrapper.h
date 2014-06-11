@@ -1,5 +1,5 @@
 /*
- * Operating System Service Wrapper 
+ * Operating System Service Wrapper
  *
  * Notes :
  * ** DO NOT include headers other than common & os specific ones
@@ -18,7 +18,7 @@
 
 /* delay in milliseconds */
 MV_U8 ossw_add_timer(struct timer_list *timer,
-		    u32 msec, 
+		    u32 msec,
 		    void (*function)(unsigned long),
 		    unsigned long data);
 

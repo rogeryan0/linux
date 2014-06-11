@@ -60,11 +60,6 @@ static int do_adjust_pte(struct vm_area_struct *vma, unsigned long address,
 		pte_val(entry) |= shared_pte_mask;
 		set_pte_at(vma->vm_mm, address, ptep, entry);
 		flush_tlb_page(vma, address);
-		printk(KERN_DEBUG "Uncached vma %08x "
-			"(addr %08lx flags %08lx phy %08x) from pid %d\n",
-			(unsigned int) vma, vma->vm_start, vma->vm_flags,
-			(unsigned int) (pfn << PAGE_SHIFT),
-			current->pid);
 	}
 
 	return ret;

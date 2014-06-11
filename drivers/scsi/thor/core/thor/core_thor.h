@@ -69,7 +69,7 @@
 #define	DEVICE_CAPACITY_WRITECACHE_SUPPORTED	MV_BIT(2)
 #define DEVICE_CAPACITY_NCQ_SUPPORTED			MV_BIT(3)
 #define DEVICE_CAPACITY_RATE_1_5G				MV_BIT(4)
-#define DEVICE_CAPACITY_RATE_3G					MV_BIT(5)	
+#define DEVICE_CAPACITY_RATE_3G					MV_BIT(5)
 #define DEVICE_CAPACITY_READLOGEXT_SUPPORTED	MV_BIT(6)
 #define DEVICE_CAPACITY_READ_LOOK_AHEAD_SUPPORTED	MV_BIT(7)
 #define DEVICE_CAPACITY_SMART_SELF_TEST_SUPPORTED	MV_BIT(8)
@@ -97,7 +97,7 @@ struct _Domain_Device {
 	MV_U16 Id;
 	MV_U8 Device_Type;				/* ATA or ATAPI */
 	MV_U8 State;					/* DEVICE_STATE_XXX */
-	
+
 	MV_U8 Status;					/* DEVICE_STATUS_XXX */
 	MV_BOOLEAN Is_Slave;
 	MV_BOOLEAN Need_Notify;			/* added for PM hot plug */
@@ -105,8 +105,8 @@ struct _Domain_Device {
 
 	struct _Domain_Port * PPort;	/* Shortcut to the port. */
 
-	/* 
-	 * Different device should have a different struct here. 
+	/*
+	 * Different device should have a different struct here.
 	 * Now it's SATA device only.
 	 */
 	MV_U16 Capacity;				/* Be able to support NCQ, 48 bit LBA. */
@@ -157,10 +157,10 @@ struct _Domain_Device {
 
 #define PORT_SETTING_NCQ_RUNNING		MV_BIT(0)
 #define PORT_SETTING_PM_EXISTING		MV_BIT(1)
-#define PORT_SETTING_PM_FUNCTIONAL		MV_BIT(2)	// added by Harriet for PM hot plug 
+#define PORT_SETTING_PM_FUNCTIONAL		MV_BIT(2)	// added by Harriet for PM hot plug
 #define PORT_SETTING_DURING_RETRY		MV_BIT(3)
 typedef void (*mv_reset_cmd_completion)(MV_PVOID);
-#define MAX_RESET_TIMES 3	
+#define MAX_RESET_TIMES 1
 
 #define PORT_ERROR_AT_PLUGIN			1
 #define PORT_ERROR_AT_RUNTIME		2
@@ -173,7 +173,7 @@ struct _Domain_Port {
 	MV_U8 Type;					/* PORT_TYPE_XXX */
 	MV_U8 Capacity;				/* PORT_CAPACITY_XXX */
 	MV_U8 Setting;				/* PORT_SETTING_XXX */
-	MV_U8 Device_Number;		/* How many devices this port has now? */	
+	MV_U8 Device_Number;		/* How many devices this port has now? */
 	MV_U16 PM_Vendor_Id;
 	MV_U16 PM_Device_Id;
 	MV_U8 PM_Product_Revision;
@@ -194,8 +194,8 @@ struct _Domain_Port {
 	MV_PVOID Cmd_Table;
 	MV_PHYSICAL_ADDR Cmd_Table_DMA;
 
-	/* Running MV_Requests are linked together. */	
-	PMV_Request Running_Req[MAX_SLOT_NUMBER];	
+	/* Running MV_Requests are linked together. */
+	PMV_Request Running_Req[MAX_SLOT_NUMBER];
 
 	/* Which slot has requests running. */
 	MV_U32	Running_Slot;
@@ -211,7 +211,7 @@ struct _Domain_Port {
 	MV_U8 error_state;
 #endif
 
-	struct _Domain_Device Device[MAX_DEVICE_PER_PORT];	
+	struct _Domain_Device Device[MAX_DEVICE_PER_PORT];
 
 	//Timer: for time out checking.
 
@@ -231,7 +231,7 @@ typedef struct _MV_Command_Header
 	MV_U8	Reserved0 : 2;
 	MV_U8	Packet_Command : 1;
 	MV_U8	FIS_Length : 5;
-			
+
 	MV_U8	PM_Port : 4;
 	MV_U8	NCQ : 1;
 	MV_U8	Reserved1: 2;
@@ -258,19 +258,19 @@ typedef struct _MV_Command_Header
 typedef struct _MV_PATA_Command_Header
 {
 #ifdef __MV_BIG_ENDIAN_BITFIELD__
-	MV_U8	Packet_Command : 1;	
-	MV_U8	TCQ : 1;		
-	MV_U8	Controller_Command : 1;	
-	MV_U8	PIO_Sector_Count : 5;   
+	MV_U8	Packet_Command : 1;
+	MV_U8	TCQ : 1;
+	MV_U8	Controller_Command : 1;
+	MV_U8	PIO_Sector_Count : 5;
 
-	MV_U8	Is_Slave : 1;		
-	MV_U8	Reset : 1;		
-	MV_U8	Diagnostic_Command : 1;	
-	MV_U8	Is_48Bit : 1;		
-	MV_U8	PIO_Sector_Command : 1;	
-	MV_U8	Non_Data : 1;		
-	MV_U8	Data_In : 1;		
-	MV_U8	DMA : 1;		
+	MV_U8	Is_Slave : 1;
+	MV_U8	Reset : 1;
+	MV_U8	Diagnostic_Command : 1;
+	MV_U8	Is_48Bit : 1;
+	MV_U8	PIO_Sector_Command : 1;
+	MV_U8	Non_Data : 1;
+	MV_U8	Data_In : 1;
+	MV_U8	DMA : 1;
 #else /* __MV_BIG_ENDIAN_BITFIELD__ */
 	MV_U8	PIO_Sector_Count : 5;   /* PIO command data block size in sector */
 	MV_U8	Controller_Command : 1;	/* If 1, command is for the controller instead of the device */
@@ -395,14 +395,14 @@ typedef struct _MV_Command_Table
 #define	PORT_IRQ_D2H_REG_FIS	(1L << 0)		/* D2H Register FIS rx'd */
 
 #define	PORT_IRQ_FATAL	(PORT_IRQ_TF_ERR |\
-				  		PORT_IRQ_HBUS_ERR |\
-				  		PORT_IRQ_HBUS_DATA_ERR |\
-				  		PORT_IRQ_IF_ERR)
+						PORT_IRQ_HBUS_ERR |\
+						PORT_IRQ_HBUS_DATA_ERR |\
+						PORT_IRQ_IF_ERR)
 #define	DEF_PORT_IRQ	(PORT_IRQ_FATAL | PORT_IRQ_PHYRDY |\
-				  		PORT_IRQ_CONNECT | PORT_IRQ_SG_DONE |\
-				  		PORT_IRQ_UNK_FIS | PORT_IRQ_SDB_FIS |\
-				  		PORT_IRQ_DMAS_FIS | PORT_IRQ_PIOS_FIS |\
-				  		PORT_IRQ_D2H_REG_FIS)
+						PORT_IRQ_CONNECT | PORT_IRQ_SG_DONE |\
+						PORT_IRQ_UNK_FIS | PORT_IRQ_SDB_FIS |\
+						PORT_IRQ_DMAS_FIS | PORT_IRQ_PIOS_FIS |\
+						PORT_IRQ_D2H_REG_FIS)
 #else
 	/* PORT_IRQ_{STAT,MASK} bits for SATA port */
 #define	PORT_IRQ_SIGNATURE_FIS	(1L << 31)	/* Signature FIS received */
@@ -498,4 +498,3 @@ typedef enum _MV_QUEUE_COMMAND_RESULT
 	((PMV_Command_Table)((MV_PU8)pPort->Cmd_Table + slot * SATA_CMD_TABLE_SIZE))
 
 #endif /* CORE_SATA_H */
-

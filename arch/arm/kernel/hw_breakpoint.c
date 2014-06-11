@@ -36,6 +36,11 @@
 #include <asm/kdebug.h>
 #include <asm/system.h>
 #include <asm/traps.h>
+#include <asm/io.h>
+
+#ifdef  CONFIG_ARCH_ARMADA_XP
+DEFINE_SPINLOCK(dap_lock);
+#endif
 
 /* Breakpoint currently in use for each BRP. */
 static DEFINE_PER_CPU(struct perf_event *, bp_on_reg[ARM_MAX_BRP]);
@@ -882,6 +887,10 @@ static void reset_ctrl_regs(void *unused)
 {
 	int i, raw_num_brps, err = 0, cpu = smp_processor_id();
 	u32 dbg_power;
+#ifdef 	CONFIG_ARCH_ARMADA_XP
+	static int workaround_loop=0;
+	unsigned long flags;
+#endif
 
 	/*
 	 * v7 debug contains save and restore registers so that debug state
@@ -897,6 +906,35 @@ static void reset_ctrl_regs(void *unused)
 		/* ARMv6 cores just need to reset the registers. */
 		goto reset_regs;
 	case ARM_DEBUG_ARCH_V7_ECP14:
+#ifdef 	CONFIG_ARCH_ARMADA_XP
+			/*is is a workaround to reset the DEBUG portion of 
+			 *the core, else CP14 won't be accessable 
+			 */
+			spin_lock_irqsave(&dap_lock,flags);
+			 if(workaround_loop ==0){
+			/* enable Debug unit  for cpu 0*/
+			writel(0xc2301000,INTER_REGS_BASE | 0x20d00);
+			writel(0xc5acce55,INTER_REGS_BASE | 0x23fb0);
+			readl(INTER_REGS_BASE | 0x23314);
+
+			/* enable Debug unit  for cpu 1*/
+			writel(0xc2307000,INTER_REGS_BASE | 0x20d00);
+			writel(0xc5acce55,INTER_REGS_BASE | 0x23fb0);
+			readl(INTER_REGS_BASE | 0x23314);
+
+			/* enable Debug unit  for cpu 2*/
+			writel(0xc230c000,INTER_REGS_BASE | 0x20d00);
+			writel(0xc5acce55,INTER_REGS_BASE | 0x23fb0);
+			readl(INTER_REGS_BASE | 0x23314);
+
+			/* enable Debug unit  for cpu 3*/
+			writel(0xc2312000,INTER_REGS_BASE | 0x20d00);
+			writel(0xc5acce55,INTER_REGS_BASE | 0x23fb0);
+			readl(INTER_REGS_BASE | 0x23314);
+			workaround_loop++;
+			}
+			spin_unlock_irqrestore(&dap_lock,flags);
+#else
 		/*
 		 * Ensure sticky power-down is clear (i.e. debug logic is
 		 * powered up).
@@ -904,6 +942,7 @@ static void reset_ctrl_regs(void *unused)
 		asm volatile("mrc p14, 0, %0, c1, c5, 4" : "=r" (dbg_power));
 		if ((dbg_power & 0x1) == 0)
 			err = -EPERM;
+#endif
 		break;
 	case ARM_DEBUG_ARCH_V7_1:
 		/*
@@ -992,6 +1031,7 @@ static int __init arch_hw_breakpoint_init(void)
 	 * debugger will leave the world in a nice state for us.
 	 */
 	on_each_cpu(reset_ctrl_regs, NULL, 1);
+	on_each_cpu(reset_ctrl_regs, NULL, 1);
 	unregister_undef_hook(&debug_reg_hook);
 	if (!cpumask_empty(&debug_err_mask)) {
 		core_num_brps = 0;
@@ -1025,7 +1065,9 @@ static int __init arch_hw_breakpoint_init(void)
 	register_cpu_notifier(&dbg_reset_nb);
 	return 0;
 }
+#ifdef CONFIG_ARCH_ARMADA370
 arch_initcall(arch_hw_breakpoint_init);
+#endif
 
 void hw_breakpoint_pmu_read(struct perf_event *bp)
 {

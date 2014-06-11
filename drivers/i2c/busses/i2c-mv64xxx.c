@@ -528,7 +528,11 @@ mv64xxx_i2c_probe(struct platform_device *pd)
 	struct mv64xxx_i2c_pdata	*pdata = pd->dev.platform_data;
 	int	rc;
 
+#ifdef CONFIG_ARCH_ARMADA370
 	if ((pd->id != 0) || !pdata)
+#else
+	if ( (pd->id > 1) || (pd->id < 0) || !pdata)
+#endif
 		return -ENODEV;
 
 	drv_data = kzalloc(sizeof(struct mv64xxx_i2c_data), GFP_KERNEL);

@@ -8,12 +8,12 @@
 #define SEVERITY_UNKNOWN    0
 #define SEVERITY_OTHER      1
 #define SEVERITY_INFO       2
-#define SEVERITY_WARNING    3  /* used when its appropriate to let the 
+#define SEVERITY_WARNING    3  /* used when its appropriate to let the
 				  user decide if action is needed */
-#define SEVERITY_MINOR      4  /* indicate action is needed, but the 
-				  situation is not serious at this time */  
+#define SEVERITY_MINOR      4  /* indicate action is needed, but the
+				  situation is not serious at this time */
 #define SEVERITY_MAJOR      5  /* indicate action is needed NOW */
-#define SEVERITY_CRITICAL   6  /* indicate action is needed NOW and the 
+#define SEVERITY_CRITICAL   6  /* indicate action is needed NOW and the
 				  scope is broad */
 #define SEVERITY_FATAL      7  /* indicate an error occurred, but it's too
 				  late to take remedial action */
@@ -26,15 +26,15 @@
 #define EVT_CLASS_HD        2  /* Hard Drive */
 #define EVT_CLASS_PM        3  /* Port Multplier */
 #define EVT_CLASS_EXPANDER  4
-#define EVT_CLASS_MDD       5 
+#define EVT_CLASS_MDD       5
 #define EVT_CLASS_BSL       6  /* Bad Sector Lock */
 
 /********************************************************
- *                 Event Codes 
+ *                 Event Codes
  *
  *  !!!  When adding an EVT_CODE, Please put its severity level
- *  !!!  and suggested mesage string as comments.  This is the 
- *  !!!  only place to document how 'Params' in 'DriverEvent' 
+ *  !!!  and suggested mesage string as comments.  This is the
+ *  !!!  only place to document how 'Params' in 'DriverEvent'
  *  !!!  structure is to be used.
  *
  ********************************************************/
@@ -61,41 +61,41 @@
 #define EVT_CODE_LD_RESERVED10             18
 #define EVT_CODE_LD_RESERVED11             19
 /*
- *  NOTE: Don't change the following event code order in each event group! 
- *      See raid_get_bga_event_id() for detail. 
+ *  NOTE: Don't change the following event code order in each event group!
+ *      See raid_get_bga_event_id() for detail.
  */
-#define EVT_CODE_LD_CHECK_START            20 
-#define EVT_CODE_LD_CHECK_RESTART          21 
-#define EVT_CODE_LD_CHECK_PAUSE            22 
-#define EVT_CODE_LD_CHECK_RESUME           23 
-#define EVT_CODE_LD_CHECK_ABORT            24 
-#define EVT_CODE_LD_CHECK_COMPLETE         25 
-#define EVT_CODE_LD_CHECK_PROGRESS         26  
-#define EVT_CODE_LD_CHECK_ERROR            27 
-#define EVT_CODE_LD_CHECK_AUTO_PAUSED      28 
-#define EVT_CODE_LD_CHECK_AUTO_RESUME      29 
+#define EVT_CODE_LD_CHECK_START            20
+#define EVT_CODE_LD_CHECK_RESTART          21
+#define EVT_CODE_LD_CHECK_PAUSE            22
+#define EVT_CODE_LD_CHECK_RESUME           23
+#define EVT_CODE_LD_CHECK_ABORT            24
+#define EVT_CODE_LD_CHECK_COMPLETE         25
+#define EVT_CODE_LD_CHECK_PROGRESS         26
+#define EVT_CODE_LD_CHECK_ERROR            27
+#define EVT_CODE_LD_CHECK_AUTO_PAUSED      28
+#define EVT_CODE_LD_CHECK_AUTO_RESUME      29
 
-#define EVT_CODE_LD_FIX_START              30 
-#define EVT_CODE_LD_FIX_RESTART            31 
-#define EVT_CODE_LD_FIX_PAUSE              32 
-#define EVT_CODE_LD_FIX_RESUME             33 
-#define EVT_CODE_LD_FIX_ABORT              34 
-#define EVT_CODE_LD_FIX_COMPLETE           35 
-#define EVT_CODE_LD_FIX_PROGRESS           36 
+#define EVT_CODE_LD_FIX_START              30
+#define EVT_CODE_LD_FIX_RESTART            31
+#define EVT_CODE_LD_FIX_PAUSE              32
+#define EVT_CODE_LD_FIX_RESUME             33
+#define EVT_CODE_LD_FIX_ABORT              34
+#define EVT_CODE_LD_FIX_COMPLETE           35
+#define EVT_CODE_LD_FIX_PROGRESS           36
 #define EVT_CODE_LD_FIX_ERROR              37
-#define EVT_CODE_LD_FIX_AUTO_PAUSED        38 
-#define EVT_CODE_LD_FIX_AUTO_RESUME        39 
+#define EVT_CODE_LD_FIX_AUTO_PAUSED        38
+#define EVT_CODE_LD_FIX_AUTO_RESUME        39
 
 #define EVT_CODE_LD_INIT_QUICK_START       40
-#define EVT_CODE_LD_INIT_QUICK_RESTART     41    
-#define EVT_CODE_LD_INIT_QUICK_PAUSE       42    
-#define EVT_CODE_LD_INIT_QUICK_RESUME      43    
-#define EVT_CODE_LD_INIT_QUICK_ABORT       44    
-#define EVT_CODE_LD_INIT_QUICK_COMPLETE    45    
-#define EVT_CODE_LD_INIT_QUICK_PROGRESS    46  
-#define EVT_CODE_LD_INIT_QUICK_ERROR       47   
+#define EVT_CODE_LD_INIT_QUICK_RESTART     41
+#define EVT_CODE_LD_INIT_QUICK_PAUSE       42
+#define EVT_CODE_LD_INIT_QUICK_RESUME      43
+#define EVT_CODE_LD_INIT_QUICK_ABORT       44
+#define EVT_CODE_LD_INIT_QUICK_COMPLETE    45
+#define EVT_CODE_LD_INIT_QUICK_PROGRESS    46
+#define EVT_CODE_LD_INIT_QUICK_ERROR       47
 #define EVT_CODE_LD_INIT_QUICK_AUTO_PAUSED 48
-#define EVT_CODE_LD_INIT_QUICK_AUTO_RESUME 49 
+#define EVT_CODE_LD_INIT_QUICK_AUTO_RESUME 49
 
 #define EVT_CODE_LD_INIT_BACK_START        50
 #define EVT_CODE_LD_INIT_BACK_RESTART      51
@@ -105,43 +105,43 @@
 #define EVT_CODE_LD_INIT_BACK_COMPLETE     55
 #define EVT_CODE_LD_INIT_BACK_PROGRESS     56
 #define EVT_CODE_LD_INIT_BACK_ERROR        57
-#define EVT_CODE_LD_INIT_BACK_AUTO_PAUSED  58  
-#define EVT_CODE_LD_INIT_BACK_AUTO_RESUME  59 
+#define EVT_CODE_LD_INIT_BACK_AUTO_PAUSED  58
+#define EVT_CODE_LD_INIT_BACK_AUTO_RESUME  59
 
 #if 0
 #define EVT_CODE_LD_INIT_FORE_START        60
-#define EVT_CODE_LD_INIT_FORE_RESTART      61  
+#define EVT_CODE_LD_INIT_FORE_RESTART      61
 #define EVT_CODE_LD_INIT_FORE_PAUSE        62
-#define EVT_CODE_LD_INIT_FORE_RESUME       63   
+#define EVT_CODE_LD_INIT_FORE_RESUME       63
 #define EVT_CODE_LD_INIT_FORE_ABORT        64
-#define EVT_CODE_LD_INIT_FORE_COMPLETE     65 
-#define EVT_CODE_LD_INIT_FORE_PROGRESS     66 
+#define EVT_CODE_LD_INIT_FORE_COMPLETE     65
+#define EVT_CODE_LD_INIT_FORE_PROGRESS     66
 #define EVT_CODE_LD_INIT_FORE_ERROR        67
-#define EVT_CODE_LD_INIT_FORE_AUTO_PAUSED  68 
-#define EVT_CODE_LD_INIT_FORE_AUTO_RESUME  69 
+#define EVT_CODE_LD_INIT_FORE_AUTO_PAUSED  68
+#define EVT_CODE_LD_INIT_FORE_AUTO_RESUME  69
 #endif
 
-#define EVT_CODE_LD_REBUILD_START          70 
-#define EVT_CODE_LD_REBUILD_RESTART        71 
-#define EVT_CODE_LD_REBUILD_PAUSE          72 
-#define EVT_CODE_LD_REBUILD_RESUME         73 
-#define EVT_CODE_LD_REBUILD_ABORT          74 
-#define EVT_CODE_LD_REBUILD_COMPLETE       75 
-#define EVT_CODE_LD_REBUILD_PROGRESS       76 
-#define EVT_CODE_LD_REBUILD_ERROR          77 
-#define EVT_CODE_LD_REBUILD_AUTO_PAUSED    78 
-#define EVT_CODE_LD_REBUILD_AUTO_RESUME	   79 
+#define EVT_CODE_LD_REBUILD_START          70
+#define EVT_CODE_LD_REBUILD_RESTART        71
+#define EVT_CODE_LD_REBUILD_PAUSE          72
+#define EVT_CODE_LD_REBUILD_RESUME         73
+#define EVT_CODE_LD_REBUILD_ABORT          74
+#define EVT_CODE_LD_REBUILD_COMPLETE       75
+#define EVT_CODE_LD_REBUILD_PROGRESS       76
+#define EVT_CODE_LD_REBUILD_ERROR          77
+#define EVT_CODE_LD_REBUILD_AUTO_PAUSED    78
+#define EVT_CODE_LD_REBUILD_AUTO_RESUME	   79
 
-#define EVT_CODE_LD_MIGRATION_START        80 
-#define EVT_CODE_LD_MIGRATION_RESTART      81 
-#define EVT_CODE_LD_MIGRATION_PAUSE        82 
-#define EVT_CODE_LD_MIGRATION_RESUME       83 
-#define EVT_CODE_LD_MIGRATION_ABORT        84 
-#define EVT_CODE_LD_MIGRATION_COMPLETE     85 
+#define EVT_CODE_LD_MIGRATION_START        80
+#define EVT_CODE_LD_MIGRATION_RESTART      81
+#define EVT_CODE_LD_MIGRATION_PAUSE        82
+#define EVT_CODE_LD_MIGRATION_RESUME       83
+#define EVT_CODE_LD_MIGRATION_ABORT        84
+#define EVT_CODE_LD_MIGRATION_COMPLETE     85
 #define EVT_CODE_LD_MIGRATION_PROGRESS     86
-#define EVT_CODE_LD_MIGRATION_ERROR        87 
-#define EVT_CODE_LD_MIGRATION_AUTO_PAUSED  88 
-#define EVT_CODE_LD_MIGRATION_AUTO_RESUME  89 
+#define EVT_CODE_LD_MIGRATION_ERROR        87
+#define EVT_CODE_LD_MIGRATION_AUTO_PAUSED  88
+#define EVT_CODE_LD_MIGRATION_AUTO_RESUME  89
 
 /* event code for logging inconsistent LBA found in consistency check or synchronization fix */
 #define EVT_CODE_LD_INCONSISTENT_LBA       90
@@ -150,17 +150,17 @@
 #define EVT_CODE_EVT_ERR                   0xffff
 #define EVT_CODE_SMART_FROM_OFF_TO_ON	   0  // SMART setting is changed from OFF-->ON
 #define EVT_CODE_SMART_FROM_ON_TO_OFF	   1  // SMART setting is changed from ON-->OFF
-#define EVT_CODE_ALARM_TURN_ON			   2			 
+#define EVT_CODE_ALARM_TURN_ON			   2
 #define EVT_CODE_ALARM_TURN_OFF			   3
-#define EVT_CODE_AUTO_REBUILD_ON		   4	
-#define EVT_CODE_AUTO_REBUILD_OFF		   5 
+#define EVT_CODE_AUTO_REBUILD_ON		   4
+#define EVT_CODE_AUTO_REBUILD_OFF		   5
 #define EVT_CODE_HD_MP_RATE_CHANGE		   6
 
 /*
  * Event code for EVT_CLASS_HD (Hard Disk)
  */
 #define EVT_CODE_HD_OFFLINE                0
-#define EVT_CODE_HD_ONLINE                 1 
+#define EVT_CODE_HD_ONLINE                 1
 #define EVT_CODE_HD_SETDOWN                2
 #define EVT_CODE_HD_TIMEOUT                3
 #define EVT_CODE_HD_RW_ERROR               4
@@ -178,10 +178,10 @@
 #define EVT_CODE_BAD_BLOCK_REASSIGNED	   15  // Bad block reassigned on %s at %lx to %lx
 #define EVT_CODE_HD_CACHE_MODE_CHANGE	   16
 /*New event for HD media patrol.*/
-#define EVT_CODE_HD_MP_START			   17 
+#define EVT_CODE_HD_MP_START			   17
 #define EVT_CODE_HD_MP_RESTART			   18
 #define EVT_CODE_HD_MP_PAUSE			   19
-#define EVT_CODE_HD_MP_RESUME              20 
+#define EVT_CODE_HD_MP_RESUME              20
 #define EVT_CODE_HD_MP_ABORT               21
 #define EVT_CODE_HD_MP_COMPLETE            22
 #define EVT_CODE_HD_MP_PROGRESS            23
@@ -204,7 +204,7 @@
 #define _CLASS_LD(x)                (EVT_CLASS_LD << 16 | (x))
 
 #define EVT_ID_LD_OFFLINE            _CLASS_LD(EVT_CODE_LD_OFFLINE)
-#define EVT_ID_LD_ONLINE             _CLASS_LD(EVT_CODE_LD_ONLINE) 
+#define EVT_ID_LD_ONLINE             _CLASS_LD(EVT_CODE_LD_ONLINE)
 #define EVT_ID_LD_CREATE             _CLASS_LD(EVT_CODE_LD_CREATE)
 #define EVT_ID_LD_DELETE             _CLASS_LD(EVT_CODE_LD_DELETE)
 #define EVT_ID_LD_DEGRADE            _CLASS_LD(EVT_CODE_LD_DEGRADE)
@@ -311,7 +311,7 @@
 #define EVT_ID_HD_ASSIGN_SPARE          _CLASS_HD(EVT_CODE_HD_ASSIGN_SPARE)
 #define EVT_ID_HD_REMOVE_SPARE          _CLASS_HD(EVT_CODE_HD_REMOVE_SPARE)
 #define EVT_ID_HD_SMART_THRESHOLD_OVER  _CLASS_HD(EVT_CODE_HD_SMART_THRESHOLD_OVER)
-#define EVT_ID_HD_SMART_POLLING_FAIL    _CLASS_HD(EVT_CODE_HD_SMART_POLLING_FAIL)		
+#define EVT_ID_HD_SMART_POLLING_FAIL    _CLASS_HD(EVT_CODE_HD_SMART_POLLING_FAIL)
 #define EVT_ID_BAD_BLOCK_TBL_80_FULL    _CLASS_HD(EVT_CODE_BAD_BLOCK_TBL_80_FULL)
 #define EVT_ID_BAD_BLOCK_TBL_FULL       _CLASS_HD(EVT_CODE_BAD_BLOCK_TBL_FULL)
 #define EVT_ID_BAD_BLOCK_REASSIGNED     _CLASS_HD(EVT_CODE_BAD_BLOCK_REASSIGNED)

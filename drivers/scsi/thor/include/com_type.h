@@ -35,12 +35,12 @@ typedef struct _MV_XOR_Request MV_XOR_Request, *PMV_XOR_Request;
 #define REQ_STATUS_REQUEST_SENSE                0x82
 #define REQ_STATUS_ABORT                        0x83
 
-/* 
- * Don't change the order here. 
- * Module_StartAll will start from big id to small id. 
- * Make sure module_set setting matches the Module_Id 
+/*
+ * Don't change the order here.
+ * Module_StartAll will start from big id to small id.
+ * Make sure module_set setting matches the Module_Id
  * MODULE_HBA must be the first one. Refer to Module_AssignModuleExtension.
- * And HBA_GetNextModuleSendFunction has an assumption that the next level 
+ * And HBA_GetNextModuleSendFunction has an assumption that the next level
  * has larger ID.
  */
 enum Module_Id
@@ -100,8 +100,8 @@ struct _MV_SG_Table
 #define	MV_REQ_COMMON_XOR	          1
 #endif	/*SIMULATOR*/
 
-/* 
- * MV_Request is the general request type passed through different modules. 
+/*
+ * MV_Request is the general request type passed through different modules.
  * Must be 64 bit aligned.
  */
 
@@ -141,10 +141,10 @@ struct _MV_Request {
 			   * waiting_list due to error handling.
 			   */
 #else
-	MV_U8 Reserved0[1]; 
+	MV_U8 Reserved0[1];
 #endif /* _OS_WINDOWS */
 
-	MV_PVOID Cmd_Initiator;           /* Which module(extension pointer) 
+	MV_PVOID Cmd_Initiator;           /* Which module(extension pointer)
 					     creates this request. */
 
 	MV_U8 Sense_Info_Buffer_Length;
@@ -153,21 +153,21 @@ struct _MV_Request {
 #else
 	MV_U8 Reserved1;
 #endif
-	MV_U16 SlotNo; 
-	MV_U32 Data_Transfer_Length; 
+	MV_U16 SlotNo;
+	MV_U32 Data_Transfer_Length;
 
-	MV_U8 Cdb[MAX_CDB_SIZE]; 
-	MV_PVOID Data_Buffer; 
+	MV_U8 Cdb[MAX_CDB_SIZE];
+	MV_PVOID Data_Buffer;
 	MV_PVOID Sense_Info_Buffer;
 
 	MV_SG_Table SG_Table;
 
-	MV_PVOID Org_Req;                /* The original request. */ 
+	MV_PVOID Org_Req;                /* The original request. */
 
 	/* Each module should only use Context to store module information. */
 	MV_PVOID Context[MAX_POSSIBLE_MODULE_NUMBER];
 
-	MV_PVOID Scratch_Buffer;          /* pointer to the scratch buffer 
+	MV_PVOID Scratch_Buffer;          /* pointer to the scratch buffer
 										 that this request used */
 	MV_PVOID SG_Buffer;
 	MV_PVOID pRaid_Request;
@@ -176,8 +176,8 @@ struct _MV_Request {
 	MV_U32 Sector_Count;
 	MV_U32 Cmd_Flag;
 
-	MV_U32 Time_Out;                  /* how many seconds we should wait 
-					     before treating request as 
+	MV_U32 Time_Out;                  /* how many seconds we should wait
+					     before treating request as
 					     timed-out */
 	MV_U32 Splited_Count;
 
@@ -194,7 +194,7 @@ struct _MV_Request {
 #endif /* _OS_LINUX */
 #ifdef _OS_LINUX
 #ifdef _32_LEGACY_
-	MV_U8 dummy[5];
+	MV_U8 dummy[4];
 #endif
 #endif /* _OS_LINUX */
 	MV_ReqCompletion	Completion; /* call back function */
@@ -208,7 +208,7 @@ struct _MV_Request {
 #define REQ_FLAG_CMD_FLAG_VALID           MV_BIT(1)
 #define REQ_FLAG_RETRY                    MV_BIT(2)
 #define REQ_FLAG_INTERNAL_SG              MV_BIT(3)
-#ifndef USE_NEW_SGTABLE	
+#ifndef USE_NEW_SGTABLE
 #define REQ_FLAG_USE_PHYSICAL_SG          MV_BIT(4)
 #define REQ_FLAG_USE_LOGICAL_SG           MV_BIT(5)
 #else
@@ -236,22 +236,22 @@ enum {
 };
 
 /*
- * Command flag is the flag for the CDB command itself 
+ * Command flag is the flag for the CDB command itself
  */
 /* The first 16 bit can be determined by the initiator. */
-#define CMD_FLAG_NON_DATA                 MV_BIT(0)  /* 1-non data; 
+#define CMD_FLAG_NON_DATA                 MV_BIT(0)  /* 1-non data;
 							0-data command */
 #define CMD_FLAG_DMA                      MV_BIT(1)  /* 1-DMA */
 #define CMD_FLAG_PIO					  MV_BIT(2)  /* 1-PIO */
 #define CMD_FLAG_DATA_IN                  MV_BIT(3)  /* 1-host read data */
 #define CMD_FLAG_DATA_OUT                 MV_BIT(4)	 /* 1-host write data */
 #define CMD_FLAG_SMART                    MV_BIT(5)  /* 1-SMART command;0-non SMART command*/
-#define CMD_FLAG_SMART_ATA_12       MV_BIT(6)  /* SMART ATA_12  */
-#define CMD_FLAG_SMART_ATA_16       MV_BIT(7)  /* SMART ATA_16; */
+#define CMD_FLAG_ATA_12      	  	  MV_BIT(6)  /* ATA_12  */
+#define CMD_FLAG_ATA_16      	  	  MV_BIT(7)  /* ATA_16; */
 
 /*
- * The last 16 bit only can be set by the target. Only core driver knows 
- * the device characteristic. 
+ * The last 16 bit only can be set by the target. Only core driver knows
+ * the device characteristic.
  */
 #define CMD_FLAG_NCQ                      MV_BIT(16)
 #define CMD_FLAG_TCQ                      MV_BIT(17)
@@ -271,11 +271,11 @@ enum {
 #define XOR_STATUS_INVALID_REQUEST        1
 #define XOR_STATUS_ERROR                  2
 #define XOR_STATUS_INVALID_PARAMETER      3
-#define XOR_SOURCE_SG_COUNT               11  
+#define XOR_SOURCE_SG_COUNT               11
 #ifdef RAID6_MULTIPLE_PARITY
-#   define XOR_TARGET_SG_COUNT               3   
+#   define XOR_TARGET_SG_COUNT               3
 #else
-#   define XOR_TARGET_SG_COUNT               1   
+#   define XOR_TARGET_SG_COUNT               1
 #endif
 
 typedef MV_U8    XOR_COEF, *PXOR_COEF;        /* XOR Coefficient */
@@ -288,10 +288,10 @@ struct _MV_XOR_Request {
 
 	MV_U16 Device_Id;
 
-	MV_U8 Request_Type;                        
+	MV_U8 Request_Type;
 	MV_U8 Request_Status;
 
-	MV_U8 Source_SG_Table_Count;        /* how many items in the 
+	MV_U8 Source_SG_Table_Count;        /* how many items in the
 					       SG_Table_List */
 	MV_U8 Target_SG_Table_Count;
 #ifdef SOFTWARE_XOR
@@ -303,7 +303,7 @@ struct _MV_XOR_Request {
 	MV_SG_Table Source_SG_Table_List[XOR_SOURCE_SG_COUNT];
 	MV_SG_Table Target_SG_Table_List[XOR_TARGET_SG_COUNT];
 
-	
+
 	XOR_COEF    Coef[XOR_TARGET_SG_COUNT][XOR_SOURCE_SG_COUNT];
 
 	MV_U32 Error_Offset;                 /* byte, not sector */

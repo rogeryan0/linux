@@ -73,12 +73,12 @@
 #include <asm/unaligned.h>
 #include <net/netdma.h>
 
-/* 2012/07/09 t.saito add for patch - 3.3.6 */
-/* that is "change tcp_adv_win_scale and tcp_rmem[2]" */
+/* 2012/11/06 t.saito add for patch - 3.3.6 */
+/* that change tcp_adv_win_scale and tcp_rmem[2] */
 #if 1
 #define PATCH_3_3_6_TCP_INPUT_C
 #endif
-/* 2012/07/09 t.saito add end */
+/* 2012/11/06 t.saito add end */
 
 int sysctl_tcp_timestamps __read_mostly = 1;
 int sysctl_tcp_window_scaling __read_mostly = 1;

@@ -143,26 +143,21 @@ struct tag_memclk {
 	__u32 fmemclk;
 };
 
-/* Marvell uboot parameters */
-#define ATAG_MV_UBOOT   0x41000403
-#define MV_ARRAY_SIZE	4
-#define UMSG_SIZE	8192
+#define ATAG_MV_UBOOT   	0x41000403
+#define MV_UBOOT_MAX_PORT	4
 struct tag_mv_uboot {
-        __u32 uboot_version;
-        __u32 tclk;
-        __u32 sysclk;
-        __u32 isUsbHost;
-        __u8  macAddr[MV_ARRAY_SIZE][6];
-	__u16 mtu[MV_ARRAY_SIZE];
+	__u32 uboot_version;
+	__u32 tclk;
+	__u32 sysclk;
+	__u32 isUsbHost;
+	__u8  macAddr[MV_UBOOT_MAX_PORT][6];
+	__u16 mtu[MV_UBOOT_MAX_PORT];
 #if defined(CONFIG_BUFFALO_UBOOT_PARAMS) // BUFFALO_PLATFORM
-        __u32 fw_image_base;
-	__u32 fw_image_size;
+        /* __u32 fw_image_base; */
+	/* __u32 fw_image_size; */
 	__u32 env_addr;
 	__u32 env_size;
 	__u32 env_offset;
-#if defined(CONFIG_ARCH_FEROCEON_MV78XX0)
-	char umsg[UMSG_SIZE];
-#endif
 #endif // CONFIG_BUFFALO_UBOOT_PARAMS
 	__u32 nand_ecc;
 #ifdef CONFIG_ARCH_ARMADA370
@@ -171,8 +166,7 @@ struct tag_mv_uboot {
 	__u32 rgmii0Src;
 	__u32 feGeSrc;
 #endif
-};                     
-
+};
 struct tag {
 	struct tag_header hdr;
 	union {
@@ -195,11 +189,11 @@ struct tag {
 		 * DC21285 specific
 		 */
 		struct tag_memclk	memclk;
-		 /*
-		  * Marvell specific
-		  */
+
+		/*
+		 * Marvell specific
+		 */
 		struct tag_mv_uboot     mv_uboot;
-	
 	} u;
 };
 

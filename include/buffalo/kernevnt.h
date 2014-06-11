@@ -47,7 +47,11 @@ void kernevnt_RaidReshape(int devno, int on);
 #endif
 
 // drivers/block/ll_rw_blk.c
+#ifdef CONFIG_X86
+void kernevnt_IOErr(const char *kdevname, const char *dir, unsigned long sector, unsigned int errcnt);
+#else // CONFIG_X86
 void kernevnt_IOErr(const char *kdevname, const char *dir, sector_t sector, unsigned int errcnt);  /* 2006.9.5 :add errcnt */
+#endif // CONFIG_X86
 void kernevnt_FlashUpdate(int on);
 void kernevnt_DriveDead(const char *drvname);
 void kernevnt_I2cErr(void);

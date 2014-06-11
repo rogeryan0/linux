@@ -39,9 +39,6 @@
 __FBSDID("$FreeBSD: src/sys/opencrypto/cryptodev.c,v 1.34 2007/05/09 19:37:02 gnn Exp $");
  */
 
-#ifndef AUTOCONF_INCLUDED
-#include <linux/kconfig.h>
-#endif
 #include <linux/types.h>
 #include <linux/time.h>
 #include <linux/delay.h>
@@ -62,11 +59,6 @@ __FBSDID("$FreeBSD: src/sys/opencrypto/cryptodev.c,v 1.34 2007/05/09 19:37:02 gn
 
 #include <cryptodev.h>
 #include <uio.h>
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,3,4)
-/* struct file added member 'ocf_private_data' */
-#define	private_data ocf_private_data
-#endif
 
 extern asmlinkage long sys_dup(unsigned int fildes);
 
@@ -630,7 +622,7 @@ cryptodev_ioctl(
 	struct crypt_kop kop;
 	struct crypt_find_op fop;
 	u_int64_t sid;
-	u_int32_t ses;
+	u_int32_t ses = 0;
 	int feat, fd, error = 0, crid;
 	mm_segment_t fs;
 
@@ -969,10 +961,16 @@ cryptodev_open(struct inode *inode, struct file *filp)
 	struct fcrypt *fcr;
 
 	dprintk("%s()\n", __FUNCTION__);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35)
+	/*
+	 * on 2.6.35 private_data points to a miscdevice structure, we override
+	 * it,  which is currently safe to do.
+	 */
 	if (filp->private_data) {
-		printk("cryptodev: Private data already exists !\n");
-		return(0);
+		printk("cryptodev: Private data already exists - %p!\n", filp->private_data);
+		return(-ENODEV);
 	}
+#endif
 
 	fcr = kmalloc(sizeof(*fcr), GFP_KERNEL);
 	if (!fcr) {
@@ -1011,15 +1009,12 @@ static struct file_operations cryptodev_fops = {
 	.owner = THIS_MODULE,
 	.open = cryptodev_open,
 	.release = cryptodev_release,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,3,4)
-	.unlocked_ioctl = cryptodev_unlocked_ioctl,
-	//.compat_ioctl = cryptodev_ioctl,
-#else
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,36)
 	.ioctl = cryptodev_ioctl,
+#endif
 #ifdef HAVE_UNLOCKED_IOCTL
 	.unlocked_ioctl = cryptodev_unlocked_ioctl,
 #endif
-#endif /* LINUX_VERSION_CODE > KERNEL_VERSION(3,3,4) */
 };
 
 static struct miscdevice cryptodev = {

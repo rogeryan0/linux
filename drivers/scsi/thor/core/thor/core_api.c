@@ -24,7 +24,7 @@ Core_GetHDInformation(
 	PCore_Driver_Extension pCore,
 	IN PDomain_Port pPort,
 	IN PDomain_Device pDevice,
-	OUT PHD_Info pHD 
+	OUT PHD_Info pHD
 	);
 
 MV_VOID
@@ -32,14 +32,14 @@ Core_GetExpInformation(
 	PCore_Driver_Extension pCore,
 	IN PDomain_Port pPort,
 	IN PDomain_Device pDevice,
-	OUT PExp_Info pExp 
+	OUT PExp_Info pExp
 	);
 
 MV_VOID
 Core_GetPMInformation(
 	PCore_Driver_Extension pCore,
 	IN PDomain_Port pPort,
-	OUT PPM_Info pPM 
+	OUT PPM_Info pPM
 	);
 
 MV_VOID
@@ -47,7 +47,7 @@ Core_GetHDConfiguration(
 	PCore_Driver_Extension pCore,
 	IN PDomain_Port pPort,
 	IN PDomain_Device pDevice,
-	OUT PHD_Config pHD 
+	OUT PHD_Config pHD
 	);
 
 MV_VOID
@@ -55,7 +55,7 @@ Core_SetHDConfiguration(
 	PCore_Driver_Extension pCore,
 	IN PDomain_Port pPort,
 	IN PDomain_Device pDevice,
-	IN PHD_Config pHD 
+	IN PHD_Config pHD
 	);
 
 /*
@@ -65,7 +65,7 @@ MV_VOID
 Core_GetHDInfo(
 	IN MV_PVOID extension,
 	IN MV_U16 HDId,
-	OUT PHD_Info pHD 
+	OUT PHD_Info pHD
 	)
 {
 	PCore_Driver_Extension pCore = (PCore_Driver_Extension)extension;
@@ -82,7 +82,7 @@ Core_GetHDInfo(
 			pHD[i].Link.Self.DevID = i;
 			pHD[i].Link.Self.DevType = DEVICE_TYPE_NONE;
 		}
-		startId = 0; 
+		startId = 0;
 		endId = MV_MAX_HD_DEVICE_ID-1;
 	}
 	else
@@ -98,7 +98,7 @@ Core_GetHDInfo(
 			pPort = &pCore->Ports[portId];
 			pDevice = &pPort->Device[deviceId];
 			Core_GetHDInformation( pCore, pPort, pDevice, pHD );
-		} 
+		}
 /*
 		else
 		{
@@ -116,7 +116,7 @@ MV_VOID
 Core_GetExpInfo(
 	IN MV_PVOID extension,
 	IN MV_U16 ExpId,
-	OUT PExp_Info pExp 
+	OUT PExp_Info pExp
 	)
 {
 	PCore_Driver_Extension pCore = (PCore_Driver_Extension)extension;
@@ -129,7 +129,7 @@ Core_GetExpInfo(
 	if ( ExpId==0xFF )
 	{
 		/* Get all the HD information */
-		startId = 0; 
+		startId = 0;
 		if (MAX_EXPANDER_SUPPORTED > 0)
 			endId = MAX_EXPANDER_SUPPORTED-1;
 		else
@@ -148,7 +148,7 @@ Core_GetExpInfo(
 			pPort = &pCore->Ports[portId];
 			pDevice = &pPort->Device[deviceId];
 			Core_GetExpInformation( pCore, pPort, pDevice, pExp );
-		} 
+		}
 		else
 		{
 			pExp->Link.Self.DevID = i;
@@ -162,7 +162,7 @@ MV_VOID
 Core_GetPMInfo(
 	IN MV_PVOID extension,
 	IN MV_U16 PMId,
-	OUT PPM_Info pPM 
+	OUT PPM_Info pPM
 	)
 {
 	PCore_Driver_Extension pCore = (PCore_Driver_Extension)extension;
@@ -173,7 +173,7 @@ Core_GetPMInfo(
 	if ( PMId==0xFF )
 	{
 		/* Get all the PM information */
-		startId = 0; 
+		startId = 0;
 		endId = pCore->Port_Num - 1;
 	}
 	else
@@ -192,7 +192,7 @@ Core_GetPMInfo(
 				// not a PM, return error
 			}
 		}
-		else 
+		else
 		{
 			Core_GetPMInformation( pCore, pPort, pPM );
 			pPM++;
@@ -205,7 +205,7 @@ MV_VOID
 Core_GetHDConfig(
 	IN MV_PVOID extension,
 	IN MV_U16 HDId,
-	OUT PHD_Config pHD 
+	OUT PHD_Config pHD
 	)
 {
 	PCore_Driver_Extension pCore = (PCore_Driver_Extension)extension;
@@ -221,7 +221,7 @@ Core_GetHDConfig(
 		/* First set invalid flag in buffer */
 		for (i=0; i<MAX_DEVICE_SUPPORTED; i++)
 			pHD[i].HDID = 0xFF;
-		startId = 0; 
+		startId = 0;
 		endId = MV_MAX_HD_DEVICE_ID-1;
 	}
 	else
@@ -269,10 +269,10 @@ Core_GetHDInformation(
 	PCore_Driver_Extension pCore,
 	IN PDomain_Port pPort,
 	IN PDomain_Device pDevice,
-	OUT PHD_Info pHD 
+	OUT PHD_Info pHD
 	)
 {
-	pHD->Link.Self.DevID = pDevice->Id ;	
+	pHD->Link.Self.DevID = pDevice->Id ;
 	if ( !(pDevice->Status&DEVICE_STATUS_FUNCTIONAL) )
 	{
 		pHD->Link.Self.DevType = DEVICE_TYPE_NONE;
@@ -313,13 +313,13 @@ Core_GetHDInformation(
 	pHD->CurrentUDMAMode = pDevice->Current_UDMA;
 
 	if ( pDevice->Capacity & DEVICE_CAPACITY_NCQ_SUPPORTED )
-		pHD->FeatureSupport |= HD_FEATURE_NCQ;		
+		pHD->FeatureSupport |= HD_FEATURE_NCQ;
 	if ( pDevice->Capacity & DEVICE_CAPACITY_WRITECACHE_SUPPORTED )
-		pHD->FeatureSupport |= HD_FEATURE_WRITE_CACHE;		
+		pHD->FeatureSupport |= HD_FEATURE_WRITE_CACHE;
 	if ( pDevice->Capacity & DEVICE_CAPACITY_48BIT_SUPPORTED )
-		pHD->FeatureSupport |= HD_FEATURE_48BITS;		
+		pHD->FeatureSupport |= HD_FEATURE_48BITS;
 	if ( pDevice->Capacity & DEVICE_CAPACITY_SMART_SUPPORTED )
-		pHD->FeatureSupport |= HD_FEATURE_SMART;	
+		pHD->FeatureSupport |= HD_FEATURE_SMART;
 
 	if ( pDevice->Capacity & DEVICE_CAPACITY_RATE_1_5G )
 		pHD->FeatureSupport |= HD_FEATURE_1_5G;
@@ -340,7 +340,7 @@ Core_GetExpInformation(
 	PCore_Driver_Extension pCore,
 	IN PDomain_Port pPort,
 	IN PDomain_Device pDevice,
-	OUT PExp_Info pExp 
+	OUT PExp_Info pExp
 	)
 {
 }
@@ -349,7 +349,7 @@ MV_VOID
 Core_GetPMInformation(
 	PCore_Driver_Extension pCore,
 	IN PDomain_Port pPort,
-	OUT PPM_Info pPM 
+	OUT PPM_Info pPM
 	)
 {
 #ifndef RAID_SIMULATE_CONFIGURATION
@@ -377,7 +377,7 @@ Core_GetHDConfiguration(
 	PCore_Driver_Extension pCore,
 	IN PDomain_Port pPort,
 	IN PDomain_Device pDevice,
-	OUT PHD_Config pHD 
+	OUT PHD_Config pHD
 	)
 {
 	if ( !(pDevice->Status & DEVICE_STATUS_FUNCTIONAL) )
@@ -386,7 +386,7 @@ Core_GetHDConfiguration(
 		return;
 	}
 
-	pHD->HDID = pDevice->Id ;	
+	pHD->HDID = pDevice->Id ;
 
 	if (pDevice->Setting & DEVICE_SETTING_WRITECACHE_ENABLED)
 		pHD->WriteCacheOn = MV_TRUE;
@@ -402,13 +402,13 @@ Core_GetHDConfiguration(
 		pHD->DriveSpeed = HD_SPEED_3G;
 	else
 		pHD->DriveSpeed = HD_SPEED_1_5G;
-	
+
 }
 
 MV_BOOLEAN core_pd_request_get_HD_info(PCore_Driver_Extension pCore, PMV_Request pMvReq)
 {
 	PHD_Info pHDInfo = (PHD_Info)pMvReq->Data_Buffer;
-	MV_U16 HDID; 
+	MV_U16 HDID;
 
 	MV_CopyMemory(&HDID, &pMvReq->Cdb[2], 2);
 	Core_GetHDInfo( pCore, HDID, pHDInfo );
@@ -427,7 +427,7 @@ MV_BOOLEAN core_pd_request_get_HD_info(PCore_Driver_Extension pCore, PMV_Request
 MV_BOOLEAN core_pd_request_get_expander_info( PCore_Driver_Extension pCore, PMV_Request pMvReq )
 {
 	PExp_Info pExpInfo = (PExp_Info)pMvReq->Data_Buffer;
-	MV_U16 ExpID; 
+	MV_U16 ExpID;
 	MV_U8	status = REQ_STATUS_SUCCESS;
 
 	MV_CopyMemory(&ExpID, &pMvReq->Cdb[2], 2);
@@ -460,7 +460,7 @@ MV_BOOLEAN core_pd_request_get_expander_info( PCore_Driver_Extension pCore, PMV_
 MV_BOOLEAN core_pd_request_get_PM_info( PCore_Driver_Extension pCore, PMV_Request pMvReq )
 {
 	PPM_Info pPMInfo = (PPM_Info)pMvReq->Data_Buffer;
-	MV_U16 PMID; 
+	MV_U16 PMID;
 
 	MV_CopyMemory(&PMID, &pMvReq->Cdb[2], 2);
 	if (PMID != 0xFF && PMID > MAX_PM_SUPPORTED)
@@ -472,7 +472,7 @@ MV_BOOLEAN core_pd_request_get_PM_info( PCore_Driver_Extension pCore, PMV_Reques
 	}
 
 	Core_GetPMInfo( pCore, PMID, pPMInfo );
-	
+
 	pMvReq->Scsi_Status = REQ_STATUS_SUCCESS;
 	return MV_TRUE;
 }
@@ -481,7 +481,7 @@ MV_BOOLEAN core_pd_request_get_PM_info( PCore_Driver_Extension pCore, PMV_Reques
 MV_BOOLEAN core_pd_request_get_HD_config( PCore_Driver_Extension pCore, PMV_Request pMvReq )
 {
 	PHD_Config pHDConfig = (PHD_Config)pMvReq->Data_Buffer;
-	MV_U16 ConfigID; 
+	MV_U16 ConfigID;
 
 	MV_CopyMemory(&ConfigID, &pMvReq->Cdb[2], 2);
 	Core_GetHDConfig( pCore, ConfigID, pHDConfig );
@@ -504,7 +504,7 @@ MV_BOOLEAN core_pd_request_get_HD_status( PCore_Driver_Extension pCore, PMV_Requ
 	PDomain_Port pPort = NULL;
 	PDomain_Device pDevice = NULL;
 	MV_U8 portId, deviceId;
-	MV_U16 HDId; 
+	MV_U16 HDId;
 	MV_U8	cacheMode = 0;
 	MV_U8 status = REQ_STATUS_SUCCESS;
 
@@ -521,7 +521,7 @@ MV_BOOLEAN core_pd_request_get_HD_status( PCore_Driver_Extension pCore, PMV_Requ
 			{
 				status = ERR_INVALID_HD_ID;
 			}
-			else 
+			else
 			{
 				if (pMvReq->Cdb[4] == APICDB4_PD_SMART_RETURN_STATUS)
 				{
@@ -544,7 +544,7 @@ MV_BOOLEAN core_pd_request_get_HD_status( PCore_Driver_Extension pCore, PMV_Requ
 		}
 		else
 			status = ERR_INVALID_REQUEST;
-	} 
+	}
 	else
 	{
 		status = ERR_INVALID_HD_ID;
@@ -555,7 +555,7 @@ MV_BOOLEAN core_pd_request_get_HD_status( PCore_Driver_Extension pCore, PMV_Requ
 		if (pMvReq->Sense_Info_Buffer != NULL)
 			((MV_PU8)pMvReq->Sense_Info_Buffer)[0] = status;
 		pMvReq->Scsi_Status = REQ_STATUS_ERROR_WITH_SENSE;
-		return MV_TRUE;	
+		return MV_TRUE;
 	}
 	else
 	{
@@ -570,7 +570,7 @@ MV_BOOLEAN core_pd_request_set_HD_config( PCore_Driver_Extension pCore, PMV_Requ
 	PDomain_Port pPort = NULL;
 	PDomain_Device pDevice = NULL;
 	MV_U8 portId, deviceId;
-	MV_U16 HDId; 
+	MV_U16 HDId;
 	MV_U8	cacheMode = 0;
 	MV_U8 status = REQ_STATUS_PENDING;
 
@@ -589,7 +589,7 @@ MV_BOOLEAN core_pd_request_set_HD_config( PCore_Driver_Extension pCore, PMV_Requ
 		{
 			status = ERR_INVALID_REQUEST;
 		}
-		else 
+		else
 		{
 			if (pMvReq->Cdb[4] == APICDB4_PD_SET_WRITE_CACHE_OFF)
 			{
@@ -625,7 +625,7 @@ MV_BOOLEAN core_pd_request_set_HD_config( PCore_Driver_Extension pCore, PMV_Requ
 			pMvReq->Cdb[2] = cacheMode;
 			pMvReq->Device_Id = pDevice->Id;
 		}
-	} 
+	}
 	else
 	{
 		status = ERR_INVALID_HD_ID;
@@ -646,7 +646,7 @@ MV_BOOLEAN core_pd_request_set_HD_config( PCore_Driver_Extension pCore, PMV_Requ
 		if (pMvReq->Sense_Info_Buffer != NULL)
 			((MV_PU8)pMvReq->Sense_Info_Buffer)[0] = status;
 		pMvReq->Scsi_Status = REQ_STATUS_ERROR_WITH_SENSE;
-		return MV_TRUE;	
+		return MV_TRUE;
 	}
 }
 
@@ -668,7 +668,7 @@ MV_BOOLEAN core_pd_request_HD_get_MP_status( PCore_Driver_Extension pCore, PMV_R
 	return MV_TRUE;
 }
 
-CORE_Management_Command_Handler BASEATTR core_pd_cmd_handler[APICDB1_PD_MAX] = 
+CORE_Management_Command_Handler BASEATTR core_pd_cmd_handler[APICDB1_PD_MAX] =
 {
 	core_pd_request_get_HD_info,
 #ifdef SUPPORT_PM
@@ -687,7 +687,7 @@ CORE_Management_Command_Handler BASEATTR core_pd_cmd_handler[APICDB1_PD_MAX] =
 	NULL
 };
 
-MV_BOOLEAN 
+MV_BOOLEAN
 Core_pd_command(
 	IN MV_PVOID extension,
 	IN PMV_Request pReq
@@ -695,7 +695,7 @@ Core_pd_command(
 {
 	PCore_Driver_Extension pCore = (PCore_Driver_Extension)extension;
 
-	if ( pReq->Cdb[1] >= APICDB1_PD_MAX ) 
+	if ( pReq->Cdb[1] >= APICDB1_PD_MAX )
 	{
 		pReq->Scsi_Status = REQ_STATUS_INVALID_PARAMETER;
 		return MV_TRUE;
@@ -708,4 +708,3 @@ Core_pd_command(
 	return core_pd_cmd_handler[pReq->Cdb[1]](pCore, pReq);
 }
 #endif
-

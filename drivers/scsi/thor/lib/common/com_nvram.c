@@ -82,15 +82,15 @@ MV_BOOLEAN mvui_init_param( MV_PVOID This, pHBA_Info_Page pHBA_Info_Param)
 	else
 	{
 		MV_FillMemory((MV_PVOID)pHBA_Info_Param, FLASH_PARAM_SIZE, 0xFF);
-		pHBA_Info_Param->Signature[0] = 'M';	
+		pHBA_Info_Param->Signature[0] = 'M';
 		pHBA_Info_Param->Signature[1] = 'R';
-	   	pHBA_Info_Param->Signature[2] = 'V';
+		pHBA_Info_Param->Signature[2] = 'V';
 	    pHBA_Info_Param->Signature[3] = 'L';
 
 		// Set BIOS Version
 		pHBA_Info_Param->Minor = NVRAM_DATA_MAJOR_VERSION;
 		pHBA_Info_Param->Major = NVRAM_DATA_MINOR_VERSION;
-		
+
 		// Set SAS address
 		for(i=0;i<MAX_PHYSICAL_PORT_NUMBER;i++)
 		{
@@ -101,10 +101,10 @@ MV_BOOLEAN mvui_init_param( MV_PVOID This, pHBA_Info_Page pHBA_Info_Param)
 			pHBA_Info_Param->SAS_Address[i].b[4]=  0x11;
 			pHBA_Info_Param->SAS_Address[i].b[5]=  0xab;
 			pHBA_Info_Param->SAS_Address[i].b[6]=  0x00;
-			pHBA_Info_Param->SAS_Address[i].b[7]=  0x00; 
+			pHBA_Info_Param->SAS_Address[i].b[7]=  0x00;
 			/*+(MV_U8)i; - All ports' WWN has to be same */
 		}
-		
+
 		/* init phy link rate */
 		for(i=0;i<8;i++)
 		{
@@ -141,7 +141,7 @@ MV_U8	mvCaculateChecksum(MV_PU8	Address, MV_U32 Size)
         {
                 checkSum += Address[temp];
         }
-        
+
         checkSum = (~checkSum) + 1;
 
 
@@ -157,7 +157,7 @@ MV_U8	mvVerifyChecksum(MV_PU8	Address, MV_U32 Size)
         {
             checkSum += Address[temp];
         }
-        
+
 		return	checkSum;
 }
 

@@ -1,12 +1,12 @@
 #if !defined(COMMON_DEBUG_H)
 #define COMMON_DEBUG_H
 
-/* 
+/*
  *	Marvell Debug Interface
- * 
+ *
  *	MACRO
  *		MV_DEBUG is defined in debug version not in release version.
- *	
+ *
  *	Debug funtions:
  *		MV_PRINT:	print string in release and debug build.
  *		MV_DPRINT:	print string in debug build.
@@ -47,7 +47,7 @@
 #      else
 #         define NTAPI
 #      endif /* (_MSC_VER >= 800) || defined(_STDCALL_SUPPORTED) */
-	
+
        void NTAPI DbgBreakPoint(void);
 #      define MV_ASSERT(_condition_)    \
                  do { if (!(_condition_)) DbgBreakPoint(); } while(0)
@@ -91,7 +91,7 @@
 #endif /* _OS_WINDOWS */
 
 
-/* 
+/*
  * Used with MV_DBG macro, see below .
  * Should be useful for Win driver too, so it is placed here.
  *
@@ -103,7 +103,7 @@
 #define DMSG_HBA         0x0010  /* HBA dbg msg */
 #define DMSG_RESER03     0x0020
 #define DMSG_FREQ        0x0040  /* msg that'll pop up 100+ times per sec */
-#define DMSG_IOCTL       0x0080  /* ioctl msg */ 
+#define DMSG_IOCTL       0x0080  /* ioctl msg */
 #define DMSG_MSG         0x0100  /* plain msg, should be enabled all time */
 #define DMSG_SCSI_FREQ   0x0200  /* freq scsi dbg msg */
 #define DMSG_RAID        0x0400  /* raid dbg msg */
@@ -138,7 +138,7 @@
 #      define MV_DPRINT(x)	MV_PRINT x
 /* in case drivers for non-linux os go crazy */
 #      define MV_DBG(x)         do{}while(0)
-#      define MV_POKE()         
+#      define MV_POKE()
 #   endif /* _OS_LINUX */
 
 #   define MV_DASSERT	        MV_ASSERT
@@ -150,7 +150,7 @@
 #      define MV_DBG(x)            do{}while(0)
 #   endif /* __QNXNTO__ */
 //#   define MV_PRINT(x,...)
-#   define MV_POKE()  
+#   define MV_POKE()
 #   define MV_DPRINT(x)
 #   define MV_DASSERT(x)
 #   define MV_DTRACE(x)
@@ -162,4 +162,3 @@ MV_U32 mvLogGetModuleFilter(MV_U8 moduleId);
 void mvLogMsg(MV_U8 moduleId, MV_U32 type, char* format, ...);
 
 #endif /* COMMON_DEBUG_H */
-

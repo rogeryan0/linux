@@ -241,12 +241,7 @@ static void uart_shutdown(struct tty_struct *tty, struct uart_state *state)
 		 * Turn off DTR and RTS early.
 		 */
 		if (!tty || (tty->termios->c_cflag & HUPCL))
-#if defined(CONFIG_BUFFALO_PLATFORM) && !defined(CONFIG_ARCH_FEROCEON_KW)
-			// don't handle TIOCM_RTS
-			uart_clear_mctrl(uport, TIOCM_RTS);
-#else
 			uart_clear_mctrl(uport, TIOCM_DTR | TIOCM_RTS);
-#endif
 
 		uart_port_shutdown(port);
 	}
@@ -1865,6 +1860,16 @@ static int serial_match_port(struct device *dev, void *data)
 	return dev->devt == devt; /* Actually, only one tty per port */
 }
 
+#ifdef CONFIG_STANDBY_UART_WAKE
+int uart_suspend_port(struct uart_driver *drv, struct uart_port *uport)
+{
+	return 0;
+}
+int uart_resume_port(struct uart_driver *drv, struct uart_port *uport)
+{
+	return 0;
+}
+#else
 int uart_suspend_port(struct uart_driver *drv, struct uart_port *uport)
 {
 	struct uart_state *state = drv->state + uport->line;
@@ -2012,6 +2017,7 @@ int uart_resume_port(struct uart_driver *drv, struct uart_port *uport)
 
 	return 0;
 }
+#endif
 
 static inline void
 uart_report_port(struct uart_driver *drv, struct uart_port *port)

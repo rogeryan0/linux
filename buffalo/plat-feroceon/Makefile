@@ -1,0 +1,1 @@
+obj-$(CONFIG_BUFFALO_SATA_HOTPLUG_EVENT)	+= hdd_ctrl.o

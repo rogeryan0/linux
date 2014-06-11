@@ -14,6 +14,19 @@
 #error Please update to __arch_pfn_to_dma
 #endif
 
+
+
+#ifdef CONFIG_ARCH_ARMADA370
+#ifdef CONFIG_AURORA_IO_CACHE_COHERENCY
+#define dma_io_sync()   do {                            \
+        writel(0x1, INTER_REGS_BASE + 0x21810);         \
+        while (readl(INTER_REGS_BASE + 0x21810) & 0x1); \
+} while (0)
+#else
+#define dma_io_sync()   do { } while (0)
+#endif
+#endif
+
 /*
  * dma_to_pfn/pfn_to_dma/dma_to_virt/virt_to_dma are architecture private
  * functions used internally by the DMA-mapping API to provide DMA
@@ -83,6 +96,12 @@ static inline void __dma_single_cpu_to_dev(const void *kaddr, size_t size,
 
 	if (!arch_is_coherent())
 		___dma_single_cpu_to_dev(kaddr, size, dir);
+#ifdef CONFIG_ARCH_ARMADA370
+#ifdef CONFIG_AURORA_IOCC_DISABLE_WRITE_ALLOCATE
+	else
+		dsb();
+#endif
+#endif
 }
 
 static inline void __dma_single_dev_to_cpu(const void *kaddr, size_t size,
@@ -93,6 +112,8 @@ static inline void __dma_single_dev_to_cpu(const void *kaddr, size_t size,
 
 	if (!arch_is_coherent())
 		___dma_single_dev_to_cpu(kaddr, size, dir);
+	else if (dir != DMA_TO_DEVICE)
+		dma_io_sync();
 }
 
 static inline void __dma_page_cpu_to_dev(struct page *page, unsigned long off,
@@ -103,6 +124,12 @@ static inline void __dma_page_cpu_to_dev(struct page *page, unsigned long off,
 
 	if (!arch_is_coherent())
 		___dma_page_cpu_to_dev(page, off, size, dir);
+#ifdef CONFIG_ARCH_ARMADA370
+#ifdef CONFIG_AURORA_IOCC_DISABLE_WRITE_ALLOCATE
+	else
+		dsb();
+#endif
+#endif
 }
 
 static inline void __dma_page_dev_to_cpu(struct page *page, unsigned long off,
@@ -113,6 +140,8 @@ static inline void __dma_page_dev_to_cpu(struct page *page, unsigned long off,
 
 	if (!arch_is_coherent())
 		___dma_page_dev_to_cpu(page, off, size, dir);
+	else if (dir != DMA_TO_DEVICE)
+		dma_io_sync();
 }
 
 extern int dma_supported(struct device *, u64);
@@ -213,26 +242,6 @@ int dma_mmap_writecombine(struct device *, struct vm_area_struct *,
 extern void __init init_consistent_dma_size(unsigned long size);
 
 
-#ifdef	CONFIG_MV_SP_I_FTCH_DB_INV 
-extern void mv_l2_inv_range(const void *start, const void *end);
-static inline void mv_l2_sync(const void *start, size_t size, int direction)
-{
-	const void *end = start + size;
-
-	BUG_ON(!virt_addr_valid(start) || !virt_addr_valid(end - 1));
-
-	switch (direction) {
-	case DMA_FROM_DEVICE:		/*  */
-	case DMA_BIDIRECTIONAL:		/*  */
-		mv_l2_inv_range(start, end);
-		break;
-	case DMA_TO_DEVICE:		/* */
-		break;
-	default:
-		BUG();
-	}
-}
-#endif
 #ifdef CONFIG_DMABOUNCE
 /*
  * For SA-1111, IXP425, and ADI systems  the dma-mapping functions are "magic"
@@ -394,12 +403,8 @@ static inline dma_addr_t dma_map_page(struct device *dev, struct page *page,
 static inline void dma_unmap_single(struct device *dev, dma_addr_t handle,
 		size_t size, enum dma_data_direction dir)
 {
-#ifndef CONFIG_MV_SP_I_FTCH_DB_INV
 	debug_dma_unmap_page(dev, handle, size, dir, true);
 	__dma_unmap_page(dev, handle, size, dir);
-#else /* CONFIG_MV_SP_I_FTCH_DB_INV */
-	mv_l2_sync(phys_to_virt(handle), size, dir);
-#endif
 }
 
 /**

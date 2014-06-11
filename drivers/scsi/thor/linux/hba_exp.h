@@ -38,10 +38,10 @@ typedef struct _Controller_Infor
 
 void HBA_ModuleStarted(struct mv_mod_desc *mod_desc);
 
-#ifdef SUPPORT_ATA_POWER_MANAGEMENT                                                                       
+#ifdef SUPPORT_ATA_POWER_MANAGEMENT
 #define IS_ATA_PASS_THROUGH_COMMAND(pReq) \
 	((pReq->Cdb[0] == SCSI_CMD_MARVELL_SPECIFIC) && \
-    		(pReq->Cdb[1] == CDB_CORE_MODULE) && (\
+		(pReq->Cdb[1] == CDB_CORE_MODULE) && (\
 			pReq->Cdb[2] == CDB_CORE_ATA_SLEEP || \
 			pReq->Cdb[2] == CDB_CORE_ATA_IDLE || \
 			pReq->Cdb[2] == CDB_CORE_ATA_STANDBY || \
@@ -53,12 +53,31 @@ void HBA_ModuleStarted(struct mv_mod_desc *mod_desc);
 
 #define IS_ATA_12_CMD(scmd) \
 	((scmd->cmnd[0]==ATA_12)&& \
-	 (scmd->cmnd[9] ==0x08||scmd->cmnd[9] ==0xE0||\
-	 scmd->cmnd[9] ==0xE1||scmd->cmnd[9] ==0xE2||\
+	 (scmd->cmnd[9] ==0x08||scmd->cmnd[9] ==0xE0|| \
+	 scmd->cmnd[9] ==0xE1||scmd->cmnd[9] ==0xE2|| \
 	 scmd->cmnd[9] ==0xE3|| scmd->cmnd[9] ==0xE5||\
-	 scmd->cmnd[9] ==0xE6||scmd->cmnd[9] ==0xEC||\
-	 scmd->cmnd[9] ==0xA1||scmd->cmnd[9] ==0xB0))
+	 scmd->cmnd[9] ==0xE6||scmd->cmnd[9] ==0xEC|| \
+	 scmd->cmnd[9] ==0xA1||scmd->cmnd[9] ==0x92|| \
+	 scmd->cmnd[9] ==0xB0))
 
+
+/*ATA Protocols*/
+enum _ATA_PROTOCOL {
+	HARD_RESET 	= 0x00,
+	SRST  			= 0x01,
+	BUS_IDLE 		= 0x02,
+	NON_DATA 		= 0x03,
+	PIO_DATA_IN 	= 0x04,
+	PIO_DATA_OUT 	= 0x05,
+	DMA			= 0x06,
+	DMA_QUEUED	= 0x07,
+	DEVICE_DIAGNOSTIC	= 0x08,
+	DEVICE_RESET		= 0x09,
+	UDMA_DATA_IN		= 0x0A,
+	UDMA_DATA_OUT	= 0x0B,
+	FPDMA				= 0x0C,
+	RTN_INFO			= 0x0F,
+};
 
 #ifdef SUPPORT_EVENT
 /* wrapper for DriverEvent, needed to implement queue */
@@ -70,12 +89,12 @@ typedef struct _Driver_Event_Entry
 #endif /* SUPPORT_EVENT */
 
 struct gen_module_desc {
-#ifdef __MM_SE__	
+#ifdef __MM_SE__
 /* Must the first */
 	struct mv_mod_desc *desc;
 #else
 	MV_PVOID	reserved;
-#endif /* __MM_SE__ */	
+#endif /* __MM_SE__ */
 };
 
 #define __ext_to_gen(_ext)       ((struct gen_module_desc *) (_ext))
@@ -97,8 +116,8 @@ struct gen_module_desc {
    {                                                                     	\
 	__ext_to_gen(ext)->desc->parent->ops->module_notification(       		\
                                             __ext_to_gen(ext)->desc->parent->extension, 	\
-					    					eid,         				 	\
-					    					param);					 	\
+										eid,         				 	\
+										param);					 	\
    }
 
 
@@ -139,8 +158,8 @@ int HBA_GetResource(struct mv_mod_desc *mod_desc,
 		    MV_U32  size,
 		    Assigned_Uncached_Memory *dma_res);
 MV_PVOID HBA_GetModuleExtension(MV_PVOID ext, MV_U32 mod_id);
-void HBA_ModuleNotification(MV_PVOID This, 
-			     enum Module_Event event, 
+void HBA_ModuleNotification(MV_PVOID This,
+			     enum Module_Event event,
 			     struct mod_notif_param *event_param);
 
 #ifdef THOR_DRIVER
@@ -159,12 +178,12 @@ void hba_spin_unlock_irq(spinlock_t* plock);
 			{													\
 				hba_add_timer(pReq, time, (OSSW_TIMER_FUNCTION)(func));					\
 				(pReq)->err_request_ctx=(MV_PVOID)(ctx);							\
-			}	
+			}
 
 #define 	remove_request_timer(pReq)			\
 			{													\
 				hba_remove_timer(pReq);					\
-			}	
+			}
 
 #endif
 
@@ -172,6 +191,6 @@ MV_BOOLEAN __is_scsi_cmd_simulated(MV_U8 cmd_type);
 void HBA_kunmap_sg(void*);
 /*set pci Device ID */
 MV_U16 SetDeviceID(MV_U32 pad_test);
-
+MV_U32 hba_parse_ata_protocol(struct scsi_cmnd *scmd);
 
 #endif /* __HBA_EXPOSE_H__ */

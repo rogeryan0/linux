@@ -61,7 +61,11 @@
  * DO NOT REUSE THESE IDs with any other driver!!  Ever!!
  * Instead:  allocate your own, using normal USB-IF procedures.
  */
+#ifdef CONFIG_ARCH_ARMADA370
+#define FSG_VENDOR_ID	0x1286	/* Marvell */
+#else
 #define FSG_VENDOR_ID	0x0525	/* NetChip */
+#endif
 #define FSG_PRODUCT_ID	0xa4a5	/* Linux-USB File-backed Storage Gadget */
 
 
@@ -288,7 +292,11 @@ static inline int fsg_num_buffers_validate(void)
 }
 
 /* Default size of buffer length. */
+#ifdef CONFIG_ARCH_ARMADA370
+#define FSG_BUFLEN	((u32)32768)
+#else
 #define FSG_BUFLEN	((u32)16384)
+#endif
 
 /* Maximal number of LUNs supported in mass storage function */
 #define FSG_MAX_LUNS	8
@@ -305,7 +313,6 @@ struct fsg_buffhd {
 #else
 	void				*buf;
 #endif
-	dma_addr_t			dma;
 	enum fsg_buffer_state		state;
 	struct fsg_buffhd		*next;
 
@@ -319,14 +326,7 @@ struct fsg_buffhd {
 	struct usb_request		*inreq;
 	int				inreq_busy;
 	struct usb_request		*outreq;
-	//	int				outreq_busy;
-	volatile int			outreq_busy;
-
-	/* added to support async wr */
-	struct file	*file;
-	unsigned int	amount;
-	loff_t		file_offset;
-	struct fsg_buffhd   *next_to_wr;
+	int				outreq_busy;
 };
 
 enum fsg_state {

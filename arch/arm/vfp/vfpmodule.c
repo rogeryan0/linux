@@ -110,9 +110,6 @@ static void vfp_thread_flush(struct thread_info *thread)
 #ifdef CONFIG_SMP
 	vfp->hard.cpu = NR_CPUS;
 #endif
-#ifdef CONFIG_VFP_FASTVFP
-	vfp->hard.fpscr |= (FPSCR_DEFAULT_NAN | FPSCR_FLUSHTOZERO);
-#endif
 }
 
 static void vfp_thread_exit(struct thread_info *thread)
@@ -286,7 +283,9 @@ static void vfp_raise_exceptions(u32 exceptions, u32 inst, u32 fpscr, struct pt_
 	RAISE(FPSCR_UFC, FPSCR_UFE, FPE_FLTUND);
 	RAISE(FPSCR_OFC, FPSCR_OFE, FPE_FLTOVF);
 	RAISE(FPSCR_IOC, FPSCR_IOE, FPE_FLTINV);
-	RAISE(FPSCR_IDC, FPSCR_IDE, FPE_FLTISN);
+#ifdef CONFIG_ARCH_ARMADA370
+        RAISE(FPSCR_IDC, FPSCR_IDE, FPE_FLTISN);
+#endif
 
 	if (si_code)
 		vfp_raise_sigfpe(si_code, regs);
@@ -354,20 +353,6 @@ void VFP_bounce(u32 trigger, u32 fpexc, struct pt_regs *regs)
 
 	fpsid = fmrx(FPSID);
 	orig_fpscr = fpscr = fmrx(FPSCR);
-
-	/*
-	 * If we are running with inexact exceptions enabled, we need to
-	 * emulate the trigger instruction.  Note that as we're emulating
-	 * the trigger instruction, we need to increment PC.
-	 */
-#ifdef CONFIG_ARCH_FEROCEON
-	/* 
-	 * Orion device always generate precised exception regardless of IXE bit.
-      	 * Orion device always report precised exceptional state in bit 31.
-	 */
-
-	goto emulate;
-#endif
 
 	/*
 	 * Check for the special VFP subarch 1 and FPSCR.IXE bit case
@@ -454,7 +439,7 @@ static void vfp_enable(void *unused)
 	set_copro_access(access | CPACC_FULL(10) | CPACC_FULL(11));
 }
 
-#ifdef CONFIG_CPU_PM
+#if defined(CONFIG_CPU_PM) || (defined(CONFIG_ARCH_ARMADA370) && defined(CONFIG_CPU_IDLE))
 static int vfp_pm_suspend(void)
 {
 	struct thread_info *ti = current_thread_info();
@@ -484,6 +469,24 @@ static void vfp_pm_resume(void)
 	fmxr(FPEXC, fmrx(FPEXC) & ~FPEXC_EN);
 }
 
+void vfp_save(void)
+{
+#ifdef CONFIG_ARCH_ARMADA_XP
+        struct pm_message temp;
+        /*
+         * if VFP was not initialized yet, then do nothing
+         */
+#endif
+        if (VFP_arch)
+                vfp_pm_suspend();
+}
+void vfp_restore(void)
+{
+        if (VFP_arch)
+                vfp_pm_resume();
+}
+#endif
+#ifdef CONFIG_CPU_PM
 static int vfp_cpu_pm_notifier(struct notifier_block *self, unsigned long cmd,
 	void *v)
 {

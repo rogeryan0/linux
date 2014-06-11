@@ -51,19 +51,28 @@ static void vfp_single_dump(const char *str, struct vfp_single *s)
 		 str, s->sign != 0, s->exponent, s->significand);
 }
 
+#ifdef CONFIG_ARCH_ARMADA370
 static void vfp_single_normalise_denormal(struct vfp_single *vs, u32 fpscr, u32 *exceptions)
+#else /* CONFIG_ARCH_ARMADA370 */
+static void vfp_single_normalise_denormal(struct vfp_single *vs)
+#endif /* CONFIG_ARCH_ARMADA370 */
 {
+#ifdef CONFIG_ARCH_ARMADA370
 	int bits;
+#else /* CONFIG_ARCH_ARMADA370 */
+	int bits = 31 - fls(vs->significand);
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	vfp_single_dump("normalise_denormal: in", vs);
-	
+
+#ifdef CONFIG_ARCH_ARMADA370
 	pr_debug("VFP: fpscr =%08x\n", fpscr);
 	/* If we are in Flush to zero mode, just zero the fraction */
 	if (fpscr & FPSCR_FLUSHTOZERO) {
 		vs->significand = 0;
 		vfp_single_dump("normalise_denormal: Flushed to zero.", vs);
-		
-		/* IDC is set whenever the FPU coprocessor is in flush-to-zero 
+
+		/* IDC is set whenever the FPU coprocessor is in flush-to-zero
 		 * mode and a subnormal input operand is replaced by a positive zero.
 		 */
 		*exceptions |= FPSCR_IDC;
@@ -72,6 +81,7 @@ static void vfp_single_normalise_denormal(struct vfp_single *vs, u32 fpscr, u32 
 
 	bits = 31 - fls(vs->significand);
 
+#endif /* ! CONFIG_ARCH_ARMADA370 */
 	if (bits) {
 		vs->exponent -= bits - 1;
 		vs->significand <<= bits;
@@ -87,7 +97,11 @@ u32 __vfp_single_normaliseround(int sd, struct vfp_single *vs, u32 fpscr, u32 ex
 u32 vfp_single_normaliseround(int sd, struct vfp_single *vs, u32 fpscr, u32 exceptions, const char *func)
 #endif
 {
+#ifdef CONFIG_ARCH_ARMADA370
+	u32 old_significand, significand, incr, rmode;
+#else /* CONFIG_ARCH_ARMADA370 */
 	u32 significand, incr, rmode;
+#endif /* CONFIG_ARCH_ARMADA370 */
 	int exponent, shift, underflow;
 
 	vfp_single_dump("pack: in", vs);
@@ -133,35 +147,39 @@ u32 vfp_single_normaliseround(int sd, struct vfp_single *vs, u32 fpscr, u32 exce
 	if (underflow) {
 		significand = vfp_shiftright32jamming(significand, -exponent);
 		exponent = 0;
-
 #ifdef DEBUG
 		vs->exponent = exponent;
 		vs->significand = significand;
 		vfp_single_dump("pack: tiny number", vs);
 #endif
-	/* 
-	 * When an underflow trap is not implemented, or is not 
-	 * enabled (the default case), underflow shall be signaled only 
-	 * when both tininess and loss of accuracy have been detected. 
-	 * When an underflow trap has been implemented and is enabled, 
-	 * underflow shall be signaled when tininess is detected 
+#ifdef CONFIG_ARCH_ARMADA370
+	/*
+	 * When an underflow trap is not implemented, or is not
+	 * enabled (the default case), underflow shall be signaled only
+	 * when both tininess and loss of accuracy have been detected.
+	 * When an underflow trap has been implemented and is enabled,
+	 * underflow shall be signaled when tininess is detected
 	 * regardless of loss of accuracy.
 	 */
-		if (!(fpscr & FPSCR_UFE)) 
+		if (!(fpscr & FPSCR_UFE))
 			if (!(significand & ((1 << (VFP_SINGLE_LOW_BITS + 1)) - 1)))
 				underflow = 0;
 
-	/* 
+	/*
 	 * Exp = 0 			=> 2^-126
 	 * significant = 0x40000000	=> 0*(2^1) + 1*(2^0) + 0*(2^-1) + 0*(2^-2) + ....
 	 * Total 			=> 2^-126 (minimum normal number)
 	 */
-		if (significand >= 0x80000000) 
+		if (significand >= 0x80000000)
+#else /* CONFIG_ARCH_ARMADA370 */
+		if (!(significand & ((1 << (VFP_SINGLE_LOW_BITS + 1)) - 1)))
+#endif /* CONFIG_ARCH_ARMADA370 */
 			underflow = 0;
+#ifdef CONFIG_ARCH_ARMADA370
 
 	/*
-	 * In flush-to-zero mode, UFC is set whenever a result is 
-	 * below the threshold for normal numbers before rounding, and the 
+	 * In flush-to-zero mode, UFC is set whenever a result is
+	 * below the threshold for normal numbers before rounding, and the
 	 * result is flushed to zero.
 	 */
 		if (underflow && (fpscr & FPSCR_FLUSHTOZERO)){
@@ -169,6 +187,7 @@ u32 vfp_single_normaliseround(int sd, struct vfp_single *vs, u32 fpscr, u32 exce
 			exceptions |= FPSCR_UFC;
 			pr_debug("VFP: Flushed to zero.");
 		}
+#endif /* ! CONFIG_ARCH_ARMADA370 */
 	}
 
 	/*
@@ -212,6 +231,9 @@ u32 vfp_single_normaliseround(int sd, struct vfp_single *vs, u32 fpscr, u32 exce
 	/*
 	 * Do our rounding.
 	 */
+#ifdef CONFIG_ARCH_ARMADA370
+	old_significand = significand;
+#endif /* ! CONFIG_ARCH_ARMADA370 */
 	significand += incr;
 
 	/*
@@ -229,6 +251,10 @@ u32 vfp_single_normaliseround(int sd, struct vfp_single *vs, u32 fpscr, u32 exce
 	} else {
 		if (significand >> (VFP_SINGLE_LOW_BITS + 1) == 0)
 			exponent = 0;
+#ifndef CONFIG_ARCH_ARMADA370
+		if (exponent || significand > 0x80000000)
+			underflow = 0;
+#endif /* CONFIG_ARCH_ARMADA370 */
 		if (underflow)
 			exceptions |= FPSCR_UFC;
 		vs->exponent = exponent;
@@ -243,11 +269,15 @@ u32 vfp_single_normaliseround(int sd, struct vfp_single *vs, u32 fpscr, u32 exce
 		pr_debug("VFP: %s: d(s%d)=%08x exceptions=%08x\n", func,
 			 sd, d, exceptions);
 #endif
+#ifdef CONFIG_ARCH_ARMADA370
 		if (-1 != sd){
 			vfp_put_float(d, sd);
 		} else {
 			vfp_single_unpack(vs, d);
 		}
+#else /* CONFIG_ARCH_ARMADA370 */
+		vfp_put_float(d, sd);
+#endif /* CONFIG_ARCH_ARMADA370 */
 	}
 
 	return exceptions;
@@ -362,33 +392,53 @@ u32 vfp_estimate_sqrt_significand(u32 exponent, u32 significand)
 static u32 vfp_single_fsqrt(int sd, int unused, s32 m, u32 fpscr)
 {
 	struct vfp_single vsm, vsd;
+#ifdef CONFIG_ARCH_ARMADA370
 	int tm;
 	u32 exceptions = 0;
+#else /* CONFIG_ARCH_ARMADA370 */
+	int ret, tm;
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	vfp_single_unpack(&vsm, m);
+#ifdef CONFIG_ARCH_ARMADA370
 
 	if (vsm.exponent == 0 && vsm.significand)
 		vfp_single_normalise_denormal(&vsm, fpscr, &exceptions);
 
 
+#endif /* ! CONFIG_ARCH_ARMADA370 */
 	tm = vfp_single_type(&vsm);
 	if (tm & (VFP_NAN|VFP_INFINITY)) {
 		struct vfp_single *vsp = &vsd;
 
 		if (tm & VFP_NAN)
+#ifdef CONFIG_ARCH_ARMADA370
 			exceptions |= vfp_propagate_nan(vsp, &vsm, NULL, fpscr);
+#else /* CONFIG_ARCH_ARMADA370 */
+			ret = vfp_propagate_nan(vsp, &vsm, NULL, fpscr);
+#endif /* CONFIG_ARCH_ARMADA370 */
 		else if (vsm.sign == 0) {
  sqrt_copy:
 			vsp = &vsm;
+#ifndef CONFIG_ARCH_ARMADA370
+			ret = 0;
+#endif /* CONFIG_ARCH_ARMADA370 */
 		} else {
  sqrt_invalid:
 			vsp = &vfp_single_default_qnan;
+#ifdef CONFIG_ARCH_ARMADA370
 			exceptions |= FPSCR_IOC;
+#else /* CONFIG_ARCH_ARMADA370 */
+			ret = FPSCR_IOC;
+#endif /* CONFIG_ARCH_ARMADA370 */
 		}
 		vfp_put_float(vfp_single_pack(vsp), sd);
+#ifdef CONFIG_ARCH_ARMADA370
 		return exceptions;
+#else /* CONFIG_ARCH_ARMADA370 */
+		return ret;
+#endif /* CONFIG_ARCH_ARMADA370 */
 	}
-
 
 	/*
 	 * sqrt(+/- 0) == +/- 0
@@ -396,6 +446,14 @@ static u32 vfp_single_fsqrt(int sd, int unused, s32 m, u32 fpscr)
 	if (tm & VFP_ZERO)
 		goto sqrt_copy;
 
+#ifndef CONFIG_ARCH_ARMADA370
+	/*
+	 * Normalise a denormalised number
+	 */
+	if (tm & VFP_DENORMAL)
+		vfp_single_normalise_denormal(&vsm);
+
+#endif /* CONFIG_ARCH_ARMADA370 */
 	/*
 	 * sqrt(<0) = invalid
 	 */
@@ -437,7 +495,11 @@ static u32 vfp_single_fsqrt(int sd, int unused, s32 m, u32 fpscr)
 	}
 	vsd.significand = vfp_shiftright32jamming(vsd.significand, 1);
 
+#ifdef CONFIG_ARCH_ARMADA370
 	return vfp_single_normaliseround(sd, &vsd, fpscr, exceptions, "fsqrt");
+#else /* CONFIG_ARCH_ARMADA370 */
+	return vfp_single_normaliseround(sd, &vsd, fpscr, 0, "fsqrt");
+#endif /* CONFIG_ARCH_ARMADA370 */
 }
 
 /*
@@ -470,11 +532,13 @@ static u32 vfp_compare(int sd, int signal_on_qnan, s32 m, u32 fpscr)
 			ret |= FPSCR_IOC;
 	}
 
-	if (fpscr & FPSCR_FLUSHTOZERO) 
-		if ((vfp_single_packed_exponent(m) == 0 && vfp_single_packed_mantissa(m)) || 
+#ifdef CONFIG_ARCH_ARMADA370
+	if (fpscr & FPSCR_FLUSHTOZERO)
+		if ((vfp_single_packed_exponent(m) == 0 && vfp_single_packed_mantissa(m)) ||
 		    (vfp_single_packed_exponent(d) == 0 && vfp_single_packed_mantissa(d)))
 			ret |= FPSCR_IDC;
 
+#endif /* ! CONFIG_ARCH_ARMADA370 */
 	if (ret == 0) {
 		if (d == m || vfp_single_packed_abs(d | m) == 0) {
 			/*
@@ -548,7 +612,11 @@ static u32 vfp_single_fcvtd(int dd, int unused, s32 m, u32 fpscr)
 		exceptions = FPSCR_IOC;
 
 	if (tm & VFP_DENORMAL)
+#ifdef CONFIG_ARCH_ARMADA370
 		vfp_single_normalise_denormal(&vsm, fpscr, &exceptions);
+#else /* CONFIG_ARCH_ARMADA370 */
+		vfp_single_normalise_denormal(&vsm);
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	vdd.sign = vsm.sign;
 	vdd.significand = (u64)vsm.significand << 32;
@@ -610,7 +678,11 @@ static u32 vfp_single_ftoui(int sd, int unused, s32 m, u32 fpscr)
 	 */
 	tm = vfp_single_type(&vsm);
 	if (tm & VFP_DENORMAL)
+#ifdef CONFIG_ARCH_ARMADA370
 		vfp_single_normalise_denormal(&vsm, fpscr, &exceptions);
+#else /* CONFIG_ARCH_ARMADA370 */
+		exceptions |= FPSCR_IDC;
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	if (tm & VFP_NAN)
 		vsm.sign = 0;
@@ -653,15 +725,24 @@ static u32 vfp_single_ftoui(int sd, int unused, s32 m, u32 fpscr)
 	} else {
 		d = 0;
 		if (vsm.exponent | vsm.significand) {
+#ifdef CONFIG_ARCH_ARMADA370
 			if (rmode == FPSCR_ROUND_MINUSINF && vsm.sign) {
+#else /* CONFIG_ARCH_ARMADA370 */
+			exceptions |= FPSCR_IXC;
+			if (rmode == FPSCR_ROUND_PLUSINF && vsm.sign == 0)
+				d = 1;
+			else if (rmode == FPSCR_ROUND_MINUSINF && vsm.sign) {
+#endif /* CONFIG_ARCH_ARMADA370 */
 				d = 0;
 				exceptions |= FPSCR_IOC;
 			}
+#ifdef CONFIG_ARCH_ARMADA370
 			else {
-				exceptions |= FPSCR_IXC; 
+				exceptions |= FPSCR_IXC;
 				if (rmode == FPSCR_ROUND_PLUSINF && vsm.sign == 0)
 					d = 1;
 			}
+#endif /* ! CONFIG_ARCH_ARMADA370 */
 		}
 	}
 
@@ -674,7 +755,11 @@ static u32 vfp_single_ftoui(int sd, int unused, s32 m, u32 fpscr)
 
 static u32 vfp_single_ftouiz(int sd, int unused, s32 m, u32 fpscr)
 {
+#ifdef CONFIG_ARCH_ARMADA370
 	return vfp_single_ftoui(sd, unused, m, (fpscr | FPSCR_ROUND_TOZERO));
+#else /* CONFIG_ARCH_ARMADA370 */
+	return vfp_single_ftoui(sd, unused, m, FPSCR_ROUND_TOZERO);
+#endif /* CONFIG_ARCH_ARMADA370 */
 }
 
 static u32 vfp_single_ftosi(int sd, int unused, s32 m, u32 fpscr)
@@ -692,7 +777,11 @@ static u32 vfp_single_ftosi(int sd, int unused, s32 m, u32 fpscr)
 	 */
 	tm = vfp_single_type(&vsm);
 	if (vfp_single_type(&vsm) & VFP_DENORMAL)
+#ifdef CONFIG_ARCH_ARMADA370
 		vfp_single_normalise_denormal(&vsm, fpscr, &exceptions);
+#else /* CONFIG_ARCH_ARMADA370 */
+		exceptions |= FPSCR_IDC;
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	if (tm & VFP_NAN) {
 		d = 0;
@@ -753,7 +842,11 @@ static u32 vfp_single_ftosi(int sd, int unused, s32 m, u32 fpscr)
 
 static u32 vfp_single_ftosiz(int sd, int unused, s32 m, u32 fpscr)
 {
+#ifdef CONFIG_ARCH_ARMADA370
 	return vfp_single_ftosi(sd, unused, m, (fpscr | FPSCR_ROUND_TOZERO));
+#else /* CONFIG_ARCH_ARMADA370 */
+	return vfp_single_ftosi(sd, unused, m, FPSCR_ROUND_TOZERO);
+#endif /* CONFIG_ARCH_ARMADA370 */
 }
 
 static struct op fops_ext[32] = {
@@ -766,8 +859,13 @@ static struct op fops_ext[32] = {
 	[FEXT_TO_IDX(FEXT_FCMPZ)]	= { vfp_single_fcmpz,  OP_SCALAR },
 	[FEXT_TO_IDX(FEXT_FCMPEZ)]	= { vfp_single_fcmpez, OP_SCALAR },
 	[FEXT_TO_IDX(FEXT_FCVT)]	= { vfp_single_fcvtd,  OP_SCALAR|OP_DD },
+#ifdef CONFIG_ARCH_ARMADA370
 	[FEXT_TO_IDX(FEXT_FUITO)]	= { vfp_single_fuito,  OP_SCALAR|OP_DD },
 	[FEXT_TO_IDX(FEXT_FSITO)]	= { vfp_single_fsito,  OP_SCALAR|OP_DD },
+#else /* CONFIG_ARCH_ARMADA370 */
+	[FEXT_TO_IDX(FEXT_FUITO)]	= { vfp_single_fuito,  OP_SCALAR },
+	[FEXT_TO_IDX(FEXT_FSITO)]	= { vfp_single_fsito,  OP_SCALAR },
+#endif /* CONFIG_ARCH_ARMADA370 */
 	[FEXT_TO_IDX(FEXT_FTOUI)]	= { vfp_single_ftoui,  OP_SCALAR },
 	[FEXT_TO_IDX(FEXT_FTOUIZ)]	= { vfp_single_ftouiz, OP_SCALAR },
 	[FEXT_TO_IDX(FEXT_FTOSI)]	= { vfp_single_ftosi,  OP_SCALAR },
@@ -842,7 +940,9 @@ vfp_single_add(struct vfp_single *vsd, struct vfp_single *vsn,
 		struct vfp_single *t = vsn;
 		vsn = vsm;
 		vsm = t;
+#ifdef CONFIG_ARCH_ARMADA370
 		pr_debug("VFP: swapping M <-> N\n");
+#endif /* ! CONFIG_ARCH_ARMADA370 */
 	}
 
 	/*
@@ -949,17 +1049,26 @@ static u32
 vfp_single_multiply_accumulate(int sd, int sn, s32 m, u32 fpscr, u32 negate, char *func)
 {
 	struct vfp_single vsd, vsp, vsn, vsm;
+#ifdef CONFIG_ARCH_ARMADA370
 	u32 exceptions = 0;
+#else /* CONFIG_ARCH_ARMADA370 */
+	u32 exceptions;
+#endif /* CONFIG_ARCH_ARMADA370 */
 	s32 v;
 
 	v = vfp_get_float(sn);
 	pr_debug("VFP: s%u = %08x\n", sn, v);
 	vfp_single_unpack(&vsn, v);
 	if (vsn.exponent == 0 && vsn.significand)
+#ifdef CONFIG_ARCH_ARMADA370
 		vfp_single_normalise_denormal(&vsn, fpscr, &exceptions);
+#else /* CONFIG_ARCH_ARMADA370 */
+		vfp_single_normalise_denormal(&vsn);
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	vfp_single_unpack(&vsm, m);
 	if (vsm.exponent == 0 && vsm.significand)
+#ifdef CONFIG_ARCH_ARMADA370
 		vfp_single_normalise_denormal(&vsm, fpscr, &exceptions);
 
 	exceptions |= vfp_single_multiply(&vsp, &vsn, &vsm, fpscr);
@@ -970,22 +1079,34 @@ vfp_single_multiply_accumulate(int sd, int sn, s32 m, u32 fpscr, u32 negate, cha
 
 	if (vsp.exponent == 0 && vsp.significand)
 		vfp_single_normalise_denormal(&vsp, fpscr, &exceptions);
+#else /* CONFIG_ARCH_ARMADA370 */
+		vfp_single_normalise_denormal(&vsm);
+#endif /* CONFIG_ARCH_ARMADA370 */
 
+#ifndef CONFIG_ARCH_ARMADA370
+	exceptions = vfp_single_multiply(&vsp, &vsn, &vsm, fpscr);
+#endif /* CONFIG_ARCH_ARMADA370 */
 	if (negate & NEG_MULTIPLY)
 		vsp.sign = vfp_sign_negate(vsp.sign);
 
 	v = vfp_get_float(sd);
 	pr_debug("VFP: s%u = %08x\n", sd, v);
 	vfp_single_unpack(&vsn, v);
+#ifdef CONFIG_ARCH_ARMADA370
 	if (vsn.exponent == 0 && vsn.significand)
 		vfp_single_normalise_denormal(&vsn, fpscr, &exceptions);
 
+#endif /* ! CONFIG_ARCH_ARMADA370 */
 	if (negate & NEG_SUBTRACT)
 		vsn.sign = vfp_sign_negate(vsn.sign);
 
 	exceptions |= vfp_single_add(&vsd, &vsn, &vsp, fpscr);
 
+#ifdef CONFIG_ARCH_ARMADA370
 	return vfp_single_normaliseround(sd, &vsd, fpscr, exceptions, "fmac-add");
+#else /* CONFIG_ARCH_ARMADA370 */
+	return vfp_single_normaliseround(sd, &vsd, fpscr, exceptions, func);
+#endif /* CONFIG_ARCH_ARMADA370 */
 }
 
 /*
@@ -1030,20 +1151,36 @@ static u32 vfp_single_fnmsc(int sd, int sn, s32 m, u32 fpscr)
 static u32 vfp_single_fmul(int sd, int sn, s32 m, u32 fpscr)
 {
 	struct vfp_single vsd, vsn, vsm;
+#ifdef CONFIG_ARCH_ARMADA370
 	u32 exceptions = 0;
+#else /* CONFIG_ARCH_ARMADA370 */
+	u32 exceptions;
+#endif /* CONFIG_ARCH_ARMADA370 */
 	s32 n = vfp_get_float(sn);
 
 	pr_debug("VFP: s%u = %08x\n", sn, n);
 
 	vfp_single_unpack(&vsn, n);
 	if (vsn.exponent == 0 && vsn.significand)
+#ifdef CONFIG_ARCH_ARMADA370
 		vfp_single_normalise_denormal(&vsn, fpscr, &exceptions);
+#else /* CONFIG_ARCH_ARMADA370 */
+		vfp_single_normalise_denormal(&vsn);
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	vfp_single_unpack(&vsm, m);
 	if (vsm.exponent == 0 && vsm.significand)
+#ifdef CONFIG_ARCH_ARMADA370
 		vfp_single_normalise_denormal(&vsm, fpscr, &exceptions);
+#else /* CONFIG_ARCH_ARMADA370 */
+		vfp_single_normalise_denormal(&vsm);
+#endif /* CONFIG_ARCH_ARMADA370 */
 
+#ifdef CONFIG_ARCH_ARMADA370
 	exceptions |= vfp_single_multiply(&vsd, &vsn, &vsm, fpscr);
+#else /* CONFIG_ARCH_ARMADA370 */
+	exceptions = vfp_single_multiply(&vsd, &vsn, &vsm, fpscr);
+#endif /* CONFIG_ARCH_ARMADA370 */
 	return vfp_single_normaliseround(sd, &vsd, fpscr, exceptions, "fmul");
 }
 
@@ -1053,17 +1190,26 @@ static u32 vfp_single_fmul(int sd, int sn, s32 m, u32 fpscr)
 static u32 vfp_single_fnmul(int sd, int sn, s32 m, u32 fpscr)
 {
 	struct vfp_single vsd, vsn, vsm;
+#ifdef CONFIG_ARCH_ARMADA370
 	u32 exceptions = 0;
+#else /* CONFIG_ARCH_ARMADA370 */
+	u32 exceptions;
+#endif /* CONFIG_ARCH_ARMADA370 */
 	s32 n = vfp_get_float(sn);
 
 	pr_debug("VFP: s%u = %08x\n", sn, n);
 
 	vfp_single_unpack(&vsn, n);
 	if (vsn.exponent == 0 && vsn.significand)
+#ifdef CONFIG_ARCH_ARMADA370
 		vfp_single_normalise_denormal(&vsn, fpscr, &exceptions);
+#else /* CONFIG_ARCH_ARMADA370 */
+		vfp_single_normalise_denormal(&vsn);
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	vfp_single_unpack(&vsm, m);
 	if (vsm.exponent == 0 && vsm.significand)
+#ifdef CONFIG_ARCH_ARMADA370
 		vfp_single_normalise_denormal(&vsm, fpscr, &exceptions);
 
 	exceptions |= vfp_single_multiply(&vsd, &vsn, &vsm, fpscr);
@@ -1071,7 +1217,13 @@ static u32 vfp_single_fnmul(int sd, int sn, s32 m, u32 fpscr)
 
 	if (vsd.exponent == 0 && vsd.significand)
 		vfp_single_normalise_denormal(&vsd, fpscr, &exceptions);
+#else /* CONFIG_ARCH_ARMADA370 */
+		vfp_single_normalise_denormal(&vsm);
+#endif /* CONFIG_ARCH_ARMADA370 */
 
+#ifndef CONFIG_ARCH_ARMADA370
+	exceptions = vfp_single_multiply(&vsd, &vsn, &vsm, fpscr);
+#endif /* CONFIG_ARCH_ARMADA370 */
 	vsd.sign = vfp_sign_negate(vsd.sign);
 	return vfp_single_normaliseround(sd, &vsd, fpscr, exceptions, "fnmul");
 }
@@ -1082,7 +1234,11 @@ static u32 vfp_single_fnmul(int sd, int sn, s32 m, u32 fpscr)
 static u32 vfp_single_fadd(int sd, int sn, s32 m, u32 fpscr)
 {
 	struct vfp_single vsd, vsn, vsm;
+#ifdef CONFIG_ARCH_ARMADA370
 	u32 exceptions = 0;
+#else /* CONFIG_ARCH_ARMADA370 */
+	u32 exceptions;
+#endif /* CONFIG_ARCH_ARMADA370 */
 	s32 n = vfp_get_float(sn);
 
 	pr_debug("VFP: s%u = %08x\n", sn, n);
@@ -1092,13 +1248,25 @@ static u32 vfp_single_fadd(int sd, int sn, s32 m, u32 fpscr)
 	 */
 	vfp_single_unpack(&vsn, n);
 	if (vsn.exponent == 0 && vsn.significand)
+#ifdef CONFIG_ARCH_ARMADA370
 		vfp_single_normalise_denormal(&vsn, fpscr, &exceptions);
+#else /* CONFIG_ARCH_ARMADA370 */
+		vfp_single_normalise_denormal(&vsn);
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	vfp_single_unpack(&vsm, m);
 	if (vsm.exponent == 0 && vsm.significand)
+#ifdef CONFIG_ARCH_ARMADA370
 		vfp_single_normalise_denormal(&vsm, fpscr, &exceptions);
+#else /* CONFIG_ARCH_ARMADA370 */
+		vfp_single_normalise_denormal(&vsm);
+#endif /* CONFIG_ARCH_ARMADA370 */
 
+#ifdef CONFIG_ARCH_ARMADA370
 	exceptions |= vfp_single_add(&vsd, &vsn, &vsm, fpscr);
+#else /* CONFIG_ARCH_ARMADA370 */
+	exceptions = vfp_single_add(&vsd, &vsn, &vsm, fpscr);
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	return vfp_single_normaliseround(sd, &vsd, fpscr, exceptions, "fadd");
 }
@@ -1108,17 +1276,24 @@ static u32 vfp_single_fadd(int sd, int sn, s32 m, u32 fpscr)
  */
 static u32 vfp_single_fsub(int sd, int sn, s32 m, u32 fpscr)
 {
+#ifdef CONFIG_ARCH_ARMADA370
 	struct vfp_single vsd, vsn, vsm;
 	u32 exceptions = 0;
 	int tn, tm;
 
+#endif /* ! CONFIG_ARCH_ARMADA370 */
 	/*
+#ifdef CONFIG_ARCH_ARMADA370
 	 * Subtraction is like addition, but with a negated operand.
-	 * Problem is when you use same register as source operands. 
-	 * For example fsub s6, s7, s7. In that case negate s7  
+	 * Problem is when you use same register as source operands.
+	 * For example fsub s6, s7, s7. In that case negate s7
 	 * operand will result wrong value...
+#else // CONFIG_ARCH_ARMADA370
+	 * Subtraction is addition with one sign inverted.
+#endif // CONFIG_ARCH_ARMADA370
 	 */
-	
+#ifdef CONFIG_ARCH_ARMADA370
+
 	s32 n = vfp_get_float(sn);
 	pr_debug("VFP: s%u = %08x\n", sn, n);
 
@@ -1140,17 +1315,19 @@ static u32 vfp_single_fsub(int sd, int sn, s32 m, u32 fpscr)
 	tn = vfp_single_type(&vsn);
 	tm = vfp_single_type(&vsm);
 
-	if (!((tn & (VFP_QNAN | VFP_SNAN)) || (tm & (VFP_QNAN | VFP_SNAN))))	
+	if (!((tn & (VFP_QNAN | VFP_SNAN)) || (tm & (VFP_QNAN | VFP_SNAN))))
 		/* Negate m value */
 		vsm.sign = vfp_sign_negate(vsm.sign);
 	else
 		pr_debug("VFP: SUB canceled minus signe. One of parameters is NaN tn=0x%x tm=0x%x\n", tn, tm);
-	
+
 	exceptions |= vfp_single_add(&vsd, &vsn, &vsm, fpscr);
 
 	return vfp_single_normaliseround(sd, &vsd, fpscr, exceptions, "fsub");
+#else /* CONFIG_ARCH_ARMADA370 */
+	return vfp_single_fadd(sd, sn, vfp_single_packed_negate(m), fpscr);
+#endif /* CONFIG_ARCH_ARMADA370 */
 }
-
 
 /*
  * sd = sn / sm
@@ -1167,11 +1344,13 @@ static u32 vfp_single_fdiv(int sd, int sn, s32 m, u32 fpscr)
 	vfp_single_unpack(&vsn, n);
 	vfp_single_unpack(&vsm, m);
 
+#ifdef CONFIG_ARCH_ARMADA370
 	if (vsn.exponent == 0 && vsn.significand)
 		vfp_single_normalise_denormal(&vsn, fpscr, &exceptions);
 	if (vsm.exponent == 0 && vsm.significand)
 		vfp_single_normalise_denormal(&vsm, fpscr, &exceptions);
 
+#endif /* ! CONFIG_ARCH_ARMADA370 */
 	vsd.sign = vsn.sign ^ vsm.sign;
 
 	tn = vfp_single_type(&vsn);
@@ -1214,6 +1393,12 @@ static u32 vfp_single_fdiv(int sd, int sn, s32 m, u32 fpscr)
 	if (tm & VFP_INFINITY || tn & VFP_ZERO)
 		goto zero;
 
+#ifndef CONFIG_ARCH_ARMADA370
+	if (tn & VFP_DENORMAL)
+		vfp_single_normalise_denormal(&vsn);
+	if (tm & VFP_DENORMAL)
+		vfp_single_normalise_denormal(&vsm);
+#endif /* CONFIG_ARCH_ARMADA370 */
 
 	/*
 	 * Ok, we have two numbers, we can perform division.
@@ -1232,16 +1417,28 @@ static u32 vfp_single_fdiv(int sd, int sn, s32 m, u32 fpscr)
 	if ((vsd.significand & 0x3f) == 0)
 		vsd.significand |= ((u64)vsm.significand * vsd.significand != (u64)vsn.significand << 32);
 
+#ifdef CONFIG_ARCH_ARMADA370
 	return vfp_single_normaliseround(sd, &vsd, fpscr, exceptions, "fdiv");
+#else /* CONFIG_ARCH_ARMADA370 */
+	return vfp_single_normaliseround(sd, &vsd, fpscr, 0, "fdiv");
+#endif /* CONFIG_ARCH_ARMADA370 */
 
  vsn_nan:
+#ifdef CONFIG_ARCH_ARMADA370
 	exceptions |= vfp_propagate_nan(&vsd, &vsn, &vsm, fpscr);
+#else /* CONFIG_ARCH_ARMADA370 */
+	exceptions = vfp_propagate_nan(&vsd, &vsn, &vsm, fpscr);
+#endif /* CONFIG_ARCH_ARMADA370 */
  pack:
 	vfp_put_float(vfp_single_pack(&vsd), sd);
 	return exceptions;
 
  vsm_nan:
+#ifdef CONFIG_ARCH_ARMADA370
 	exceptions |= vfp_propagate_nan(&vsd, &vsm, &vsn, fpscr);
+#else /* CONFIG_ARCH_ARMADA370 */
+	exceptions = vfp_propagate_nan(&vsd, &vsm, &vsn, fpscr);
+#endif /* CONFIG_ARCH_ARMADA370 */
 	goto pack;
 
  zero:
@@ -1250,7 +1447,11 @@ static u32 vfp_single_fdiv(int sd, int sn, s32 m, u32 fpscr)
 	goto pack;
 
  divzero:
+#ifdef CONFIG_ARCH_ARMADA370
 	exceptions |= FPSCR_DZC;
+#else /* CONFIG_ARCH_ARMADA370 */
+	exceptions = FPSCR_DZC;
+#endif /* CONFIG_ARCH_ARMADA370 */
  infinity:
 	vsd.exponent = 255;
 	vsd.significand = 0;
@@ -1258,7 +1459,11 @@ static u32 vfp_single_fdiv(int sd, int sn, s32 m, u32 fpscr)
 
  invalid:
 	vfp_put_float(vfp_single_pack(&vfp_single_default_qnan), sd);
+#ifdef CONFIG_ARCH_ARMADA370
 	return (exceptions | FPSCR_IOC);
+#else /* CONFIG_ARCH_ARMADA370 */
+	return FPSCR_IOC;
+#endif /* CONFIG_ARCH_ARMADA370 */
 }
 
 static struct op fops[16] = {

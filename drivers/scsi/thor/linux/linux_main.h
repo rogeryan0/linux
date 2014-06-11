@@ -34,7 +34,7 @@ enum {
 #define mv_scmd_target(cmd)  cmd->target
 #define mv_scmd_lun(cmd)     cmd->lun
 #endif
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24)	
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24)
 #define MV_DMA_BIT_MASK_64 DMA_64BIT_MASK
 #define MV_DMA_BIT_MASK_32 DMA_32BIT_MASK
 #else
@@ -46,4 +46,3 @@ enum {
 #define HI_BUSADDR(x) (sizeof(BUS_ADDRESS)>4? (u64)(x) >> 32 : 0)
 
 #endif /*_LINUX_MAIN_H*/
-

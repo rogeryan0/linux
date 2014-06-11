@@ -840,12 +840,6 @@ static const struct bin_table bin_mac_hid_files[] = {
 static const struct bin_table bin_raid_table[] = {
 	{ CTL_INT,	DEV_RAID_SPEED_LIMIT_MIN,	"speed_limit_min" },
 	{ CTL_INT,	DEV_RAID_SPEED_LIMIT_MAX,	"speed_limit_max" },
-#if defined(CONFIG_BUFFALO_PLATFORM)
-	{ DEV_RAID_SKIP_RESYNC,		"skip_resync" },
-#if defined(CONFIG_BUFFALO_USE_MD_KERNEVNT)
-	{ DEV_RAID_USE_KERNELEVENT,	"use_kernevnt" },
-#endif
-#endif
 	{}
 };
 

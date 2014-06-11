@@ -37,7 +37,7 @@
  */
 
 #ifndef AUTOCONF_INCLUDED
-#include <linux/kconfig.h>
+#include <linux/config.h>
 #endif
 #include <linux/module.h>
 #include <linux/list.h>

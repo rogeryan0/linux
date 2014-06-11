@@ -41,14 +41,14 @@ extern MV_BOOLEAN Category_CDB_Type(
 
 extern MV_BOOLEAN ATAPI_CDB2TaskFile(
 	IN PDomain_Device pDevice,
-	IN PMV_Request pReq, 
+	IN PMV_Request pReq,
 	OUT PATA_TaskFile pTaskFile
 	);
 
 extern MV_BOOLEAN ATA_CDB2TaskFile(
 	IN PDomain_Device pDevice,
-	IN PMV_Request pReq, 
-	IN MV_U8 tag,	
+	IN PMV_Request pReq,
+	IN MV_U8 tag,
 	OUT PATA_TaskFile pTaskFile
 	);
 
@@ -107,7 +107,7 @@ static MV_VOID __core_req_timeout_handler(MV_PVOID data)
 	dev   = &pcore->Ports[PATA_MapPortId(req->Device_Id)].Device[PATA_MapDeviceId(req->Device_Id)];
 	phba = HBA_GetModuleExtension(req->Cmd_Initiator, MODULE_HBA);
 #ifdef MV_DEBUG
-	MV_DPRINT(("Request time out. Resetting channel %d. \n", PATA_MapPortId(req->Device_Id)));	
+	MV_DPRINT(("Request time out. Resetting channel %d. \n", PATA_MapPortId(req->Device_Id)));
 	MV_DumpRequest(req, 0);
 #endif
 	hba_spin_lock_irq(&phba->desc->hba_desc->global_lock);
@@ -205,9 +205,9 @@ MV_U32 Core_ModuleGetResourceQuota(enum Resource_Type type, MV_U16 maxIo)
 {
 	MV_U32 size = 0;
 	MV_U8 sgEntryCount, tagCount;
-	
-	/* Extension quota */	
-	if ( type==RESOURCE_CACHED_MEMORY )		
+
+	/* Extension quota */
+	if ( type==RESOURCE_CACHED_MEMORY )
 	{
 		size = ROUNDING(sizeof(Core_Driver_Extension), 8);
 	#ifdef SUPPORT_CONSOLIDATE
@@ -238,27 +238,27 @@ MV_U32 Core_ModuleGetResourceQuota(enum Resource_Type type, MV_U16 maxIo)
 		size += sizeof(MV_Request) * INTERNAL_REQ_COUNT;
 
 		/* tag pool */
-		size += ROUNDING(sizeof(MV_U16) * tagCount * MAX_PORT_NUMBER, 8); 
+		size += ROUNDING(sizeof(MV_U16) * tagCount * MAX_PORT_NUMBER, 8);
 
 #ifdef SUPPORT_CONSOLIDATE
-		/* resource for Consolidate_Extension->Requests[] SG Entry */	
+		/* resource for Consolidate_Extension->Requests[] SG Entry */
 		if ( maxIo>1 )
 			size += sizeof(MV_SG_Entry) * sgEntryCount * CONS_MAX_INTERNAL_REQUEST_COUNT;
 #endif
 		return size;
 	}
-	
+
 	/* Uncached memory quota */
 	if ( type==RESOURCE_UNCACHED_MEMORY )
 	{
-		/* 
+		/*
 		 * SATA port alignment quota:
 		 * Command list and received FIS is 64 byte aligned.
 		 * Command table is 128 byte aligned.
 		 * Data buffer is 8 byte aligned.
 		 * This is different with AHCI.
 		 */
-		/* 
+		/*
 		 * PATA port alignment quota: Same with SATA.
 		 * The only difference is that PATA doesn't have the FIS.
 		 */
@@ -286,7 +286,7 @@ MV_U32 Core_ModuleGetResourceQuota(enum Resource_Type type, MV_U16 maxIo)
 		#else
 			size = 64 + SATA_CMD_LIST_SIZE;			/* Command List*/
 			size += 64 + SATA_RX_FIS_SIZE;			/* Received FIS */
-			size += 128 + SATA_CMD_TABLE_SIZE; 		/* Command Table */	
+			size += 128 + SATA_CMD_TABLE_SIZE; 		/* Command Table */
 			size += 8 + SATA_SCRATCH_BUFFER_SIZE;	/* Buffer for initialization like identify */
 		#endif
 		}
@@ -299,7 +299,7 @@ MV_U32 Core_ModuleGetResourceQuota(enum Resource_Type type, MV_U16 maxIo)
 
 void Core_ModuleInitialize(MV_PVOID ModulePointer, MV_U32 extensionSize, MV_U16 maxIo)
 {
-#if defined(NEW_LINUX_DRIVER) 
+#if defined(NEW_LINUX_DRIVER)
 	struct mv_mod_desc *mod_desc = (struct mv_mod_desc *)ModulePointer;
 	MV_PVOID		This = (MV_PVOID)mod_desc->extension;
 	PCore_Driver_Extension pCore    = (PCore_Driver_Extension) mod_desc->extension;
@@ -323,7 +323,7 @@ void Core_ModuleInitialize(MV_PVOID ModulePointer, MV_U32 extensionSize, MV_U16 
 	MV_U8 vsrSkipPATAPort = 0;
 #ifndef _OS_LINUX
 	MV_PVOID pTopLayer = HBA_GetModuleExtension(pCore, MODULE_HBA);
-#endif	
+#endif
 	flagSaved=pCore->VS_Reg_Saved;
 
 	if(flagSaved==VS_REG_SIG)
@@ -337,8 +337,8 @@ void Core_ModuleInitialize(MV_PVOID ModulePointer, MV_U32 extensionSize, MV_U16 
 		vsrSkipPATAPort = pCore->Flag_Fastboot_Skip & FLAG_SKIP_PATA_PORT;
 	}
 
-	/* 
-	 * Zero core driver extension. After that, I'll ignore many variables initialization. 
+	/*
+	 * Zero core driver extension. After that, I'll ignore many variables initialization.
 	 */
 	MV_ZeroMemory(This, extensionSize);
 
@@ -359,17 +359,17 @@ void Core_ModuleInitialize(MV_PVOID ModulePointer, MV_U32 extensionSize, MV_U16 
 
 	pCore->State = CORE_STATE_IDLE;
 	/* Set up controller information */
-#if defined(__MM_SE__) 
+#if defined(__MM_SE__)
 	/* Set up controller information */
 	pCore->desc        = mod_desc;
 	pCore->Vendor_Id   = mod_desc->hba_desc->vendor;
 	pCore->Device_Id   = mod_desc->hba_desc->device;
-	pCore->Revision_Id = mod_desc->hba_desc->Revision_Id;	
+	pCore->Revision_Id = mod_desc->hba_desc->Revision_Id;
 	MV_DPRINT(("pCore->Device_Id = 0x%x.\n",pCore->Device_Id));
 	/*
 	pCore->Sub_System_Id =mod_desc->hba_desc->Sub_System_Id;
 	pCore->Sub_Vendor_Id =mod_desc->hba_desc->Sub_Vendor_Id;
- 	*/
+	*/
 	for ( i=0; i<MAX_BASE_ADDRESS; i++ )
 	{
 		pCore->Base_Address[i] = mod_desc->hba_desc->Base_Address[i];
@@ -421,7 +421,7 @@ void Core_ModuleInitialize(MV_PVOID ModulePointer, MV_U32 extensionSize, MV_U16 
 			/* Read Bit[10], Bit [11] of BAR5 offset A4h to get flag for */
 			/* PATA device detection (0 - default, need to detect) and */
 			/* PM detection (0 - default, need to detect) */
-			tmpReg = MV_REG_READ_DWORD(pCore->Mmio_Base, VENDOR_DETECT) & 
+			tmpReg = MV_REG_READ_DWORD(pCore->Mmio_Base, VENDOR_DETECT) &
 						(VENDOR_DETECT_PATA | VENDOR_DETECT_PM);
 			pCore->Flag_Fastboot_Skip |= (tmpReg >> 9);		/* bit 1, 2 */
 		}
@@ -490,7 +490,7 @@ void Core_ModuleInitialize(MV_PVOID ModulePointer, MV_U32 extensionSize, MV_U16 
 		List_AddTail(&pReq->Queue_Pointer, &pCore->Internal_Req_List);
 		tmpSG += sizeof(MV_SG_Entry) * sgEntryCount;
 		temp += MV_REQUEST_SIZE;	/* MV_Request is 64bit aligned. */
-	}	
+	}
 //	temp = ROUNDING( (MV_PTR_INTEGER)temp, 8 );		/* Don't round the extension pointer */
 
 	/* tag pool */
@@ -504,7 +504,7 @@ void Core_ModuleInitialize(MV_PVOID ModulePointer, MV_U32 extensionSize, MV_U16 
 		temp += sizeof(MV_U16) * tagCount;
 	}
 
-#ifdef SUPPORT_CONSOLIDATE	
+#ifdef SUPPORT_CONSOLIDATE
 	// Allocate resource for Consolidate_Extension->Requests[].
 	tmpSG = temp;
 	temp = temp + sizeof(MV_SG_Entry) * sgEntryCount * CONS_MAX_INTERNAL_REQUEST_COUNT;
@@ -518,7 +518,7 @@ void Core_ModuleInitialize(MV_PVOID ModulePointer, MV_U32 extensionSize, MV_U16 
 	{
 		MV_ASSERT( extensionSize>=
 			( ROUNDING(sizeof(Core_Driver_Extension),8) + internalReqSize + tagSize + ROUNDING(sizeof(Consolidate_Extension),8) + ROUNDING(sizeof(Consolidate_Device),8)*MAX_DEVICE_NUMBER )
-			); 
+			);
 		pCore->pConsolid_Extent = (PConsolidate_Extension)(temp);
 
 		//Initialize some fields for pCore->pConsolid_Extent->Requests[i]
@@ -541,7 +541,7 @@ void Core_ModuleInitialize(MV_PVOID ModulePointer, MV_U32 extensionSize, MV_U16 
 	for ( i=0; i<pCore->Port_Num; i++ )
 	{
 		port = &pCore->Ports[i];
-		
+
 		port->Id = i;
 		port->Port_State = PORT_STATE_IDLE;
 		port->Core_Extension = pCore;
@@ -550,7 +550,7 @@ void Core_ModuleInitialize(MV_PVOID ModulePointer, MV_U32 extensionSize, MV_U16 
 
 		Tag_Init(&port->Tag_Pool, tagCount);
 
-		for (j=0; j<MAX_DEVICE_PER_PORT; j++) 
+		for (j=0; j<MAX_DEVICE_PER_PORT; j++)
 		{
 			port->Device[j].Id = i*MAX_DEVICE_PER_PORT + j;
 			port->Device[j].PPort = port;
@@ -570,7 +570,7 @@ void Core_ModuleInitialize(MV_PVOID ModulePointer, MV_U32 extensionSize, MV_U16 
 			port->Type = PORT_TYPE_SATA;
 
 #ifdef COMMAND_ISSUE_WORKROUND
-		OSSW_INIT_TIMER(&port->timer);	
+		OSSW_INIT_TIMER(&port->timer);
 		port->reset_hba_times= 0;
 		mv_core_init_reset_para(port);
 #endif
@@ -578,7 +578,7 @@ void Core_ModuleInitialize(MV_PVOID ModulePointer, MV_U32 extensionSize, MV_U16 
 	}
 
 	/* Get uncached memory */
-#if defined(__MM_SE__) 	
+#if defined(__MM_SE__)
 	size = pCore->desc->ops->get_res_desc(RESOURCE_UNCACHED_MEMORY, maxIo);
 	if (HBA_GetResource(pCore->desc,
 			    RESOURCE_UNCACHED_MEMORY,
@@ -593,10 +593,10 @@ void Core_ModuleInitialize(MV_PVOID ModulePointer, MV_U32 extensionSize, MV_U16 
 	/* Get uncached memory */
 	HBA_GetResource(pCore, RESOURCE_UNCACHED_MEMORY, &dmaResource);
 
-#endif /*_OS_LINUX*/	
+#endif /*_OS_LINUX*/
 	memVir = dmaResource.Virtual_Address;
 	memDMA = dmaResource.Physical_Address;
-	
+
 	/* Assign uncached memory for command list (64 byte align) */
 	offset = (MV_U32)(ROUNDING(memDMA.value,64)-memDMA.value);
 	memDMA.value += offset;
@@ -621,7 +621,7 @@ void Core_ModuleInitialize(MV_PVOID ModulePointer, MV_U32 extensionSize, MV_U16 
 	memVir = (MV_PU8)memVir + offset;
 	for ( i=0; i<pCore->SATA_Port_Num; i++ )
 	{
-		port = &pCore->Ports[i];	
+		port = &pCore->Ports[i];
 		port->RX_FIS = memVir;
 		port->RX_FIS_DMA = memDMA;
 	#ifdef HIBERNATION_ROUNTINE
@@ -671,7 +671,7 @@ void Core_ModuleInitialize(MV_PVOID ModulePointer, MV_U32 extensionSize, MV_U16 
 		{
 			port->Device[j].Scratch_Buffer = memVir;
 			port->Device[j].Scratch_Buffer_DMA = memDMA;
-		
+
 		#ifdef HIBERNATION_ROUNTINE
 			if((!pCore->Is_Dump)|| (i==(pCore->Port_Num-1)))
 		#endif
@@ -685,7 +685,7 @@ void Core_ModuleInitialize(MV_PVOID ModulePointer, MV_U32 extensionSize, MV_U16 
 	/* Let me confirm the following assumption */
 	MV_ASSERT( sizeof(SATA_FIS_REG_H2D)==sizeof(MV_U32)*FIS_REG_H2D_SIZE_IN_DWORD );
 	MV_ASSERT( sizeof(MV_Command_Table)==0x80+MAX_SG_ENTRY*sizeof(MV_SG_Entry) );
-	MV_ASSERT( sizeof(ATA_Identify_Data)==512 ); 
+	MV_ASSERT( sizeof(ATA_Identify_Data)==512 );
 
 #ifdef SUPPORT_CONSOLIDATE
 	if ( !pCore->Is_Dump )
@@ -707,8 +707,8 @@ void Core_ModuleStart(MV_PVOID This)
 
 void Core_ModuleShutdown(MV_PVOID This)
 {
-	/* 
-	 * This function is equivalent to ahci_port_stop 
+	/*
+	 * This function is equivalent to ahci_port_stop
 	 */
 	PCore_Driver_Extension pCore = (PCore_Driver_Extension)This;
 	MV_U32 tmp, i;
@@ -725,7 +725,7 @@ void Core_ModuleShutdown(MV_PVOID This)
 		MV_REG_WRITE_DWORD(mmio, PORT_CMD, tmp);
 		MV_REG_READ_DWORD(mmio, PORT_CMD); /* flush */
 
-		/* 
+		/*
 		 * spec says 500 msecs for each PORT_CMD_{START,FIS_RX} bit, so
 		 * this is slightly incorrect.
 		 */
@@ -746,15 +746,15 @@ void Core_HandleWaitingList(PCore_Driver_Extension pCore);
 void Core_InternalSendRequest(MV_PVOID This, PMV_Request pReq);
 
 void Core_ModuleSendRequest(MV_PVOID This, PMV_Request pReq)
-{	
+{
 #ifdef SUPPORT_CONSOLIDATE
 	PCore_Driver_Extension pCore = (PCore_Driver_Extension)This;
 	PDomain_Device pDevice;
 	MV_U8 portId = PATA_MapPortId(pReq->Device_Id);
 	MV_U8 deviceId = PATA_MapDeviceId(pReq->Device_Id);
-	
+
 	pDevice = &pCore->Ports[portId].Device[deviceId];
-	
+
 	if ( (!(pDevice->Device_Type&DEVICE_TYPE_ATAPI)) && (!pCore->Is_Dump) )
 		Consolid_ModuleSendRequest(pCore, pReq);
 	else
@@ -831,7 +831,7 @@ void SATA_PrepareCommandHeader(PDomain_Port pPort, PMV_Request pReq, MV_U8 tag)
 	PDomain_Device pDevice = &pPort->Device[PATA_MapDeviceId(pReq->Device_Id)];
 #endif
 	header = SATA_GetCommandHeader(pPort, tag);
-	/* 
+	/*
 	 * Set up the command header.
 	 */
 	header->FIS_Length = FIS_REG_H2D_SIZE_IN_DWORD;
@@ -866,7 +866,7 @@ void PATA_PrepareCommandHeader(PDomain_Port pPort, PMV_Request pReq, MV_U8 tag)
 	PMV_SG_Table pSGTable = &pReq->SG_Table;
 
 	header = PATA_GetCommandHeader(pPort, tag);
-	/* 
+	/*
 	 * Set up the command header.
 	 * TCQ, Diagnostic_Command, Reset
 	 * Table_Address and Table_Address_High are fixed. Needn't set every time.
@@ -894,7 +894,7 @@ void PATA_PrepareCommandHeader(PDomain_Port pPort, PMV_Request pReq, MV_U8 tag)
 	{
 		header->DMA = (pReq->Cmd_Flag&CMD_FLAG_DMA)?1:0;
 	}
-#else	
+#else
 	header->DMA = (pReq->Cmd_Flag&CMD_FLAG_DMA)?1:0;
 #endif
 
@@ -926,8 +926,8 @@ void PATA_PrepareCommandHeader(PDomain_Port pPort, PMV_Request pReq, MV_U8 tag)
  * Fill SATA command table
  */
 MV_VOID SATA_PrepareCommandTable(
-	PDomain_Port pPort, 
-	PMV_Request pReq, 
+	PDomain_Port pPort,
+	PMV_Request pReq,
 	MV_U8 tag,
 	PATA_TaskFile pTaskFile
 	)
@@ -989,13 +989,13 @@ MV_VOID SATA_PrepareCommandTable(
 			}
 		}
 		else
-		{	
+		{
 			MV_DASSERT( !SCSI_IS_READ(pReq->Cdb[0]) && !SCSI_IS_WRITE(pReq->Cdb[0]) );
 		}
 #endif /* USE_NEW_SGTABLE */
 	}
 	else
-	{	
+	{
 		MV_DASSERT( !SCSI_IS_READ(pReq->Cdb[0]) && !SCSI_IS_WRITE(pReq->Cdb[0]) );
 	}
 }
@@ -1004,8 +1004,8 @@ MV_VOID SATA_PrepareCommandTable(
  * Fill the PATA command table
 */
 static MV_VOID PATA_PrepareCommandTable(
-	PDomain_Port pPort, 
-	PMV_Request pReq, 
+	PDomain_Port pPort,
+	PMV_Request pReq,
 	MV_U8 tag,
 	PATA_TaskFile pTaskFile
 	)
@@ -1034,7 +1034,7 @@ static MV_VOID PATA_PrepareCommandTable(
 	(*pU8)=pTaskFile->LBA_High; pU8++;
 	(*pU8)=pTaskFile->LBA_High_Exp; pU8++;
 	*((MV_PU32)pU8) = 0L;
-    
+
 	/* Step 2: Fill the ATAPI CDB */
 	if ( pReq->Cmd_Flag&CMD_FLAG_PACKET )
 	{
@@ -1080,7 +1080,7 @@ static MV_VOID PATA_PrepareCommandTable(
 #endif
 	}
 	else
-	{	
+	{
 		MV_DASSERT( !SCSI_IS_READ(pReq->Cdb[0]) && !SCSI_IS_WRITE(pReq->Cdb[0]) );
 	}
 
@@ -1094,8 +1094,8 @@ void SATA_SendFrame(PDomain_Port pPort, PMV_Request pReq, MV_U8 tag)
 	#endif
 	MV_DASSERT( (pPort->Running_Slot&(1<<tag))==0 );
 	MV_DASSERT( pPort->Running_Req[tag]==0 );
-	MV_DASSERT( (MV_REG_READ_DWORD(portMmio, PORT_CMD_ISSUE)&(1<<tag))==0 );
-	MV_DASSERT( (MV_REG_READ_DWORD(portMmio, PORT_SCR_ACT)&(1<<tag))==0 );
+	//MV_DASSERT( (MV_REG_READ_DWORD(portMmio, PORT_CMD_ISSUE)&(1<<tag))==0 );
+	//MV_DASSERT( (MV_REG_READ_DWORD(portMmio, PORT_SCR_ACT)&(1<<tag))==0 );
 
 	mv_core_set_running_slot(pPort, tag, pReq);
 	#ifdef SUPPORT_ATA_SECURITY_CMD
@@ -1141,7 +1141,7 @@ MV_BOOLEAN Core_WaitingForIdle(MV_PVOID pExtension)
 		if ( pPort->Running_Slot!=0 )
 			return MV_FALSE;
 	}
-	
+
 	return MV_TRUE;
 }
 
@@ -1173,7 +1173,7 @@ void Core_ResetHardware(MV_PVOID pExtension)
 		pCore->Resetting = 1;
 		if( !mvAdapterStateMachine(pCore,NULL) )
 		{
-			MV_ASSERT(MV_FALSE);	
+			MV_ASSERT(MV_FALSE);
 		}
 	}
 	else
@@ -1181,19 +1181,19 @@ void Core_ResetHardware(MV_PVOID pExtension)
 		/* I suppose that we only have one chance to call Core_ResetHardware. */
 		MV_DASSERT(MV_FALSE);
 	}
-	
+
 	return;
 }
 
 void PATA_LegacyPollSenseData(PCore_Driver_Extension pCore, PMV_Request pReq)
 {
-	/* 
+	/*
 	 * This sense data says:
 	 * Format: Fixed format sense data
 	 * Sense key: Hardware error
 	 * Sense code and qualifier: 08h 03h LOGICAL UNIT COMMUNICATION CRC ERROR
 	 */
-	MV_U8 fakeSense[]={0xF0, 0x00, 0x04, 0x00, 0x00, 0x01, 
+	MV_U8 fakeSense[]={0xF0, 0x00, 0x04, 0x00, 0x00, 0x01,
 		0xEA, 0x0A, 0x74, 0x00, 0x00, 0x00, 0x08, 0x03, 0x00, 0x00, 0x00, 0x00};
 	MV_U32 size = MV_MIN(sizeof(fakeSense)/sizeof(MV_U8), pReq->Sense_Info_Buffer_Length);
 
@@ -1218,6 +1218,7 @@ void mvScsiInquiry(PCore_Driver_Extension pCore, PMV_Request pReq)
 #ifndef _OS_BIOS
 	PDomain_Device pDevice = NULL;
 	MV_U8 portId, deviceId;
+	MV_U32 tmpLen = 0;
 
 	portId = PATA_MapPortId(pReq->Device_Id);
 	deviceId = PATA_MapDeviceId(pReq->Device_Id);
@@ -1240,7 +1241,6 @@ void mvScsiInquiry(PCore_Driver_Extension pCore, PMV_Request pReq)
 		MV_U8 MV_INQUIRY_VPD_PAGE83_DATA[16] = {
 			0x00, 0x83, 0x00, 0x0C, 0x01, 0x02, 0x00, 0x08,
 			0x00, 0x50, 0x43, 0x00, 0x00, 0x00, 0x00, 0x00};
-		MV_U32 tmpLen = 0;
 		pReq->Scsi_Status = REQ_STATUS_SUCCESS;
 
 		/* Shall return the specific page of Vital Production Data */
@@ -1270,7 +1270,7 @@ void mvScsiInquiry(PCore_Driver_Extension pCore, PMV_Request pReq)
 			break;
 		}
 		pReq->Data_Transfer_Length = tmpLen;
-	} 
+	}
 	else
 	{
 		/* Standard inquiry */
@@ -1283,18 +1283,20 @@ void mvScsiInquiry(PCore_Driver_Extension pCore, PMV_Request pReq)
 		}
 		else {
 			MV_U8 Vendor[9],Product[24], temp[24];
-			MV_U8 buff[42];
-			MV_U32 i, inquiryLen = 42;
+			MV_U8 buff[0x60]; //[42];
+			MV_U32 i, inquiryLen = 0x60; //42;
 
 			MV_ZeroMemory(buff, inquiryLen);
+			tmpLen = MV_MIN(pReq->Data_Transfer_Length, 0x60);
+			pReq->Data_Transfer_Length = tmpLen;
 
 			buff[0] = (pDevice->Device_Type&DEVICE_TYPE_ATAPI)?0x5 : 0;
 			buff[1] = (pDevice->Device_Type&DEVICE_TYPE_ATAPI)?MV_BIT(7) : 0;    /* Not Removable disk */
 			buff[2] = 0x05;    /*claim conformance to SPC-3*/
 			buff[3] = 0x12;    /* set RESPONSE DATA FORMAT to 2*/
-			buff[4] = 42 - 5;
+			buff[4] = 0x60 - 5; //42 - 5;
 			buff[6] = 0x0;     /* tagged queuing*/
-			buff[7] = 0X13;	
+			buff[7] = 0X13;
 
 			MV_CopyMemory(temp, pDevice->Model_Number, 24);
 			for (i = 0; i < 9; i++)	{
@@ -1359,17 +1361,44 @@ void mvScsiInquiry(PCore_Driver_Extension pCore, PMV_Request pReq)
 				MV_CopyMemory(Product, &temp[i], 24 - i);
 				Product[16] = '\0';
 			}
-
+		/*
 			MV_CopyMemory(&buff[8], Vendor, 8);
 			MV_CopyMemory(&buff[16], Product, 16);
 			MV_CopyMemory(&buff[32], pDevice->Firmware_Revision, 4);
-			MV_CopyMemory(&buff[36], "MVSATA", 6);	
-			
+			MV_CopyMemory(&buff[36], "MVSATA", 6);
+		*/
+			if (tmpLen >= 16)
+				MV_CopyMemory(&buff[8], "ATA     ", 8);
+			if (tmpLen >= 32)
+				MV_CopyMemory(&buff[16], Product, 16);
+			if (tmpLen >= 36)
+				MV_CopyMemory(&buff[32], pDevice->Firmware_Revision, 4);
+			if (tmpLen >= 42)
+				MV_CopyMemory(&buff[36], "MVSATA", 6);
+
+			/*
+			* 0x00A0 SAM 5
+			* 0x0460 SPC 4
+			* 0x04C0 SBC 3
+			* 0x1EC0 SAT 2
+			*/
+			if (tmpLen >= 66) {
+				buff[58] = 0x00;
+				buff[59] = 0xA0;
+				buff[60] = 0x04;
+				buff[61] = 0x60;
+				buff[62] = 0x04;
+				buff[63] = 0xC0;
+				buff[64] = 0x1E;
+				buff[65] = 0xC0;
+			}
+
 			/*if pReq->Data_Transfer_Length <=36 ,buff[36]+ data miss*/
-			MV_CopyMemory( pReq->Data_Buffer, 
-							buff, 
-							MV_MIN(pReq->Data_Transfer_Length, inquiryLen));
-			pReq->Data_Transfer_Length =  MV_MIN(pReq->Data_Transfer_Length, inquiryLen);
+			MV_CopyMemory( pReq->Data_Buffer,
+							buff,
+							tmpLen);
+							//MV_MIN(pReq->Data_Transfer_Length, inquiryLen));
+			//pReq->Data_Transfer_Length =  MV_MIN(pReq->Data_Transfer_Length, inquiryLen);
 			pReq->Scsi_Status = REQ_STATUS_SUCCESS;
 		}
 	}
@@ -1414,7 +1443,7 @@ void mvScsiReadCapacity(PCore_Driver_Extension pCore, PMV_Request pReq)
 	portId = PATA_MapPortId(pReq->Device_Id);
 	deviceId = PATA_MapDeviceId(pReq->Device_Id);
 #ifndef SECTOR_SIZE
-	#define SECTOR_SIZE	512	
+	#define SECTOR_SIZE	512
 #endif
 
 	MV_DASSERT( portId < MAX_PORT_NUMBER );
@@ -1428,7 +1457,7 @@ void mvScsiReadCapacity(PCore_Driver_Extension pCore, PMV_Request pReq)
 		}
 	}
 
-	/* 
+	/*
 	 * The disk size as indicated by the ATA spec is the total addressable
 	 * sectors on the drive ; while the SCSI translation of the command
 	 * should be the last addressable sector.
@@ -1436,7 +1465,7 @@ void mvScsiReadCapacity(PCore_Driver_Extension pCore, PMV_Request pReq)
 	pDevice = &pCore->Ports[portId].Device[deviceId];
 //	maxLBA.value = pDevice->Max_LBA.value-1;
 	maxLBA = pDevice->Max_LBA;
-	blockLength = SECTOR_SIZE;			
+	blockLength = SECTOR_SIZE;
 	pU32Buffer = (MV_PU32)pReq->Data_Buffer;
 
 	if (maxLBA.parts.high != 0)
@@ -1455,15 +1484,15 @@ void mvScsiReadCapacity_16(PCore_Driver_Extension pCore, PMV_Request pReq)
 	MV_PU32 pU32Buffer;
 	MV_U8 portId, deviceId;
 	MV_LBA maxLBA;
-	
+
 	portId = PATA_MapPortId(pReq->Device_Id);
 	deviceId = PATA_MapDeviceId(pReq->Device_Id);
 #ifndef SECTOR_SIZE
-	#define SECTOR_SIZE	512	
+	#define SECTOR_SIZE	512
 #endif
 	MV_DASSERT( portId < MAX_PORT_NUMBER );
 
-	pDevice = &pCore->Ports[portId].Device[deviceId];		
+	pDevice = &pCore->Ports[portId].Device[deviceId];
 	//maxLBA.value = pDevice->Max_LBA.value-1;;
 	maxLBA = pDevice->Max_LBA;
 	blockLength = SECTOR_SIZE;
@@ -1489,7 +1518,7 @@ MV_BOOLEAN Core_IsInternalRequest(PCore_Driver_Extension pCore, PMV_Request pReq
 		return MV_FALSE;
 
 	pDevice = &pCore->Ports[portId].Device[deviceId];
-	if ( pReq==pDevice->Internal_Req ) 
+	if ( pReq==pDevice->Internal_Req )
 		return MV_TRUE;
 	else
 		return MV_FALSE;
@@ -1506,7 +1535,7 @@ void Core_ResetChannel(MV_PVOID Device, MV_PVOID temp)
 	MV_LPVOID portMmio = pPort->Mmio_Base;
 	MV_U32 tmp;
 	MV_U16 i;
-	
+
 	//mv_core_dump_reg(pPort);
 #ifdef SUPPORT_EVENT
 	core_generate_event(pCore, EVT_ID_HD_TIMEOUT, pDevice->Id, SEVERITY_WARNING, 0, NULL);
@@ -1555,7 +1584,7 @@ void Core_ResetChannel_BH(MV_PVOID ext)
 	pDevice->Reset_Count++;
 
 	mv_core_put_back_request(pPort);
-	
+
 	if ( pPort->Type == PORT_TYPE_PATA )
 		PATA_PortReset( pPort, MV_TRUE );
 	else
@@ -1573,9 +1602,9 @@ void Core_ResetChannel_BH(MV_PVOID ext)
 
 MV_BOOLEAN HandleInstantRequest(PCore_Driver_Extension pCore, PMV_Request pReq)
 {
-	/* 
-	 * Some of the requests can be returned immediately without hardware 
-	 * access. 
+	/*
+	 * Some of the requests can be returned immediately without hardware
+	 * access.
 	 * Handle Inquiry and Read Capacity.
 	 * If return MV_TRUE, means the request can be returned to OS now.
 	 */
@@ -1584,7 +1613,7 @@ MV_BOOLEAN HandleInstantRequest(PCore_Driver_Extension pCore, PMV_Request pReq)
 	MV_U8 ret;
 	if(IS_SOFT_RESET_REQ(pReq))
 		return MV_FALSE;
-	
+
 #ifdef _OS_LINUX
 	if(!__is_scsi_cmd_simulated(pReq->Cdb[0])
 #ifdef SUPPORT_ATA_POWER_MANAGEMENT
@@ -1597,7 +1626,7 @@ MV_BOOLEAN HandleInstantRequest(PCore_Driver_Extension pCore, PMV_Request pReq)
 	{
 		portId = PATA_MapPortId(pReq->Device_Id);
 		deviceId = PATA_MapDeviceId(pReq->Device_Id);
-		if ( portId < MAX_PORT_NUMBER )				
+		if ( portId < MAX_PORT_NUMBER )
 			pDevice = &pCore->Ports[portId].Device[deviceId];
 	}
 
@@ -1610,7 +1639,7 @@ MV_BOOLEAN HandleInstantRequest(PCore_Driver_Extension pCore, PMV_Request pReq)
 		}
 	}
 
-	if (pDevice && 
+	if (pDevice &&
 	    (pDevice->Device_Type & DEVICE_TYPE_ATAPI) &&
 	    (pDevice->Status & DEVICE_STATUS_FUNCTIONAL))
 	{
@@ -1690,7 +1719,7 @@ void scsi_ata_check_condition(MV_Request *req, MV_U8 sense_key,
 	{
 		 req->Scsi_Status = REQ_STATUS_HAS_SENSE;
 		 if (req->Sense_Info_Buffer) {
-			 ((MV_PU8)req->Sense_Info_Buffer)[0] = 0x70; /* As SPC-4, set Response Code 
+			 ((MV_PU8)req->Sense_Info_Buffer)[0] = 0x70; /* As SPC-4, set Response Code
 	to 70h, or SCSI layer didn't know to set down error disk */
 			((MV_PU8)req->Sense_Info_Buffer)[2] = sense_key;
 			/* additional sense length */
@@ -1731,13 +1760,13 @@ u8 mv_ata_pass_through(IN PDomain_Device pDevice,IN PMV_Request req){
 		if (command == ATA_CMD_IDENTIFY_ATA && req->Cdb[6] == 0)
 			req->Cdb[6] = 1;
 	}
-	
+
 	if (multi_rw != 0 && !IS_ATA_MULTIPLE_READ_WRITE(command)) {
 			scsi_ata_check_condition(req, SCSI_SK_ILLEGAL_REQUEST,
 			SCSI_ASC_INVALID_FEILD_IN_CDB, 0);
 			return MV_QUEUE_COMMAND_RESULT_FINISHED;
 		}
-	
+
 		if (t_length == 0)
 			cmd_flag |= CMD_FLAG_NON_DATA;
 		else {
@@ -1746,7 +1775,7 @@ u8 mv_ata_pass_through(IN PDomain_Device pDevice,IN PMV_Request req){
 			else
 				cmd_flag |= CMD_FLAG_DATA_IN;
 		}
-	
+
 		/* Transfer length in bytes */
 		if (byte == 0) {
 			/* Transfer length defined in Features */
@@ -1787,7 +1816,7 @@ u8 mv_ata_pass_through(IN PDomain_Device pDevice,IN PMV_Request req){
 			/* t_length == 0x3 means use the length defined in the
 			nexus transaction */
 			else {
-				
+
 				tx_length = req->Data_Transfer_Length;
 			}
 		}
@@ -1899,7 +1928,7 @@ PrepareAndSendCommand(
 		pReq->Scsi_Status = REQ_STATUS_INVALID_REQUEST;
 		/* Invalid request and can be returned to OS now. */
 		return MV_QUEUE_COMMAND_RESULT_FINISHED;
-	} 
+	}
 #ifdef SUPPORT_ATA_SECURITY_CMD
 	else if(pReq->Cdb[0]==ATA_16)
 		{
@@ -1925,50 +1954,50 @@ PrepareAndSendCommand(
 			MV_DPRINT(("running slot[0x%x], req=%d is full.\n",pPort->Running_Slot, pDevice->Outstanding_Req));
 			return MV_QUEUE_COMMAND_RESULT_FULL;
 		}
-		
+
 		if (pReq->Cmd_Flag & CMD_FLAG_SMART)
 			return MV_QUEUE_COMMAND_RESULT_FULL;
-		
+
 		if (	( (pReq->Cmd_Flag&CMD_FLAG_NCQ) && !(pPort->Setting&PORT_SETTING_NCQ_RUNNING) )
 				||  ( !(pReq->Cmd_Flag&CMD_FLAG_NCQ) && (pPort->Setting&PORT_SETTING_NCQ_RUNNING) )
 				|| (pReq->Scsi_Status==REQ_STATUS_RETRY)
 				|| (pPort->Setting&PORT_SETTING_DURING_RETRY)
 			)
 		{
-			return MV_QUEUE_COMMAND_RESULT_FULL;			
+			return MV_QUEUE_COMMAND_RESULT_FULL;
 		}
-	
+
 		if((pReq->Cmd_Flag&CMD_FLAG_NCQ)&&(pPort->Setting&PORT_SETTING_NCQ_RUNNING)&&(pPort->Running_Slot==0xffffffffL))
 		{
 			MV_PRINT("NCQ TAG is run out\n");
-			return MV_QUEUE_COMMAND_RESULT_FULL;			
+			return MV_QUEUE_COMMAND_RESULT_FULL;
 		}
-	
+
 		if((!(pReq->Cmd_Flag&CMD_FLAG_NCQ))&&(!(pPort->Setting&PORT_SETTING_NCQ_RUNNING))&&(pPort->Running_Slot==0xffffffffL))
 		{
 			MV_PRINT("DMA TAG is run out\n");
 			return MV_QUEUE_COMMAND_RESULT_FULL;
 		}
 
-		
+
 		/* In order for request sense to immediately follow the error request. */
 		if ( pDevice->Device_Type&DEVICE_TYPE_ATAPI )
 			return MV_QUEUE_COMMAND_RESULT_FULL;
 
 		if ((pPort->Type==PORT_TYPE_PATA)&&
-			(pPort->Port_State==PORT_STATE_INIT_DONE)){			
+			(pPort->Port_State==PORT_STATE_INIT_DONE)){
 			for (i=0; i<2; i++){
-				if ((&pPort->Device[i]!=pDevice)&& //check the other device				
+				if ((&pPort->Device[i]!=pDevice)&& //check the other device
 				    (pPort->Device[i].Device_Type&DEVICE_TYPE_ATAPI)&&
-				    (pPort->Device[i].Status & DEVICE_STATUS_FUNCTIONAL)){					
+				    (pPort->Device[i].Status & DEVICE_STATUS_FUNCTIONAL)){
 						return MV_QUEUE_COMMAND_RESULT_FULL;
 				}
-			}//end of for	
+			}//end of for
 		}
-		
+
 		/* One request at a time */
 		if ( (pReq->Scsi_Status==REQ_STATUS_RETRY)
-			|| (pPort->Setting&PORT_SETTING_DURING_RETRY) 
+			|| (pPort->Setting&PORT_SETTING_DURING_RETRY)
 			)
 			return MV_QUEUE_COMMAND_RESULT_FULL;
 	}
@@ -1990,7 +2019,7 @@ PrepareAndSendCommand(
 		pReq->Scsi_Status = REQ_STATUS_INVALID_REQUEST;
 		Tag_ReleaseOne(&pPort->Tag_Pool, tag);
 		/* Invalid request and can be returned to OS now. */
-		return MV_QUEUE_COMMAND_RESULT_FINISHED;	
+		return MV_QUEUE_COMMAND_RESULT_FINISHED;
 	}
 
 	if ( !isPATA )
@@ -2004,7 +2033,7 @@ PrepareAndSendCommand(
 	else
 		PATA_PrepareCommandTable(pPort, pReq, tag, &taskFile);
 
-	/* in some cases, when preparing command table, a consolidated 
+	/* in some cases, when preparing command table, a consolidated
 	   request would cause PRD entries to run out. In this case, we
 	   return this request to re-try without consolidating */
 	/* This is assuming that REQ_STATUS_BUSY is ONLY used for these cases */
@@ -2020,10 +2049,10 @@ void Core_HandleWaitingList(PCore_Driver_Extension pCore)
 {
 	PMV_Request pReq = NULL;
 	MV_QUEUE_COMMAND_RESULT result;
-#ifdef SUPPORT_HOT_PLUG	
+#ifdef SUPPORT_HOT_PLUG
 	PDomain_Device pDevice;
 	MV_U8 portId, deviceId;
-#endif	
+#endif
 #if defined(SUPPORT_ERROR_HANDLING) && defined(_OS_LINUX)
 	MV_U32 timeout;
 #endif /* efined(SUPPORT_ERROR_HANDLING) && defined(_OS_LINUX) */
@@ -2031,8 +2060,8 @@ void Core_HandleWaitingList(PCore_Driver_Extension pCore)
 	/* Get the request header */
 	while ( !List_Empty(&pCore->Waiting_List) )
 	{
-		pReq = (PMV_Request) List_GetFirstEntry(&pCore->Waiting_List, 
-							MV_Request, 
+		pReq = (PMV_Request) List_GetFirstEntry(&pCore->Waiting_List,
+							MV_Request,
 							Queue_Pointer);
 		if ( NULL == pReq ) {
 			MV_ASSERT(0);
@@ -2048,17 +2077,17 @@ void Core_HandleWaitingList(PCore_Driver_Extension pCore)
 //		hba_init_timer(pReq);
 #endif /* defined(SUPPORT_ERROR_HANDLING) && defined(_OS_LINUX) */
 
-		/* During reset, we still have internal requests need to 
+		/* During reset, we still have internal requests need to
 		 *be handled. */
 
 		// Internal request is always at the beginning.
-		if ( (pCore->Need_Reset)&&(pReq->Cmd_Initiator!=pCore) ) 
+		if ( (pCore->Need_Reset)&&(pReq->Cmd_Initiator!=pCore) )
 		{
 			/* Return the request back. */
 			List_Add(&pReq->Queue_Pointer, &pCore->Waiting_List);
 			return;
 		}
-	
+
 #ifdef SUPPORT_HOT_PLUG
 		/* hot plug - device is gone, reject this request */
 		if ( pReq->Device_Id != VIRTUAL_DEVICE_ID )
@@ -2082,12 +2111,12 @@ void Core_HandleWaitingList(PCore_Driver_Extension pCore)
 				{
 					List_Add(&pReq->Queue_Pointer, &pCore->Waiting_List); /* Return the request back. */
 					return;
-				} 
-				else 
+				}
+				else
 				{
-					/* 
-					 * Cannot be the request sense. 
-					 * It's not pushed back. 
+					/*
+					 * Cannot be the request sense.
+					 * It's not pushed back.
 					 */
 					MV_ASSERT( !SCSI_IS_REQUEST_SENSE(pReq->Cdb[0]) );
 				}
@@ -2096,31 +2125,31 @@ void Core_HandleWaitingList(PCore_Driver_Extension pCore)
 #endif /* SUPPORT_HOT_PLUG */
 
 		/* Whether we can handle this request without hardware access? */
-		if ( HandleInstantRequest(pCore, pReq) ) 
+		if ( HandleInstantRequest(pCore, pReq) )
 		{
 			CompleteRequest(pCore, pReq, NULL);
 			continue;
 		}
 
-		/* handle the cmd which data length is > 128k 
-		 * We suppose the data length was multiples of 128k first. 
-		 * If not, we will still verify multiples of 128k since 
+		/* handle the cmd which data length is > 128k
+		 * We suppose the data length was multiples of 128k first.
+		 * If not, we will still verify multiples of 128k since
 		 * no data transfer.
 		 */
 		if(pReq->Cdb[0] == SCSI_CMD_VERIFY_10)
 		{
 			PDomain_Device pDevice = &pCore->Ports[PATA_MapPortId(pReq->Device_Id)].Device[PATA_MapDeviceId(pReq->Device_Id)];
 			MV_U32 sectors = SCSI_CDB10_GET_SECTOR(pReq->Cdb);
-			
+
 			if((!(pDevice->Capacity&DEVICE_CAPACITY_48BIT_SUPPORTED)) && (sectors > MV_MAX_TRANSFER_SECTOR)){
 				MV_ASSERT(!pReq->Splited_Count );
 				pReq->Splited_Count = (MV_U8)((sectors + MV_MAX_TRANSFER_SECTOR -1)/MV_MAX_TRANSFER_SECTOR) - 1;
-				sectors = MV_MAX_TRANSFER_SECTOR; 
+				sectors = MV_MAX_TRANSFER_SECTOR;
 				SCSI_CDB10_SET_SECTOR(pReq->Cdb, sectors);
 			}
 		}
 
-		result = PrepareAndSendCommand(pCore, pReq);	
+		result = PrepareAndSendCommand(pCore, pReq);
 
 		switch ( result )
 		{
@@ -2153,13 +2182,13 @@ void Core_HandleWaitingList(PCore_Driver_Extension pCore)
 				if (pDevice->Device_Type & DEVICE_TYPE_ATAPI)
 					timeout = timeout * 20 + 5;
 			#ifdef SUPPORT_ATA_SMART
-				if(pReq->Cdb[0]==SCSI_CMD_SND_DIAG) 
+				if(pReq->Cdb[0]==SCSI_CMD_SND_DIAG)
 					timeout = timeout * 10;
 			#endif
 				hba_init_timer(pReq);
 
-				hba_add_timer(pReq, 
-					      timeout, 
+				hba_add_timer(pReq,
+					      timeout,
 					      __core_req_timeout_handler);
 				/*in captive mode, maybe timeout.*/
 			#ifdef SUPPORT_ATA_SMART
@@ -2174,17 +2203,17 @@ void Core_HandleWaitingList(PCore_Driver_Extension pCore)
 				/* start timer for error handling */
 				if( pDevice->Timer_ID == NO_CURRENT_TIMER )
 				{
-					// if no timer is running right now	
+					// if no timer is running right now
 					if (pDevice->Device_Type&DEVICE_TYPE_ATAPI){
 //						MV_DASSERT(pDevice->Outstanding_Req==1);
-						if (pReq->Time_Out!=0){							
+						if (pReq->Time_Out!=0){
 							pDevice->Timer_ID = Timer_AddRequest( pCore, pReq->Time_Out*2, Core_ResetChannel, pDevice, NULL );
 						}else {
 							pDevice->Timer_ID = Timer_AddRequest( pCore, REQUEST_TIME_OUT, Core_ResetChannel, pDevice, NULL );
 						}
 					}else {
 						pDevice->Timer_ID = Timer_AddRequest( pCore, REQUEST_TIME_OUT, Core_ResetChannel, pDevice, NULL );
-					}				
+					}
 				}
 #endif /* SUPPORT_TIMER */
 #endif /* defined(SUPPORT_ERROR_HANDLING) && defined(_OS_LINUX) */
@@ -2199,7 +2228,7 @@ void Core_HandleWaitingList(PCore_Driver_Extension pCore)
 						for ( i=0; i<MAX_SLOT_NUMBER; i++ )
 						{
 							pTmpRequest = pPort->Running_Req[i];
-							if ( pTmpRequest && (pTmpRequest->Device_Id==pReq->Device_Id) ) 
+							if ( pTmpRequest && (pTmpRequest->Device_Id==pReq->Device_Id) )
 							{
 								MV_DASSERT( !SCSI_IS_INTERNAL(pTmpRequest->Cdb[0]) );
 							}
@@ -2214,7 +2243,7 @@ void Core_HandleWaitingList(PCore_Driver_Extension pCore)
 				MV_ASSERT(MV_FALSE);
 		}
 	}
-	
+
 #ifdef SUPPORT_CONSOLIDATE
 	{
 		MV_U8 i,j;
@@ -2222,9 +2251,9 @@ void Core_HandleWaitingList(PCore_Driver_Extension pCore)
 
 		if ( pCore->Is_Dump ) return;
 
-		/* 
-		* If there is no more request we can do, 
-		* force command consolidate to run the holding request. 
+		/*
+		* If there is no more request we can do,
+		* force command consolidate to run the holding request.
 		*/
 		for ( i=0; i<MAX_PORT_NUMBER; i++ )
 		{
@@ -2244,8 +2273,8 @@ void Core_HandleWaitingList(PCore_Driver_Extension pCore)
 
 /*
  * Interrupt service routine and related funtion
- * We can split this function to two functions. 
- * One is used to check and clear interrupt, called in ISR. 
+ * We can split this function to two functions.
+ * One is used to check and clear interrupt, called in ISR.
  * The other is used in DPC.
  */
 void SATA_PortHandleInterrupt(
@@ -2280,7 +2309,7 @@ MV_BOOLEAN Core_InterruptServiceRoutine(MV_PVOID This)
 		return MV_FALSE;
 	}
 
-	for ( i=0; i<pCore->Port_Num; i++ ) 
+	for ( i=0; i<pCore->Port_Num; i++ )
 	{
 		/* no interrupt for this port. */
 		if (!(irqStatus&(1<<i)))
@@ -2313,7 +2342,7 @@ MV_BOOLEAN Core_HandleServiceRoutine(MV_PVOID This)
 	PCore_Driver_Extension pCore = (PCore_Driver_Extension)This;
 	MV_U8 i;
 	PDomain_Port pPort = NULL;
-	for ( i=0; i<pCore->Port_Num; i++ ) 
+	for ( i=0; i<pCore->Port_Num; i++ )
 	{
 		/* no interrupt for this port. */
 		if (!(pCore->Saved_ISR_Status&(1<<i)))
@@ -2425,7 +2454,7 @@ MV_U8 mv_core_reset_port(PDomain_Port pPort)
 	temp=MV_REG_READ_DWORD(portMmio, PORT_CMD);	/* flush */
 #if 1
 	/*Clear Busy bit and error bit, do spin-up device, power on device*/
-	temp = MV_REG_READ_DWORD(portMmio, PORT_CMD);					
+	temp = MV_REG_READ_DWORD(portMmio, PORT_CMD);
 	MV_REG_WRITE_DWORD(portMmio, PORT_CMD, temp | MV_BIT(3) | MV_BIT(2) | MV_BIT(1));
 	temp=MV_REG_READ_DWORD(portMmio, PORT_CMD);	/* flush */
 #endif
@@ -2456,7 +2485,7 @@ MV_U8 mv_core_reset_port(PDomain_Port pPort)
 		//hba_msleep(1000);
 		issue_reg = MV_REG_READ_DWORD(portMmio, PORT_CMD_ISSUE);
 	}
-	
+
 	//mvEnableIntr(portMmio, old_stat);
 
 	temp = MV_REG_READ_DWORD(portMmio, PORT_IRQ_STAT);
@@ -2474,7 +2503,7 @@ MV_U8 mv_core_reset_port(PDomain_Port pPort)
 	{
 		MV_PRINT("port reset but CI can not be clean[0x%x] on port[%d].\n",MV_REG_READ_DWORD( portMmio, PORT_CMD_ISSUE), pPort->Id);
 		ret = MV_FALSE;
-	}	
+	}
 
 	return ret;
 }
@@ -2539,7 +2568,7 @@ void mv_core_init_reset_para(PDomain_Port pPort)
 	pPort->Hot_Plug_Timer = 0;
 	pPort->find_disk = MV_FALSE;
 //	pPort->reset_cmd_times= 0;
-	
+
 }
 void mv_core_put_back_request(PDomain_Port pPort)
 {
@@ -2548,21 +2577,21 @@ void mv_core_put_back_request(PDomain_Port pPort)
 	MV_LPVOID portMmio = pPort->Mmio_Base;
 	MV_U32 i,j;
 	PMV_Request pReq = NULL;
-	PDomain_Device pDevice=NULL;	
+	PDomain_Device pDevice=NULL;
 	/* put all the running requests back into waiting list */
 	for ( i=0; i<MAX_SLOT_NUMBER; i++ )
 	{
 		pReq = pPort->Running_Req[i];
 		if (pReq) {
 			/*
-			 * If this channel has multiple devices, pReq is 
+			 * If this channel has multiple devices, pReq is
 			 * not the internal request of pDevice
 			 */
 			if ( !Core_IsInternalRequest(pCore, pReq) )
 			{
 				List_AddTail(&pReq->Queue_Pointer, &pCore->Waiting_List);
 			}
-			else 
+			else
 			{
 				/* Can be reset command or request sense command */
 				if ( SCSI_IS_REQUEST_SENSE(pReq->Cdb[0]) )
@@ -2572,22 +2601,22 @@ void mv_core_put_back_request(PDomain_Port pPort)
 						List_AddTail( &((PMV_Request)pReq->Org_Req)->Queue_Pointer, &pCore->Waiting_List);
 				}
 			}
-			
+
 			hba_remove_timer(pReq);
 			pReq->eh_flag = 1;
 			mv_core_reset_running_slot(pPort, i);
 		}
 	}
 	MV_DASSERT(pPort->Running_Slot == 0);
-	
+
 	/* reset device related variables */
 	for ( i=0; i<MAX_DEVICE_PER_PORT; i++ )
 	{
 		pDevice = &pPort->Device[i];
-		
+
 //		pDevice->Device_Type = 0;
 //		pDevice->Need_Notify = MV_FALSE;
-#ifdef SUPPORT_TIMER 
+#ifdef SUPPORT_TIMER
 		if( pDevice->Timer_ID != NO_CURRENT_TIMER )
 		{
 			Timer_CancelRequest( pCore, pDevice->Timer_ID );
@@ -2595,10 +2624,10 @@ void mv_core_put_back_request(PDomain_Port pPort)
 		}
 #endif /* SUPPORT_TIMER */
 		pDevice->Outstanding_Req = 0;
-		
+
 		/*
-		 * Go through the waiting list. If there is some reset 
-		 * request, remove that request. 
+		 * Go through the waiting list. If there is some reset
+		 * request, remove that request.
 		 */
 		mvRemoveDeviceWaitingList(pCore, pDevice->Id, MV_FALSE);
 	}
@@ -2608,7 +2637,7 @@ void mv_core_put_back_request(PDomain_Port pPort)
 
 	for( i=0; i<MAX_DEVICE_PER_PORT; i++ )
 	{
-		if( (pPort->Device[i].Status & DEVICE_STATUS_FUNCTIONAL) && 
+		if( (pPort->Device[i].Status & DEVICE_STATUS_FUNCTIONAL) &&
 			(pPort->Device[i].Internal_Req != NULL) )
 		{
 			if (pCore->Total_Device_Count && (pPort->Port_State == PORT_STATE_INIT_DONE))
@@ -2669,7 +2698,7 @@ void  mv_core_reset_command(PDomain_Port pPort)
 		mv_core_init_reset_para(pPort);
 		return;
 	}
-	
+
 	pPort->Port_State = PORT_STATE_IDLE;
 	mv_core_reset_hba(pPort);
 	MV_DPRINT(("Re-enable AHCI mode on port[%d].\n",pPort->Id));
@@ -2716,9 +2745,9 @@ void mvRemoveDeviceWaitingList( MV_PVOID This, MV_U16 deviceId, MV_BOOLEAN retur
 		MV_LIST_HEAD_INIT(&remove_List);
 	}
 
-	/* 
-	 * If returnOSRequest is MV_FALSE, actually we just remove the 
-	 * internal reset command. 
+	/*
+	 * If returnOSRequest is MV_FALSE, actually we just remove the
+	 * internal reset command.
 	 */
 	while ( count>0 )
 	{
@@ -2736,7 +2765,7 @@ void mvRemoveDeviceWaitingList( MV_PVOID This, MV_U16 deviceId, MV_BOOLEAN retur
 					List_AddTail(&pReq->Queue_Pointer, &pCore->Waiting_List);
 				}
 			}
-			else 
+			else
 			{
 				/* Reset command or request sense */
 				if ( SCSI_IS_REQUEST_SENSE(pReq->Cdb[0]) )
@@ -2806,7 +2835,7 @@ void mvRemovePortWaitingList( MV_PVOID This, MV_U8 portId )
 						pReq->Scsi_Status = REQ_STATUS_NO_DEVICE;
 						List_AddTail(&pReq->Queue_Pointer, &remove_List);
 						myCount++;
-					} 
+					}
 				} else {
 					/* Reset command. Ignore. */
 				}
@@ -2842,7 +2871,7 @@ void mvHandleDeviceUnplug (PCore_Driver_Extension pCore, PDomain_Port pPort)
 
 	#ifdef HOTPLUG_ISSUE_WORKROUND
 	PDomain_Device pDevice = &pPort->Device[0];
-    	MV_U32 SControl = 0;
+	MV_U32 SControl = 0;
 	#endif
 #ifdef COMMAND_ISSUE_WORKROUND
 	MV_DPRINT(("Check port[%d] running slot[0x%x].\n",pPort->Id, pPort->Running_Slot));
@@ -2850,7 +2879,7 @@ void mvHandleDeviceUnplug (PCore_Driver_Extension pCore, PDomain_Port pPort)
 #endif
 	if( !SATA_PortDeviceDetected(pPort) )
 	{
-		/* clear the start bit in cmd register, 
+		/* clear the start bit in cmd register,
 		   stop the controller from handling anymore requests */
 		temp = MV_REG_READ_DWORD( portMmio, PORT_CMD );
 		MV_REG_WRITE_DWORD( portMmio, PORT_CMD, temp & ~PORT_CMD_START);
@@ -2875,23 +2904,23 @@ void mvHandleDeviceUnplug (PCore_Driver_Extension pCore, PDomain_Port pPort)
 		SATA_PortReportNoDevice( pCore, pPort );
 		#ifdef HOTPLUG_ISSUE_WORKROUND
 		if( pPort->Type != PORT_TYPE_PM ){
-			
+
 			mvDisableIntr(portMmio, pPort->old_stat);
-			
+
 			SControl = MV_REG_READ_DWORD(portMmio, PORT_SCR_CTL);
 			SControl &= ~0x0000000F;
 			SControl |= 0x4;    // Disable PHY
 			MV_REG_WRITE_DWORD(portMmio, PORT_SCR_CTL, SControl);
 			MV_REG_READ_DWORD(portMmio, PORT_SCR_CTL);	/* flush */
 			HBA_SleepMillisecond(pCore, 10);
-		
+
 			MV_REG_WRITE_DWORD(portMmio, PORT_SCR_CTL, SControl);
 			MV_REG_READ_DWORD(portMmio, PORT_SCR_CTL);	/* flush */
 			HBA_SleepMillisecond(pCore, 10);
-		
+
 			pDevice->Status = DEVICE_STATUS_UNPLUG;
 			MV_DPRINT(("######### Device UNPLUG on PORT irq_mask=0x%x#########\n",pPort->old_stat));
-		
+
 			Timer_AddRequest( pPort, 8, mvHandleDeviceUnplugReset, pPort, NULL);
 			}
 		#endif
@@ -2920,14 +2949,14 @@ void sendDummyFIS( PDomain_Port pPort )
 
 	MV_ZeroMemory(header, sizeof(MV_Command_Header));
 	MV_ZeroMemory(pCmdTable, sizeof(MV_Command_Table));
-	
+
 	header->FIS_Length = 0;
 	header->Reset = 0;
 	header->PM_Port = 0xE;
-	
+
 	header->Table_Address = pPort->Cmd_Table_DMA.parts.low + SATA_CMD_TABLE_SIZE*tag;
 	header->Table_Address_High = pPort->Cmd_Table_DMA.parts.high;
-	
+
 	pFIS->FIS_Type = SATA_FIS_TYPE_REG_H2D;
 	pFIS->PM_Port = 0;
 	pFIS->Control = 0;
@@ -2952,7 +2981,7 @@ void sendDummyFIS( PDomain_Port pPort )
 	if (temp != 0)
 	{
 //		MV_DPRINT(("DummyFIS:CI can not be clean[0x%x] on port[%d].\n",MV_REG_READ_DWORD( portMmio, PORT_CMD_ISSUE), pPort->Id));
-	}	
+	}
 }
 
 
@@ -2977,7 +3006,7 @@ void mvHandleDevicePlugin (PCore_Driver_Extension pCore, PDomain_Port pPort)
 	#ifdef HOTPLUG_ISSUE_WORKROUND
 	if ( pDevice->Status == DEVICE_STATUS_UNPLUG )
 	{
-	  	MV_DPRINT(("######## Cancel hot plug INT #########"));
+		MV_DPRINT(("######## Cancel hot plug INT #########"));
 	    return;
 	}
 	#endif
@@ -3023,7 +3052,7 @@ void mvHandleDevicePlugin_BH(MV_PVOID  ext)
 	    return;
 	}
 	#endif
-	if( pPort->Type == PORT_TYPE_PM ) 
+	if( pPort->Type == PORT_TYPE_PM )
 	{
 		/* need to send notifications for all of these devices */
 		for (i=0; i<MAX_DEVICE_PER_PORT; i++)
@@ -3038,11 +3067,11 @@ void mvHandleDevicePlugin_BH(MV_PVOID  ext)
 
 		/*SATA_InitPM( pPort );*/
 		SATA_PortReset( pPort, MV_TRUE);
-	} 
+	}
 	else
 	{
 		/* not a PM - turn off the PM bit in command register */
-		temp = MV_REG_READ_DWORD(portMmio, PORT_CMD);					
+		temp = MV_REG_READ_DWORD(portMmio, PORT_CMD);
 		MV_REG_WRITE_DWORD(portMmio, PORT_CMD, temp & (~MV_BIT(17)));
 		temp=MV_REG_READ_DWORD(portMmio, PORT_CMD);	/* flush */
 
@@ -3055,13 +3084,13 @@ void mvHandleDevicePlugin_BH(MV_PVOID  ext)
 				signature = MV_REG_READ_DWORD(pPort->Mmio_Base, PORT_SIG);
 				if ( signature==0xEB140101 )				/* ATAPI signature */
 					pDevice->Device_Type |= DEVICE_TYPE_ATAPI;
-				else 
+				else
 				#ifdef HOTPLUG_ISSUE_WORKROUND
 					if(signature==0x00000101)
 				#endif
 					{
 						MV_DASSERT( signature==0x00000101 );	/* ATA signature */
-                    				pDevice->Device_Type &= ~DEVICE_TYPE_ATAPI;
+						pDevice->Device_Type &= ~DEVICE_TYPE_ATAPI;
 					}
 				#ifdef HOTPLUG_ISSUE_WORKROUND
 					else{
@@ -3079,7 +3108,7 @@ void mvHandleDevicePlugin_BH(MV_PVOID  ext)
 					pDevice->State = DEVICE_STATE_INIT_DONE;
 					goto start_waiting_command;
 				}
-				else 
+				else
 				{
 					{
 						pDevice->Status = DEVICE_STATUS_EXISTING|DEVICE_STATUS_FUNCTIONAL;
@@ -3092,7 +3121,7 @@ void mvHandleDevicePlugin_BH(MV_PVOID  ext)
 						pDevice->Reset_Count = 0;
 					}
 				}
-				
+
 				mvDeviceStateMachine (pCore, pDevice);
 			}
 		}
@@ -3101,7 +3130,7 @@ void mvHandleDevicePlugin_BH(MV_PVOID  ext)
 start_waiting_command:
 	MV_DPRINT(("Finshed mvHandleDevicePlugin_BH on port[%d].\n",pPort->Id));
 	Core_HandleWaitingList(pCore);
-	
+
 }
 
 #ifdef SUPPORT_PM
@@ -3115,7 +3144,7 @@ void mvHandlePMUnplug (PCore_Driver_Extension pCore, PDomain_Device pDevice)
 	MV_U32 temp, cmdIssue;
 	MV_BOOLEAN valid;
 	#ifdef RAID_DRIVER
-	MV_PVOID pUpperLayer = HBA_GetModuleExtension(pCore, MODULE_RAID);	
+	MV_PVOID pUpperLayer = HBA_GetModuleExtension(pCore, MODULE_RAID);
 	#else
 	MV_PVOID pUpperLayer = HBA_GetModuleExtension(pCore, MODULE_HBA);
 	#endif
@@ -3196,7 +3225,7 @@ void mvHandlePMUnplug (PCore_Driver_Extension pCore, PDomain_Device pDevice)
 
 		if (((temp >> 16) & 0xF0) == 0xF0)
 			valid = MV_TRUE;
-          
+
 		temp = MV_REG_READ_DWORD( portMmio, PORT_PM_FIS_0 );
 	} while (valid == MV_FALSE);
 
@@ -3213,11 +3242,11 @@ void mvHandlePMUnplug (PCore_Driver_Extension pCore, PDomain_Device pDevice)
 		struct mod_notif_param param;
 		param.lo = pDevice->Id;
 #ifdef RAID_DRIVER
-		RAID_ModuleNotification(pUpperLayer, EVENT_DEVICE_REMOVAL, 
+		RAID_ModuleNotification(pUpperLayer, EVENT_DEVICE_REMOVAL,
 					&param);
 #else
-		HBA_ModuleNotification(pUpperLayer, 
-				       EVENT_DEVICE_REMOVAL, 
+		HBA_ModuleNotification(pUpperLayer,
+				       EVENT_DEVICE_REMOVAL,
 				       &param);
 #endif /* RAID_DRIVER */
 	}
@@ -3259,8 +3288,8 @@ void sata_hotplug(MV_PVOID data,MV_U32 intStatus)
 
 	intStatus &= ~(PORT_IRQ_D2H_REG_FIS|PORT_IRQ_SDB_FIS|PORT_IRQ_PIO_DONE);
 #ifdef _OS_LINUX
-	/*fix Thor - Linux non-raid driver - hotplug 
-	Thor-Lite spec define bit25,26 as plug-out/plug-in irq status, Thor didn't define, but also will set these 
+	/*fix Thor - Linux non-raid driver - hotplug
+	Thor-Lite spec define bit25,26 as plug-out/plug-in irq status, Thor didn't define, but also will set these
 	two bits when doing hot-plug. So clear them here if they're set.
 	If power is not stable, hot-plug will result to resetting port, meantime,PORT_IRQ_SIGNATURE_FIS will be set,
 	so also need clear it if it is set.*/
@@ -3289,7 +3318,7 @@ void sata_hotplug(MV_PVOID data,MV_U32 intStatus)
 				MV_DPRINT(("bad drive was unplugged\n"));
 			}
 
-			if ( (pPort->Setting & PORT_SETTING_PM_EXISTING) && 
+			if ( (pPort->Setting & PORT_SETTING_PM_EXISTING) &&
 			     !(pPort->Setting & PORT_SETTING_PM_FUNCTIONAL) )
 			{
 				/* a bad PM was unplugged */
@@ -3300,9 +3329,9 @@ void sata_hotplug(MV_PVOID data,MV_U32 intStatus)
 			mvHandleDeviceUnplug( pCore, pPort );
 			return;
 		}
-		
+
 		if ( ((pPort->Type == PORT_TYPE_PM) && (pPort->Setting & PORT_SETTING_PM_FUNCTIONAL)) ||
-		     ((pPort->Type != PORT_TYPE_PM) && (pDevice->Status & DEVICE_STATUS_FUNCTIONAL)) 
+		     ((pPort->Type != PORT_TYPE_PM) && (pDevice->Status & DEVICE_STATUS_FUNCTIONAL))
 			)
 		{
 			if( plugout ){
@@ -3318,9 +3347,9 @@ void sata_hotplug(MV_PVOID data,MV_U32 intStatus)
 			}
 		}
 	}
-				
+
 	/* if a drive was plugged in/out of a PM */
-	if ( hotPlugPM ) 
+	if ( hotPlugPM )
 	{
 		intStatus &= ~PORT_IRQ_ASYNC_NOTIF;
 		intStatus &= ~PORT_IRQ_SDB_FIS;
@@ -3339,7 +3368,7 @@ void sata_hotplug(MV_PVOID data,MV_U32 intStatus)
 
 			if (((temp >> 16) & 0xF0) == 0xF0)
 				valid = MV_TRUE;
-              
+
 			temp = MV_REG_READ_DWORD( portMmio, PORT_PM_FIS_0 );
 		} while (valid == MV_FALSE);
 
@@ -3347,7 +3376,7 @@ void sata_hotplug(MV_PVOID data,MV_U32 intStatus)
 			return;
 
 		// better solution???
-		for (i=0; i<MAX_DEVICE_PER_PORT; i++)	
+		for (i=0; i<MAX_DEVICE_PER_PORT; i++)
 		{
 			if( temp & MV_BIT(i) )
 			{
@@ -3356,7 +3385,7 @@ void sata_hotplug(MV_PVOID data,MV_U32 intStatus)
 				break;
 			}
 		}
-		
+
 		/* make sure it's a hot plug SDB */
 		valid = MV_FALSE;
 		do
@@ -3372,7 +3401,7 @@ void sata_hotplug(MV_PVOID data,MV_U32 intStatus)
 
 			if (((temp >> 16) & 0xF0) == 0xF0)
 				valid = MV_TRUE;
-              
+
 			temp = MV_REG_READ_DWORD( portMmio, PORT_PM_FIS_0 );
 		} while (valid == MV_FALSE);
 
@@ -3397,7 +3426,7 @@ void sata_hotplug(MV_PVOID data,MV_U32 intStatus)
 
 			if (((temp >> 16) & 0xF0) == 0xF0)
 				valid = MV_TRUE;
-              
+
 			temp = MV_REG_READ_DWORD( portMmio, PORT_PM_FIS_0 );
 		} while (valid == MV_FALSE);
 
@@ -3450,7 +3479,7 @@ void sata_hotplug(MV_PVOID data,MV_U32 intStatus)
 
 				if (((temp >> 16) & 0xF0) == 0xF0)
 					valid = MV_TRUE;
-	              
+
 				temp = MV_REG_READ_DWORD( portMmio, PORT_PM_FIS_0 );
 			} while (valid == MV_FALSE);
 
@@ -3477,7 +3506,7 @@ void sata_hotplug(MV_PVOID data,MV_U32 intStatus)
 #ifdef HOTPLUG_ISSUE_WORKROUND
 void mvHandleDeviceUnplugReset (MV_PVOID pport, MV_PVOID ptemp)
 {
-	
+
 	PDomain_Port pPort = (PDomain_Port)pport;
 	PCore_Driver_Extension pCore = pPort->Core_Extension;
 	PMV_Request pReq;
@@ -3498,7 +3527,7 @@ void mvHandleDeviceUnplugReset (MV_PVOID pport, MV_PVOID ptemp)
 	MV_REG_READ_DWORD(portMmio, PORT_SCR_CTL);	/* flush */
 	HBA_SleepMillisecond(pCore, 10);
 
-    	pDevice->Status = DEVICE_STATUS_NO_DEVICE;
+	pDevice->Status = DEVICE_STATUS_NO_DEVICE;
 	MV_DPRINT(("######### ReEnable PHY&INT by Unplug Timer #########\n"));
 
 }
@@ -3527,11 +3556,11 @@ void SATA_HandleHotplugInterrupt(
 			plugout= MV_TRUE;
 		else
 			plugin= MV_TRUE;
-		
+
 		/* following are special cases, so we take care of these first */
 		if( plugout )
 		{
-			
+
 			if ( (pPort->Type != PORT_TYPE_PM ) && (pDevice->Status & DEVICE_STATUS_EXISTING) &&
 			     !(pDevice->Status & DEVICE_STATUS_FUNCTIONAL) )
 			{
@@ -3540,7 +3569,7 @@ void SATA_HandleHotplugInterrupt(
 				MV_DPRINT(("bad drive was unplugged\n"));
 			}
 
-			if ( (pPort->Setting & PORT_SETTING_PM_EXISTING) && 
+			if ( (pPort->Setting & PORT_SETTING_PM_EXISTING) &&
 			     !(pPort->Setting & PORT_SETTING_PM_FUNCTIONAL) )
 			{
 				/* a bad PM was unplugged */
@@ -3551,16 +3580,16 @@ void SATA_HandleHotplugInterrupt(
 			mvHandleDeviceUnplug( pCore, pPort );
 			return;
 		}
-		
+
 		if ( ((pPort->Type == PORT_TYPE_PM) && (pPort->Setting & PORT_SETTING_PM_FUNCTIONAL)) ||
-		     ((pPort->Type != PORT_TYPE_PM) && (pDevice->Status & DEVICE_STATUS_FUNCTIONAL)) 
+		     ((pPort->Type != PORT_TYPE_PM) && (pDevice->Status & DEVICE_STATUS_FUNCTIONAL))
 			)
 		{
 			if(plugout ){
 				mvHandleDeviceUnplug( pCore, pPort );
 				return;
 			}
-		}	
+		}
 		if(plugin)
 		#endif
 			HBA_ModuleNotification(pCore, EVENT_HOT_PLUG, &event_param);
@@ -3590,7 +3619,7 @@ void mvCompleteSlots( PDomain_Port pPort, MV_U32 completeSlot, PATA_TaskFile tas
 	 * 1. No error for both NCQ and Non-NCQ.
 	 * 2. Under NCQ, some requests are completed successfully. At lease one is not.
 	 *	For the error command, by specification, SActive isn't cleared.
-	 * 3. Under non-NCQ, since no interrupt coalescing, no succesful request. 
+	 * 3. Under non-NCQ, since no interrupt coalescing, no succesful request.
 	 *  Hardware will return one request is completed. But software clears it above. */
 
 	for ( slotId=0; slotId<MAX_SLOT_NUMBER; slotId++ )
@@ -3598,11 +3627,11 @@ void mvCompleteSlots( PDomain_Port pPort, MV_U32 completeSlot, PATA_TaskFile tas
 		if ( !(completeSlot&(1L<<slotId)) )
 			continue;
 
-		MV_DASSERT( (MV_REG_READ_DWORD(port_mmio, PORT_CMD_ISSUE)&(1<<slotId))==0 );
-		MV_DASSERT( (MV_REG_READ_DWORD(port_mmio, PORT_SCR_ACT)&(1<<slotId))==0 );
+	//	MV_DASSERT( (MV_REG_READ_DWORD(port_mmio, PORT_CMD_ISSUE)&(1<<slotId))==0 );
+	//	MV_DASSERT( (MV_REG_READ_DWORD(port_mmio, PORT_SCR_ACT)&(1<<slotId))==0 );
 
 		completeSlot &= ~(1L<<slotId);
-				
+
 		/* This slot is finished. */
 		pReq = pPort->Running_Req[slotId];
 		MV_DASSERT( pReq );
@@ -3613,7 +3642,7 @@ void mvCompleteSlots( PDomain_Port pPort, MV_U32 completeSlot, PATA_TaskFile tas
 			MV_PRINT("Retried request[0x%p] is finished on port[%d]\n", pReq, pPort->Id);
 			MV_DumpRequest(pReq, MV_FALSE);
 		}
-	
+
 		if ( Core_IsInternalRequest(pCore, pReq)&&(pReq->Org_Req) )
 		{
 			/* This internal request is used to request sense. */
@@ -3657,7 +3686,7 @@ void SATA_PortHandleInterrupt(
 	MV_U32 completeSlot = 0;
 	MV_U16 slotId;
 	MV_U8 i,j;
-	MV_BOOLEAN hasError = MV_FALSE, finalError = MV_FALSE,reset_port=MV_FALSE;
+	MV_BOOLEAN tfError = MV_FALSE,hasError = MV_FALSE, finalError = MV_FALSE,reset_port=MV_FALSE;
 	MV_U32 errorSlot = 0;
 	ATA_TaskFile	taskFiles;
 #ifdef MV_DEBUG
@@ -3695,18 +3724,18 @@ void SATA_PortHandleInterrupt(
 	intStatus &= ~(PORT_IRQ_DMAS_FIS|PORT_IRQ_PIOS_FIS);						/* Needn't care. */
 
 	/* Error handling */
-	if ( 
+	if (
 			(intStatus&PORT_IRQ_TF_ERR)
 		||	(intStatus&PORT_IRQ_LINK_RECEIVE_ERROR)
 		||	(intStatus&PORT_IRQ_LINK_TRANSMIT_ERROR)
 		)
 	{
-		MV_DPRINT(("Interrupt Error: 0x%x orgIntStatus: 0x%x completeSlot=0x%x on port[%d].\n", 
+		MV_DPRINT(("Interrupt Error: 0x%x orgIntStatus: 0x%x completeSlot=0x%x on port[%d].\n",
 			intStatus, orgIntStatus, completeSlot, pPort->Id));
 		mv_core_dump_reg( pPort);
 		//if (intStatus&PORT_IRQ_TF_ERR)
 		{
-			/* Don't do error handling when receive link error. 
+			/* Don't do error handling when receive link error.
 			 * Wait until we got the Task File Error */
 
 			/* read serial error only when there is error */
@@ -3716,7 +3745,7 @@ void SATA_PortHandleInterrupt(
 			/* Handle serial error interrupt */
 			if ( serialError )
 			{
-				SATA_HandleSerialError(pPort, serialError); 
+				SATA_HandleSerialError(pPort, serialError);
 			}
 
 #ifdef MV_DEBUG
@@ -3736,11 +3765,11 @@ void SATA_PortHandleInterrupt(
 					reset_port = MV_TRUE;
 				else
 					finalError = MV_TRUE;
-					
+
 			}
 			else
 			{
-				/* if the error request is any internal requests, we don't retry 
+				/* if the error request is any internal requests, we don't retry
 				 *     1) read log ext - don't retry
 				 *	   2) any initialization requests such as identify - buffer
 				 *		  will conflict when we try to send read log ext to retry
@@ -3764,7 +3793,7 @@ void SATA_PortHandleInterrupt(
 					for ( slotId=0; slotId<MAX_SLOT_NUMBER; slotId++ )
 					{
 						if ( !(completeSlot&(1L<<slotId)) )
-							continue;	
+							continue;
 						pReq = pPort->Running_Req[slotId];
 						MV_ASSERT( pReq!=NULL );
 						pDevice = &pPort->Device[PATA_MapDeviceId(pReq->Device_Id)];
@@ -3774,20 +3803,21 @@ void SATA_PortHandleInterrupt(
 							}
 						}else{
 							printk("has error is true\n");
-							}
-					}	 
+							tfError = MV_TRUE;
+						}
+					}
 				}
 			#ifdef SUPPORT_ATA_SECURITY_CMD
-				if(intStatus&PORT_IRQ_TF_ERR){
-					
+				if ((intStatus&PORT_IRQ_TF_ERR)&&(tfError != MV_TRUE)) {
+
 					if((MV_REG_READ_DWORD(port_mmio, PORT_TFDATA)&0x451) && pReq){
-												
+
 						MV_REG_WRITE_DWORD(mmio, HOST_IRQ_STAT, (1L<<pPort->Id));
 						MV_REG_WRITE_DWORD(port_mmio, PORT_IRQ_STAT, orgIntStatus);
 
-						intStatus &= ~(PORT_IRQ_TF_ERR|PORT_IRQ_LINK_RECEIVE_ERROR|PORT_IRQ_LINK_TRANSMIT_ERROR);		
+						intStatus &= ~(PORT_IRQ_TF_ERR|PORT_IRQ_LINK_RECEIVE_ERROR|PORT_IRQ_LINK_TRANSMIT_ERROR);
 
-						pReq->Scsi_Status=REQ_STATUS_ABORT;
+						pReq->Scsi_Status = REQ_STATUS_ABORT;
 						CompleteRequestAndSlot(pCore, pPort, pReq, &taskFiles, (MV_U8)errorSlot);
 						return;
 						}
@@ -3795,7 +3825,7 @@ void SATA_PortHandleInterrupt(
 			#endif
 			}
 		}
-		intStatus &= ~(PORT_IRQ_TF_ERR|PORT_IRQ_LINK_RECEIVE_ERROR|PORT_IRQ_LINK_TRANSMIT_ERROR);		
+		intStatus &= ~(PORT_IRQ_TF_ERR|PORT_IRQ_LINK_RECEIVE_ERROR|PORT_IRQ_LINK_TRANSMIT_ERROR);
 	}
 
 	/* If NO device ,then only handle hotplug Interrupt. */
@@ -3805,7 +3835,7 @@ void SATA_PortHandleInterrupt(
 		return;
 	}
 
-	/* Final Error: we give up this error request. Only one request is running. 
+	/* Final Error: we give up this error request. Only one request is running.
 	 * And during retry we won't use NCQ command. */
 	if ( finalError )
 	{
@@ -3828,7 +3858,7 @@ void SATA_PortHandleInterrupt(
 			}
 			pReq = pPort->Running_Req[errorSlot];
 		}
-	
+
 		MV_ASSERT( pReq!=NULL );
 		pDevice = &pPort->Device[PATA_MapDeviceId(pReq->Device_Id)];
 
@@ -3878,9 +3908,6 @@ void SATA_PortHandleInterrupt(
 			SATA_HandleHotplugInterrupt(pPort, intStatus);
 		}
 
-		if(!(pDevice->Device_Type&DEVICE_TYPE_ATAPI))
-			SATA_PortReportNoDevice(pCore, pPort);
-
 		return;
 	}
 
@@ -3927,7 +3954,7 @@ void SATA_PortHandleInterrupt(
 		}
 		else
 		{
-			/* For Non-NCQ command, last command is the error command. 
+			/* For Non-NCQ command, last command is the error command.
 			 * ASIC will stop whenever there is an error.
 			 * And we only have one request if there is no interrupt coalescing or NCQ. */
 			//MV_DASSERT( completeSlot==((MV_U32)1L<<errorSlot) );
@@ -3951,7 +3978,7 @@ void SATA_PortHandleInterrupt(
 		HBA_SleepMillisecond(pCore, 1);
 		/* Toggle should before we clear the channel interrupt status but not the global interrupt. */
 		MV_REG_WRITE_DWORD(mmio, HOST_IRQ_STAT, (1L<<pPort->Id));
-				
+
 		if(pPort->Type==PORT_TYPE_SATA){
 			//MV_DPRINT(("***pPort->Running_Slot=0x%x pDevice.Outstanding_Req=%d***\n", pPort->Running_Slot, pPort->Device[0].Outstanding_Req));
 		}
@@ -3975,14 +4002,14 @@ void SATA_PortHandleInterrupt(
 
 				if (pPort->Type==PORT_TYPE_SATA){
 					pPort->Device[0].Outstanding_Req--;
-				}else {//PM case					
+				}else {//PM case
 					for (j=0; j<MAX_DEVICE_PER_PORT; j++){
 						if (pPort->Device[j].Id == pReq->Device_Id){
 							pPort->Device[j].Outstanding_Req--;
 							break;
 						}
 					}//end of for
-					MV_DASSERT(j==MAX_DEVICE_PER_PORT);					
+					MV_DASSERT(j==MAX_DEVICE_PER_PORT);
 				}
 
 				//MV_PRINT("Abort error requests....\n");
@@ -3990,7 +4017,7 @@ void SATA_PortHandleInterrupt(
 			}
 		}
 
-#ifdef SUPPORT_TIMER 
+#ifdef SUPPORT_TIMER
 		if(pPort->Type==PORT_TYPE_SATA)
 		{
 			MV_DASSERT(pPort->Running_Slot==0);
@@ -4000,19 +4027,19 @@ void SATA_PortHandleInterrupt(
 			{
 				Timer_CancelRequest( pCore, pPort->Device[0].Timer_ID );
 				pPort->Device[0].Timer_ID = NO_CURRENT_TIMER;
-				
-			}		
+
+			}
 		}else {//PM case
 			MV_DASSERT(pPort->Type==PORT_TYPE_PM);
 			MV_DASSERT(pPort->Running_Slot==0);
-			for (j=0; j<MAX_DEVICE_PER_PORT; j++){					
+			for (j=0; j<MAX_DEVICE_PER_PORT; j++){
 				MV_DASSERT(pPort->Device[j].Outstanding_Req==0);
 				if( pPort->Device[j].Timer_ID != NO_CURRENT_TIMER )
 				{
 					Timer_CancelRequest( pCore, pPort->Device[j].Timer_ID );
 					pPort->Device[j].Timer_ID = NO_CURRENT_TIMER;
-				
-				}	
+
+				}
 			}
 		}
 #endif /* SUPPORT_TIMER */
@@ -4022,13 +4049,13 @@ void SATA_PortHandleInterrupt(
 		//MV_DASSERT( orgIntStatus == 0 );
 		MV_DASSERT( (MV_REG_READ_DWORD(mmio, HOST_IRQ_STAT)&(1L<<pPort->Id))==0 );
 
-		/* Send ReadLogExt command to clear the outstanding commands on the device. 
-		 * This request will be put to the queue head because it's Cmd_Initiator is Core Driver. 
+		/* Send ReadLogExt command to clear the outstanding commands on the device.
+		 * This request will be put to the queue head because it's Cmd_Initiator is Core Driver.
 		 * Consider the port multiplier. */
 		for ( i=0; i<MAX_DEVICE_PER_PORT; i++ )
 		{
 			pDevice = &pPort->Device[i];
-			if ( 
+			if (
 				!(pDevice->Device_Type&DEVICE_TYPE_ATAPI)
 				&& (pDevice->Capacity&DEVICE_CAPACITY_READLOGEXT_SUPPORTED)
 				&& (pPort->Setting&PORT_SETTING_NCQ_RUNNING)
@@ -4043,15 +4070,15 @@ void SATA_PortHandleInterrupt(
 			}
 			else
 			{
-				Core_HandleWaitingList(pCore);	
+				Core_HandleWaitingList(pCore);
 			}
 		}
 
 		/* Needn't run interrupt_handle_bottom_half except the hot plug.
-		 * Toggle start bit will clear all the interrupt. So don't clear interrupt again. 
-		 * Otherwise it'll clear Read Log Ext interrupt. 
+		 * Toggle start bit will clear all the interrupt. So don't clear interrupt again.
+		 * Otherwise it'll clear Read Log Ext interrupt.
 		 * If Device_IssueReadLogExt is called, needn't run Core_HandleWaitingList. */
-		
+
 	}
 
 
@@ -4086,12 +4113,12 @@ void PATA_PortHandleInterrupt(
 	MV_BOOLEAN hasError = MV_FALSE, needReset = MV_FALSE;
 	PDomain_Device pDevice=NULL;
 	ATA_TaskFile	taskFiles;
-    	
+
 	/* Read port interrupt status register */
 	intStatus = MV_REG_READ_DWORD(port_mmio, PORT_IRQ_STAT);
 	orgIntStatus = intStatus;
 
-	/* 
+	/*
 	 * Workaround for PATA non-data command.
 	 * PATA non-data command, CI is not ready yet when interrupt is triggered.
 	 */
@@ -4113,7 +4140,7 @@ if ( (pCore->Device_Id!=DEVICE_ID_THOR_4S1P_NEW) && (pCore->Revision_Id<0xB0) )
 
 	if ( (completeSlot==0)&&(pPort->Running_Slot!=0) )
 	{
-		MV_DPRINT(("INT but no request completed: 0x%x CI: 0x%x Running: 0x%x\n", 
+		MV_DPRINT(("INT but no request completed: 0x%x CI: 0x%x Running: 0x%x\n",
 			intStatus, commandIssue, pPort->Running_Slot));
 		/*
 		 * Workaround:
@@ -4122,7 +4149,7 @@ if ( (pCore->Device_Id!=DEVICE_ID_THOR_4S1P_NEW) && (pCore->Revision_Id<0xB0) )
 		stateMachine = MV_REG_READ_DWORD(port_mmio, PORT_INTERNAL_STATE_MACHINE);
 		if ( stateMachine==0x60007013 )
 		{
-            		pCore->Need_Reset = 1;
+			pCore->Need_Reset = 1;
 			needReset = MV_TRUE;
 
 			/* Actually one request is finished. We need figure out which one it is. */
@@ -4157,7 +4184,7 @@ if ( (pCore->Device_Id!=DEVICE_ID_THOR_4S1P_NEW) && (pCore->Revision_Id<0xB0) )
 			continue;
 
 		completeSlot &= ~(1L<<slotId);
-		MV_DASSERT( completeSlot==0 );	
+		MV_DASSERT( completeSlot==0 );
 
 		/* This slot is finished. */
 		pReq = pPort->Running_Req[slotId];
@@ -4172,9 +4199,9 @@ if ( (pCore->Device_Id!=DEVICE_ID_THOR_4S1P_NEW) && (pCore->Revision_Id<0xB0) )
 		pDevice = &pPort->Device[PATA_MapDeviceId(pReq->Device_Id)];
 
 	#ifndef ENABLE_PATA_ERROR_INTERRUPT
-		/* 
- 		 * Workaround:
- 		 * Sometimes we got error interrupt bit but the status is still 0x50.
+		/*
+		 * Workaround:
+		 * Sometimes we got error interrupt bit but the status is still 0x50.
 		 * In this case, the command is completed without error.
 		 * So we have to check the task status to make sure it's really an error or not.
 		 */
@@ -4195,7 +4222,7 @@ if ( (pCore->Device_Id!=DEVICE_ID_THOR_4S1P_NEW) && (pCore->Revision_Id<0xB0) )
 		if ( !(taskFile&MV_BIT(0)) && ( intStatus ) )
 		{
 			MV_DPRINT(("Error interrupt is set but status is 0x50.\n"));
-		
+
 		}
 		#endif
 	#endif
@@ -4207,15 +4234,15 @@ if ( (pCore->Device_Id!=DEVICE_ID_THOR_4S1P_NEW) && (pCore->Revision_Id<0xB0) )
 			if ( pDevice->Device_Type==DEVICE_TYPE_ATAPI )
 			{
 				/*
-				 * Workaround: 
+				 * Workaround:
 				 * Write request if device abort, hardware state machine got wrong.
 				 * Need do reset to recover.
 				 * If the error register is 0x40, we think the error happens.
-			 	 * Suppose this problem only happens on ODD. HDD won't write abort.
- 				 */
+				 * Suppose this problem only happens on ODD. HDD won't write abort.
+				 */
 
 				taskFile = taskFile>>24;  /* Get the error register */
-				if ( taskFile==0x40 )	
+				if ( taskFile==0x40 )
 				{
 					pCore->Need_Reset = 1;
 					needReset = MV_TRUE;
@@ -4245,7 +4272,7 @@ if ( (pCore->Device_Id!=DEVICE_ID_THOR_4S1P_NEW) && (pCore->Revision_Id<0xB0) )
 			pReq = pOrgReq;
 		}
 		else
-	
+
 		{
 			if ( hasError )
 			{
@@ -4293,21 +4320,21 @@ if ( (pCore->Device_Id!=DEVICE_ID_THOR_4S1P_NEW) && (pCore->Revision_Id<0xB0) )
 #endif /* SUPPORT_TIMER */
 #endif /* SUPPORT_ERROR_HANDLING */
 
-		CompleteRequest(pCore, pReq, &taskFiles);  
+		CompleteRequest(pCore, pReq, &taskFiles);
 
 		if ( completeSlot==0 )
 			break;
 	}
 
-	/* 
-	 * Clear the interrupt. It'll re-start the hardware to handle the next slot. 
+	/*
+	 * Clear the interrupt. It'll re-start the hardware to handle the next slot.
 	 * I clear the interrupt after I've checked the CI register.
 	 * Currently we handle one request everytime in case if there is an error I don't know which one it is.
 	 */
 	MV_REG_WRITE_DWORD(mmio, HOST_IRQ_STAT, (1L<<pPort->Id));
 	MV_REG_WRITE_DWORD(port_mmio, PORT_IRQ_STAT, orgIntStatus);
 
-	
+
 	/* If there is more requests on the slot, we have to push back there request. */
 	if ( needReset )
 	{
@@ -4334,7 +4361,7 @@ void Device_MakeRequestSenseRequest(
 	PMV_SG_Table pSGTable = &pNewReq->SG_Table;
 	//MV_U8 senseSize = SATA_SCRATCH_BUFFER_SIZE;
 	MV_U8 senseSize = 18;
-	
+
 	MV_ZeroMvRequest(pNewReq);
 
 	pNewReq->Device_Id = pDevice->Id;
@@ -4348,7 +4375,7 @@ void Device_MakeRequestSenseRequest(
 	pNewReq->Org_Req = pOrgReq;
 
 	pNewReq->Cmd_Flag = CMD_FLAG_DATA_IN;
-#ifdef USE_DMA_FOR_ALL_PACKET_COMMAND	
+#ifdef USE_DMA_FOR_ALL_PACKET_COMMAND
 	pNewReq->Cmd_Flag |=CMD_FLAG_DMA;
 #endif
 
@@ -4357,7 +4384,7 @@ void Device_MakeRequestSenseRequest(
 	/* Make the SG table. */
 	SGTable_Init(pSGTable, 0);
 	SGTable_Append(
-		pSGTable, 
+		pSGTable,
 		pDevice->Scratch_Buffer_DMA.parts.low,
 		pDevice->Scratch_Buffer_DMA.parts.high,
 		senseSize
@@ -4393,7 +4420,7 @@ void CompleteRequest(
 		{
 			MV_U32 sectors;
 			MV_LBA lba;
-			
+
 			pReq->Splited_Count--;
 
 			lba.value = SCSI_CDB10_GET_LBA(pReq->Cdb) + MV_MAX_TRANSFER_SECTOR;
@@ -4413,7 +4440,7 @@ void CompleteRequest(
 
 #if defined(SUPPORT_ERROR_HANDLING) && defined(_OS_LINUX)
 	hba_remove_timer(pReq);
-#endif /* defined(SUPPORT_ERROR_HANDLING) && defined(_OS_LINUX) */	
+#endif /* defined(SUPPORT_ERROR_HANDLING) && defined(_OS_LINUX) */
 
 	if ( pReq->Scsi_Status==REQ_STATUS_REQUEST_SENSE )
 	{
@@ -4489,7 +4516,7 @@ void CompleteRequest(
 #endif
 
 	/* Do something if necessary to return back the request. */
-	if ( (pReq->Cdb[0]==SCSI_CMD_MARVELL_SPECIFIC) && (pReq->Cdb[1]==CDB_CORE_MODULE) ) 
+	if ( (pReq->Cdb[0]==SCSI_CMD_MARVELL_SPECIFIC) && (pReq->Cdb[1]==CDB_CORE_MODULE) )
 	{
 		if ( pReq->Cdb[2]==CDB_CORE_SHUTDOWN )
 		{
@@ -4506,6 +4533,7 @@ void CompleteRequest(
 			}
 		}
 	}
+
 	if(pReq->Completion)
 		pReq->Completion(pReq->Cmd_Initiator, pReq);
 }
@@ -4522,11 +4550,11 @@ void CompleteRequestAndSlot(
 	PDomain_Device pDevice = &pPort->Device[PATA_MapDeviceId(pReq->Device_Id)];
 #endif
 	mv_core_reset_running_slot(pPort, slotId);
-	MV_DASSERT( (MV_REG_READ_DWORD(pPort->Mmio_Base, PORT_CMD_ISSUE)&(1<<slotId))==0 );
+	//MV_DASSERT( (MV_REG_READ_DWORD(pPort->Mmio_Base, PORT_CMD_ISSUE)&(1<<slotId))==0 );
 
 	if ( pPort->Type!=PORT_TYPE_PATA )
 	{
-		MV_DASSERT( (MV_REG_READ_DWORD(pPort->Mmio_Base, PORT_SCR_ACT)&(1<<slotId))==0 );
+		//MV_DASSERT( (MV_REG_READ_DWORD(pPort->Mmio_Base, PORT_SCR_ACT)&(1<<slotId))==0 );
 	}
 
 	pDevice->Outstanding_Req--;
@@ -4585,14 +4613,14 @@ void Core_ModuleMonitor(MV_PVOID This)
 
 void Core_ModuleReset(MV_PVOID This)
 {
-	MV_U32 extensionSize = 0; 
+	MV_U32 extensionSize = 0;
 
 	extensionSize = ( ROUNDING(sizeof(Core_Driver_Extension),8)
 #ifdef SUPPORT_CONSOLIDATE
 					+ ROUNDING(sizeof(Consolidate_Extension),8) + ROUNDING(sizeof(Consolidate_Device),8)*MAX_DEVICE_NUMBER
 #endif
 					);
-			
+
 	/* Re-initialize all the variables even discard all the requests. */
 	Core_ModuleInitialize(This, extensionSize, 32);
 
@@ -4621,4 +4649,3 @@ struct mv_module_ops *mv_core_register_module(void)
 }
 
 #endif /* _OS_LINUX */
-

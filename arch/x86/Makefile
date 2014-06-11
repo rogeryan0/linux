@@ -148,12 +148,6 @@ drivers-$(CONFIG_PM) += arch/x86/power/
 
 drivers-$(CONFIG_FB) += arch/x86/video/
 
-ifeq ($(CONFIG_BUFFALO_PLATFORM),y)
-drivers-$(CONFIG_BUFFALO_PLATFORM) += arch/x86/buffalo/
-drivers-$(CONFIG_BUFFALO_MATSU_PLATFORM) += arch/x86/plat-matsu/
-drivers-$(CONFIG_BUFFALO_KIRI_PLATFORM) += arch/x86/plat-kiri/
-endif
-
 ####
 # boot loader support. Several targets are kept for legacy purposes
 

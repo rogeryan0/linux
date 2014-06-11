@@ -11,10 +11,10 @@
 #define MV_IOCTL_CHECK_DRIVER                                \
 	    CTL_CODE(FILE_DEVICE_CONTROLLER,                 \
                      0x900, METHOD_BUFFERED,                 \
-                     FILE_READ_ACCESS | FILE_WRITE_ACCESS)	
+                     FILE_READ_ACCESS | FILE_WRITE_ACCESS)
 
 /*
- * MV_IOCTL_LEAVING_S0 is a notification when the system is going 
+ * MV_IOCTL_LEAVING_S0 is a notification when the system is going
  * to leaving S0. This gives the driver a chance to do some house
  * keeping work before system really going to sleep.
  *
@@ -29,7 +29,7 @@
 #define MV_IOCTL_LEAVING_S0                                \
 	    CTL_CODE(FILE_DEVICE_CONTROLLER,                 \
                      0x901, METHOD_BUFFERED,                 \
-                     FILE_READ_ACCESS | FILE_WRITE_ACCESS)	
+                     FILE_READ_ACCESS | FILE_WRITE_ACCESS)
 
 /* IOCTL signature */
 #define MV_IOCTL_DRIVER_SIGNATURE                "mv61xxsg"

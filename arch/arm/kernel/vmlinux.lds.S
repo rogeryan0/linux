@@ -95,9 +95,6 @@ SECTIONS
 			__exception_text_start = .;
 			*(.exception.text)
 			__exception_text_end = .;
-/* Then all the functions that are "hot" in profiles, to group them onto the same hugetlb entry */
-#include "functionlist"
- /* Then the rest */
 			IRQENTRY_TEXT
 			TEXT_TEXT
 			SCHED_TEXT

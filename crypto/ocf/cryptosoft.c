@@ -35,7 +35,7 @@
  */
 
 #ifndef AUTOCONF_INCLUDED
-#include <linux/kconfig.h>
+#include <linux/config.h>
 #endif
 #include <linux/module.h>
 #include <linux/init.h>
@@ -550,7 +550,7 @@ swcr_process(device_t dev, struct cryptop *crp, int hint)
 					if (len + sg_len > crd->crd_len)
 						len = crd->crd_len - sg_len;
 					sg_set_page(&sg[sg_num],
-						skb_shinfo(skb)->frags[i].page.p,
+						skb_shinfo(skb)->frags[i].page,
 						len,
 						skb_shinfo(skb)->frags[i].page_offset + skip);
 					sg_len += len;

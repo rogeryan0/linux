@@ -45,7 +45,7 @@ typedef struct _SCSI_PASS_THROUGH_DIRECT_WITH_BUFFER{
 	unsigned char                   Sense_Buffer[SENSE_INFO_BUFFER_SIZE];
 }SCSI_PASS_THROUGH_DIRECT_WITH_BUFFER, *PSCSI_PASS_THROUGH_DIRECT_WITH_BUFFER;
 
-int mv_linux_proc_info(struct Scsi_Host *pSHost, char *pBuffer, 
+int mv_linux_proc_info(struct Scsi_Host *pSHost, char *pBuffer,
 		       char **ppStart,  off_t offset, int length, int inout);
 
 void IOHBARequestCallback(MV_PVOID This, PMV_Request pReq);

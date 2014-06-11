@@ -1,7 +1,7 @@
 #ifndef  __MV_COM_API_H__
 #define  __MV_COM_API_H__
 
-#define MAX_CDB_SIZE                           16  
+#define MAX_CDB_SIZE                           16
 
 /* CDB definitions */
 #define APICDB0_ADAPTER                        0xF0
@@ -53,11 +53,11 @@
 #define APICDB1_LD_HD_BGACONTROL	           (APICDB1_LD_CREATE + 29)	// temp
 #define APICDB1_LD_HD_GETBGASTATUS             (APICDB1_LD_CREATE + 30)	// temp
 // Added reserved for future expansion so that MRU/CLI can be backward compatible with drier.
-#define APICDB1_LD_RESERVED1				   (APICDB1_LD_CREATE + 31)	
-#define APICDB1_LD_RESERVED2				   (APICDB1_LD_CREATE + 32)	
-#define APICDB1_LD_RESERVED3				   (APICDB1_LD_CREATE + 33)	
-#define APICDB1_LD_RESERVED4				   (APICDB1_LD_CREATE + 34)	
-#define APICDB1_LD_RESERVED5				   (APICDB1_LD_CREATE + 35)	
+#define APICDB1_LD_RESERVED1				   (APICDB1_LD_CREATE + 31)
+#define APICDB1_LD_RESERVED2				   (APICDB1_LD_CREATE + 32)
+#define APICDB1_LD_RESERVED3				   (APICDB1_LD_CREATE + 33)
+#define APICDB1_LD_RESERVED4				   (APICDB1_LD_CREATE + 34)
+#define APICDB1_LD_RESERVED5				   (APICDB1_LD_CREATE + 35)
 
 #define APICDB1_LD_MAX                         (APICDB1_LD_CREATE + 36)
 
@@ -151,7 +151,7 @@
 #define APICDB1_ATA_PIO_OUT						  0x02
 
 #ifdef _OS_LINUX
-#ifdef NEW_IO_CONTORL_PATH  
+#ifdef NEW_IO_CONTORL_PATH
 		#define API_IOCTL_DEFAULT_FUN				0x1981
 #else
 		#define API_IOCTL_DEFAULT_FUN				0x00
@@ -165,4 +165,3 @@
 
 
 #endif /*  __MV_COM_API_H__ */
-

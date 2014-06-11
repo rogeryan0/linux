@@ -103,6 +103,9 @@ struct nand_bbt_descr {
 #define NAND_BBT_SAVECONTENT	0x00004000
 /* Search good / bad pattern on the first and the second page */
 #define NAND_BBT_SCAN2NDPAGE	0x00008000
+#ifdef CONFIG_MTD_NAND_NFC_MLC_SUPPORT
+#define NAND_BBT_SCANMVCUSTOM	0x10000000
+#endif
 /* Search good / bad pattern on the last page of the eraseblock */
 #define NAND_BBT_SCANLASTPAGE	0x00010000
 /*

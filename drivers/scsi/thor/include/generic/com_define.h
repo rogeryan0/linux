@@ -7,7 +7,7 @@
  *  We have macros to differentiate different CPU and OS.
  *
  *  CPU definitions:
- *  _CPU_X86_16B  
+ *  _CPU_X86_16B
  *  Specify 16bit x86 platform, this is used for BIOS and DOS utility.
  *  _CPU_X86_32B
  *  Specify 32bit x86 platform, this is used for most OS drivers.
@@ -23,7 +23,7 @@
  *  _OS_BIOS
  *  __QNXNTO__
  */
- 
+
 
 #include "mv_os.h"
 
@@ -76,10 +76,10 @@ typedef void    MV_VOID, *MV_PVOID;
 
 /* Pre-define segment in C code*/
 #if defined(_OS_BIOS)
-#   define BASEATTR         __based(__segname("_CODE")) 
-#   define BASEATTRData     __based(__segname("_CODE")) 
+#   define BASEATTR         __based(__segname("_CODE"))
+#   define BASEATTRData     __based(__segname("_CODE"))
 #else
-#   define BASEATTR 
+#   define BASEATTR
 #endif /* _OS_BIOS */
 
 #ifdef DEBUG_COM_SPECIAL
@@ -87,16 +87,16 @@ typedef void    MV_VOID, *MV_PVOID;
 	#define MV_DUMP32_COM_SPECIAL(pString, value) 				bDbgPrintStr_U32(pString, value)
 	#define MV_DUMP16_COM_SPECIAL(pString, value)  				bDbgPrintStr_U16(pString, value)
 	#define MV_DUMP32_COM_SPECIAL3(pString, value1, value2)  	bDbgPrintStr_U32_3(pString, value1, value2)
-	#define MV_DUMP8_COM_SPECIAL(pString, value)  				bDbgPrintStr_U8(pString, value)	
+	#define MV_DUMP8_COM_SPECIAL(pString, value)  				bDbgPrintStr_U8(pString, value)
 	#define MV_HALTKEY_SPECIAL									waitForKeystroke()
 
 #else
-	#define MV_DUMP_COM_SPECIAL(pString)  						
-	#define MV_DUMP32_COM_SPECIAL(pString, value) 				
-	#define MV_DUMP16_COM_SPECIAL(pString, value)  				
-	#define MV_DUMP32_COM_SPECIAL3(pString, value1, value2)  	
-	#define MV_DUMP8_COM_SPECIAL(pString, value)  				
-	#define MV_HALTKEY_SPECIAL									
+	#define MV_DUMP_COM_SPECIAL(pString)
+	#define MV_DUMP32_COM_SPECIAL(pString, value)
+	#define MV_DUMP16_COM_SPECIAL(pString, value)
+	#define MV_DUMP32_COM_SPECIAL3(pString, value1, value2)
+	#define MV_DUMP8_COM_SPECIAL(pString, value)
+	#define MV_HALTKEY_SPECIAL
 #endif
 /* For debug version only */
 #ifdef DEBUG_BIOS
@@ -110,7 +110,7 @@ typedef void    MV_VOID, *MV_PVOID;
 	#define MV_DUMPE32(_x_) 	{mvDebugDumpU32(_x_);bCOMEnter();}
 	#define MV_DUMPE16(_x_) 	{mvDebugDumpU16(_x_);bCOMEnter();}
 	#define MV_DUMPE8(_x_)  	{mvDebugDumpU8(_x_);bCOMEnter();}
- 	#define MV_DUMP_COM(pString)  						{bDbgPrintStr(pString);bCOMEnter();}
+	#define MV_DUMP_COM(pString)  						{bDbgPrintStr(pString);bCOMEnter();}
 	#define MV_DUMP32_COM(pString, value) 				bDbgPrintStr_U32(pString, value)
 	#define MV_DUMP16_COM(pString, value)  				bDbgPrintStr_U16(pString, value)
 	#define MV_DUMP32_COM3(pString, value1, value2)  	bDbgPrintStr_U32_3(pString, value1, value2)
@@ -125,15 +125,15 @@ typedef void    MV_VOID, *MV_PVOID;
 	#define MV_DUMPE32(_x_) 	//{mvDebugDumpU32(_x_);bCOMEnter();}
 	#define MV_DUMPE16(_x_) 	//{mvDebugDumpU16(_x_);bCOMEnter();}
 	#define MV_DUMPE8(_x_)  	//{mvDebugDumpU8(_x_);bCOMEnter();}
- 	#define MV_DUMP_COM(pString)  						//{bDbgPrintStr(pString);bCOMEnter();}
+	#define MV_DUMP_COM(pString)  						//{bDbgPrintStr(pString);bCOMEnter();}
 	#define MV_DUMP32_COM(pString, value) 				//bDbgPrintStr_U32(pString, value)
 	#define MV_DUMP16_COM(pString, value)  				//bDbgPrintStr_U16(pString, value)
 	#define MV_DUMP32_COM3(pString, value1, value2)  	//bDbgPrintStr_U32_3(pString, value1, value2)
 	#define MV_DUMP8_COM(pString, value)  				//bDbgPrintStr_U8(pString, value)
- 
+
  #endif
- 
-	#define MV_BIOSDEBUG(pString, value)				bDbgPrintStr_U32(pString, value)				
+
+	#define MV_BIOSDEBUG(pString, value)				bDbgPrintStr_U32(pString, value)
 	#define MV_HALTKEY			waitForKeystroke()
 	#define MV_ENTERLINE		//mvChangLine()
 #else
@@ -146,7 +146,7 @@ typedef void    MV_VOID, *MV_PVOID;
 	#define MV_DUMPE32(_x_) 	//{mvDebugDumpU32(_x_);bCOMEnter();}
 	#define MV_DUMPE16(_x_) 	//{mvDebugDumpU16(_x_);bCOMEnter();}
 	#define MV_DUMPE8(_x_)  	//{mvDebugDumpU8(_x_);bCOMEnter();}
- 	#define MV_DUMP_COM(pString)  						//{bDbgPrintStr(pString);bCOMEnter();}
+	#define MV_DUMP_COM(pString)  						//{bDbgPrintStr(pString);bCOMEnter();}
 	#define MV_DUMP32_COM(pString, value) 				//bDbgPrintStr_U32(pString, value)
 	#define MV_DUMP16_COM(pString, value)  				//bDbgPrintStr_U16(pString, value)
 	#define MV_DUMP32_COM3(pString, value1, value2)  	//bDbgPrintStr_U32_3(pString, value1, value2)
@@ -155,7 +155,7 @@ typedef void    MV_VOID, *MV_PVOID;
 	#define MV_BIOSDEBUG(pString, value)
 	#define MV_HALTKEY
 	#define MV_ENTERLINE
-	
+
 #endif
 
 #if defined(_OS_LINUX) || defined(__QNXNTO__)
@@ -273,7 +273,7 @@ typedef MV_I32 MV_FILE_HANDLE;
 
  /* Odin lite version */
 #define DEVICE_ID_6320					0x6320
-#define DEVICE_ID_6340					0x6340 
+#define DEVICE_ID_6340					0x6340
 
 /* mule-board */
 #define DEVICE_ID_6440					0x6440
@@ -323,22 +323,22 @@ typedef MV_I32 MV_FILE_HANDLE;
 
 #else
 
-#define OSSW_DECLARE_SPINLOCK(x)  
-#define OSSW_DECLARE_TIMER(x)  
-#define MV_DECLARE_TIMER(x)   
+#define OSSW_DECLARE_SPINLOCK(x)
+#define OSSW_DECLARE_TIMER(x)
+#define MV_DECLARE_TIMER(x)
 /* expect pointers */
-#define OSSW_INIT_SPIN_LOCK(plock) 
+#define OSSW_INIT_SPIN_LOCK(plock)
 
-#define OSSW_SPIN_LOCK_IRQ(plock)           
+#define OSSW_SPIN_LOCK_IRQ(plock)
 
-#define OSSW_SPIN_UNLOCK_IRQ(plock)           
+#define OSSW_SPIN_UNLOCK_IRQ(plock)
 
-#define OSSW_SPIN_LOCK_IRQSAVE(plock, flag)          
+#define OSSW_SPIN_LOCK_IRQSAVE(plock, flag)
 
-#define OSSW_SPIN_UNLOCK_IRQRESTORE(plock, flag)           
+#define OSSW_SPIN_UNLOCK_IRQRESTORE(plock, flag)
 
 /* Delayed Execution Services */
-#define OSSW_INIT_TIMER(ptimer) 
+#define OSSW_INIT_TIMER(ptimer)
 
 #endif
 

@@ -824,6 +824,9 @@ static int tcp_packet(struct nf_conn *ct,
 {
 	struct net *net = nf_ct_net(ct);
 	struct nf_conntrack_tuple *tuple;
+#if defined(CONFIG_MV_ETH_NFP_CT_LEARN)
+	struct nf_conntrack_tuple *tupleInverseDir;
+#endif
 	enum tcp_conntrack new_state, old_state;
 	enum ip_conntrack_dir dir;
 	const struct tcphdr *th;
@@ -840,6 +843,9 @@ static int tcp_packet(struct nf_conn *ct,
 	index = get_conntrack_index(th);
 	new_state = tcp_conntracks[dir][index][old_state];
 	tuple = &ct->tuplehash[dir].tuple;
+#if defined(CONFIG_MV_ETH_NFP_CT_LEARN)
+	tupleInverseDir	= &ct->tuplehash[!dir].tuple;
+#endif
 
 	switch (new_state) {
 	case TCP_CONNTRACK_SYN_SENT:
@@ -991,14 +997,21 @@ static int tcp_packet(struct nf_conn *ct,
 		/* Keep compilers happy. */
 		break;
 	}
-#ifndef CONFIG_MV_ETH_NFP_PPP
-	/* BK: PPPoE NFP breaks ordering */
+
+#if defined(CONFIG_MV_ETH_NFP_CT_LEARN)
+	/*
+	 * When connection is handled by NFP, we have to relax TCP tracking
+	 * rules as not all packets goes through Linux conntrack.
+	 */
+	if ((tuple->nfp) || (tupleInverseDir->nfp))
+		goto in_window;
+#endif /* CONFIG_MV_ETH_NFP_CT_LEARN */
+
 	if (!tcp_in_window(ct, &ct->proto.tcp, dir, index,
 			   skb, dataoff, th, pf)) {
 		spin_unlock_bh(&ct->lock);
 		return -NF_ACCEPT;
 	}
-#endif
      in_window:
 	/* From now on we have got in-window packets */
 	ct->proto.tcp.last_index = index;

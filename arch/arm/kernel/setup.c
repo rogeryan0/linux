@@ -240,8 +240,13 @@ static int __get_cpu_architecture(void)
 		 * Register 0 and check for VMSAv7 or PMSAv7 */
 		asm("mrc	p15, 0, %0, c0, c1, 4"
 		    : "=r" (mmfr0));
+#ifdef CONFIG_ARCH_ARMADA_XP
 		if ((mmfr0 & 0x0000000f) >= 0x00000003 ||
 		    (mmfr0 & 0x000000f0) >= 0x00000030)
+#else
+		if ((mmfr0 & 0x0000000f) >= 0x00000003 ||
+		    (mmfr0 & 0x000000f0) >= 0x00000030)
+#endif
 			cpu_arch = CPU_ARCH_ARMv7;
 		else if ((mmfr0 & 0x0000000f) == 0x00000002 ||
 			 (mmfr0 & 0x000000f0) == 0x00000020)
@@ -519,7 +524,6 @@ int __init arm_add_memory(phys_addr_t start, unsigned long size)
 	 * Ensure that start/size are aligned to a page boundary.
 	 * Size is appropriately rounded down, start is rounded up.
 	 */
-	if(size != 0) /* overcome bug in U-Boot */
 	size -= start & ~PAGE_MASK;
 	bank->start = PAGE_ALIGN(start);
 	bank->size  = size & PAGE_MASK;
@@ -639,10 +643,10 @@ static void __init request_standard_resources(struct machine_desc *mdesc)
  */
 static int __init parse_tag_core(const struct tag *tag)
 {
-	if (tag->hdr.size > 2) {
-		if ((tag->u.core.flags & 1) == 0)
+	if (read_tag(tag->hdr.size) > 2) {
+		if ((read_tag(tag->u.core.flags) & 1) == 0)
 			root_mountflags &= ~MS_RDONLY;
-		ROOT_DEV = old_decode_dev(tag->u.core.rootdev);
+		ROOT_DEV = old_decode_dev(read_tag(tag->u.core.rootdev));
 	}
 	return 0;
 }
@@ -651,7 +655,7 @@ __tagtable(ATAG_CORE, parse_tag_core);
 
 static int __init parse_tag_mem32(const struct tag *tag)
 {
-	return arm_add_memory(tag->u.mem.start, tag->u.mem.size);
+	return arm_add_memory(read_tag(tag->u.mem.start), read_tag(tag->u.mem.size));
 }
 
 __tagtable(ATAG_MEM, parse_tag_mem32);
@@ -704,7 +708,7 @@ __tagtable(ATAG_SERIAL, parse_tag_serialnr);
 
 static int __init parse_tag_revision(const struct tag *tag)
 {
-	system_rev = tag->u.revision.rev;
+	system_rev = read_tag(tag->u.revision.rev);
 	return 0;
 }
 
@@ -738,7 +742,7 @@ static int __init parse_tag(const struct tag *tag)
 	struct tagtable *t;
 
 	for (t = &__tagtable_begin; t < &__tagtable_end; t++)
-		if (tag->hdr.tag == t->tag) {
+		if ((read_tag(tag->hdr.tag) == t->tag)) {
 			t->parse(tag);
 			break;
 		}
@@ -752,9 +756,9 @@ static int __init parse_tag(const struct tag *tag)
  */
 static void __init parse_tags(const struct tag *t)
 {
-	for (; t->hdr.size; t = tag_next(t))
+	for (; read_tag(t->hdr.size); t = tag_next(t))
 		if (!parse_tag(t))
-			printk(KERN_WARNING
+			early_printk(KERN_WARNING
 				"Ignoring unrecognised tag 0x%08x\n",
 				t->hdr.tag);
 }
@@ -875,11 +879,11 @@ static struct machine_desc * __init setup_machine_tags(unsigned int nr)
 	 * If we have the old style parameters, convert them to
 	 * a tag list.
 	 */
-	if (tags->hdr.tag != ATAG_CORE)
+	if (read_tag(tags->hdr.tag) != ATAG_CORE)
 		convert_to_tag_list(tags);
 #endif
 
-	if (tags->hdr.tag != ATAG_CORE) {
+	if (read_tag(tags->hdr.tag) != ATAG_CORE){
 #if defined(CONFIG_OF)
 		/*
 		 * If CONFIG_OF is set, then assume this is a reasonably
@@ -893,7 +897,7 @@ static struct machine_desc * __init setup_machine_tags(unsigned int nr)
 	if (mdesc->fixup)
 		mdesc->fixup(tags, &from, &meminfo);
 
-	if (tags->hdr.tag == ATAG_CORE) {
+	if (read_tag(tags->hdr.tag) == ATAG_CORE) {
 		if (meminfo.nr_banks != 0)
 			squash_mem_tags(tags);
 		save_atags(tags);
@@ -949,12 +953,6 @@ void __init setup_arch(char **cmdline_p)
 	arm_memblock_init(&meminfo, mdesc);
 
 	paging_init(mdesc);
-#ifdef CONFIG_DEBUG_LL
-	{
-		extern int ll_debug;
-		ll_debug=1;
-	}
-#endif
 	request_standard_resources(mdesc);
 
 	if (mdesc->restart)

@@ -3,7 +3,7 @@
 
 
 /*
- * ATA IDE Command definition 
+ * ATA IDE Command definition
  */
 /* PIO command */
 #define ATA_CMD_READ_PIO				0x20
@@ -20,7 +20,7 @@
 #define ATA_CMD_READ_DMA_QUEUED_EXT		0x26	/* 48 bit TCQ DMA read */
 #define ATA_CMD_READ_FPDMA_QUEUED		0x60	/* NCQ DMA read: SATA only. Always 48 bit */
 
-#define ATA_CMD_WRITE_DMA				0xCA	
+#define ATA_CMD_WRITE_DMA				0xCA
 #define ATA_CMD_WRITE_DMA_QUEUED		0xCC
 #define ATA_CMD_WRITE_DMA_EXT  			0x35
 #define ATA_CMD_WRITE_DMA_QUEUED_EXT	0x36
@@ -57,6 +57,11 @@
 #define ATA_CMD_STANDBY_IMMEDIATE		0xE0
 #define ATA_CMD_SEEK					0x70
 #define ATA_CMD_READ_LOG_EXT			0x2F
+#define ATA_CMD_DOWNLOAD_MICROCODE			0x92
+
+
+
+
 #ifdef SUPPORT_ATA_SECURITY_CMD
 
 /*	security commmand */
@@ -203,7 +208,7 @@ typedef struct _ATA_Identify_Data {
 	MV_U16 SATA_Reserved;							/*	77	*/
 	MV_U16 SATA_Feature_Supported;					/*	78	*/
 	MV_U16 SATA_Feature_Enabled;					/*	79	*/
- 	MV_U16 Major_Version;							/*	80	*/
+	MV_U16 Major_Version;							/*	80	*/
 	MV_U16 Minor_Version;							/*	81	*/
 	MV_U16 Command_Set_Supported[2];				/*	82-83	*/
 	MV_U16 Command_Set_Supported_Extension;			/*	84	*/
@@ -221,7 +226,7 @@ typedef struct _ATA_Identify_Data {
 	MV_U16 Stream_Access_Latency;					/*	97	*/
 	MV_U16 Stream_Performance_Granularity[2];		/*	98-99	*/
 	MV_U16 Max_LBA[4];								/*	100-103	*/
-	MV_U16 Stream_Transfer_Time_PIO;				/*	104	*/	
+	MV_U16 Stream_Transfer_Time_PIO;				/*	104	*/
 	MV_U16 Reserved3;								/*	105	*/
 	MV_U16 Physical_Logical_Sector_Size;			/*	106	*/
 	MV_U16 Delay_Acoustic_Testing;					/*	107	*/
@@ -258,4 +263,3 @@ typedef struct _ATA_Identify_Data {
 #define ATA_REGISTER_DEVICE_CONTROL	0x16
 
 #endif
-

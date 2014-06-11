@@ -6,7 +6,7 @@ MV_U64 U64_ADD_U32(MV_U64 v64, MV_U32 v32)
 	v64.value += v32;
 #else
 	v64.parts.low += v32;
-	v64.parts.high = 0;	
+	v64.parts.high = 0;
 #endif
 	return v64;
 }
@@ -17,7 +17,7 @@ MV_U64 U64_SUBTRACT_U32(MV_U64 v64, MV_U32 v32)
 	v64.value -= v32;
 #else
 	v64.parts.low -= v32;
-	v64.parts.high = 0;	
+	v64.parts.high = 0;
 #endif
 	return v64;
 }
@@ -28,7 +28,7 @@ MV_U64 U64_MULTIPLY_U32(MV_U64 v64, MV_U32 v32)
 	v64.value *= v32;
 #else
 	v64.parts.low *= v32;
-	v64.parts.high = 0;	
+	v64.parts.high = 0;
 #endif
 	return v64;
 }
@@ -50,7 +50,7 @@ MV_U64 U64_DIVIDE_U32(MV_U64 v64, MV_U32 v32)
 #ifdef _64_BIT_COMPILER
 	v64.value /= v32;
 #else
-	v64.parts.high = 0;	
+	v64.parts.high = 0;
 	v64.parts.low /= v32;
 #endif /* _64_BIT_COMPILER */
 
@@ -80,7 +80,7 @@ MV_U64 U64_ADD_U64(MV_U64 v1, MV_U64 v2)
 	v1.value += v2.value;
 #else
 	v1.parts.low += v2.parts.low;
-	v1.parts.high = 0;	
+	v1.parts.high = 0;
 #endif
 	return v1;
 }
@@ -91,7 +91,7 @@ MV_U64 U64_SUBTRACT_U64(MV_U64 v1, MV_U64 v2)
 	v1.value -= v2.value;
 #else
 	v1.parts.low -= v2.parts.low;
-	v1.parts.high = 0;	
+	v1.parts.high = 0;
 #endif
 	return v1;
 }
@@ -109,7 +109,7 @@ MV_U32 U64_DIVIDE_U64(MV_U64 v1, MV_U64 v2)
 #ifdef _64_BIT_COMPILER
 	v1.value /= v2.value;
 #else
-	v1.parts.high = 0;	
+	v1.parts.high = 0;
 	v1.parts.low /= v2.parts.low;
 #endif
 	return v1.parts.low;
@@ -146,4 +146,3 @@ MV_U64 ZeroU64(MV_U64 v1)
 	return	v1;
 }
 #endif /*  _OS_BIOS */
-

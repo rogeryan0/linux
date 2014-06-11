@@ -56,10 +56,9 @@
 
 #define PPP_VERSION	"2.4.2"
 
-
-#ifdef CONFIG_MV_ETH_NFP_PPP
-extern int fp_ppp_info_set(u32 if_ppp, u32 if_eth, u16 sid, u8 *mac, u32 channel);
-#endif
+#if defined(CONFIG_MV_ETH_NFP_PPP) && defined(CONFIG_MV_ETH_NFP_LEARN)
+extern int nfp_hook_ppp_complete(u32 chan, struct net_device *ppp_dev);
+#endif /* CONFIG_MV_ETH_NFP_PPP && CONFIG_MV_ETH_NFP_LEARN */
 
 /*
  * Network protocols we support.
@@ -2846,9 +2845,9 @@ ppp_connect_channel(struct channel *pch, int unit)
 	ppp_unlock(ppp);
 	ret = 0;
 
-#ifdef CONFIG_MV_ETH_NFP_PPP
-	fp_ppp_info_set(ppp->dev->ifindex, 0, 0, NULL, pch->chan);
-#endif
+#if defined(CONFIG_MV_ETH_NFP_PPP) && defined(CONFIG_MV_ETH_NFP_LEARN)
+	nfp_hook_ppp_complete((u32)pch->chan, ppp->dev);
+#endif /* CONFIG_MV_ETH_NFP_PPP && CONFIG_MV_ETH_NFP_LEARN */
 
  outl:
 	write_unlock_bh(&pch->upl);
