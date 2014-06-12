@@ -315,6 +315,24 @@ config BUFFALO_LINKSTATION_LSWSGL_R1
 	---help---
 	  BUFFALO LinkStation(2 drives)
 
+config BUFFALO_LINKSTATION_LSWHGL_R1
+	bool "LinkStaiton(LSWHGL)"
+	depends on BUFFALO_PLATFORM
+	---help---
+	  BUFFALO LinkStation(2 drives)
+
+config BUFFALO_LINKSTATION_LSWTGL_R1_V3
+	bool "LinkStaiton(LSWTGL-V3)"
+	depends on BUFFALO_PLATFORM
+	---help---
+	  BUFFALO LinkStation(2 drives)
+
+config BUFFALO_LINKSTATION_LSWTGL_R1_V2
+	bool "LinkStaiton(LSWTGL-V2)"
+	depends on BUFFALO_PLATFORM
+	---help---
+	  BUFFALO LinkStation(2 drives)
+
 config BUFFALO_TERASTATION_TEST
 	bool "TeraStation(test)"
 	depends on BUFFALO_PLATFORM
@@ -388,6 +406,24 @@ config BUFFALO_LSWSGL_SOFT_BOARDID
 	depends on BUFFALO_SOFT_BOARDID
 	---help---
 	  BUFFALO LS-WSGL mvBoardEnvSpec.c : mvBoardIdGet()
+
+config BUFFALO_LSWHGL_SOFT_BOARDID
+	bool "SOFT_BOARDID 0x1A (LS-WHGL 2drives)"
+	depends on BUFFALO_SOFT_BOARDID
+	---help---
+	  BUFFALO LS-WHGL mvBoardEnvSpec.c : mvBoardIdGet()
+
+config BUFFALO_LSWTGL_V3_SOFT_BOARDID
+	bool "SOFT_BOARDID 0x1B (LS-WTGL-V3 2drives)"
+	depends on BUFFALO_SOFT_BOARDID
+	---help---
+	  BUFFALO LS-WTGL-V3 mvBoardEnvSpec.c : mvBoardIdGet()
+
+config BUFFALO_LSWTGL_V2_SOFT_BOARDID
+	bool "SOFT_BOARDID 0x1C (LS-WTGL-V2 2drives)"
+	depends on BUFFALO_SOFT_BOARDID
+	---help---
+	  BUFFALO LS-WTGL-V2 mvBoardEnvSpec.c : mvBoardIdGet()
 
 endchoice
 

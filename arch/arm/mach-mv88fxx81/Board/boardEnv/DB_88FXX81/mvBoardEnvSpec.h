@@ -1725,13 +1725,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 	0,		   				/* ledsPolarity */	\
 	N_A						/* refClkGppPin */	\
 }
-#endif
+#endif // end of CONFIG_BUFFALO_LINKSTATION_LSWTGL_R1_V3
 
-#if defined CONFIG_BUFFALO_LINKSTATION_LSWTGL_R1_V3
+#if defined CONFIG_BUFFALO_LINKSTATION_LSWTGL_R1_V2
 /*************************************************/
 /****** BUFFALO Added ******************************/
 /*************************************************/
-#define BUFFALO_BOARD_LS_WTGL_R1_V3_MPP0_7	0x00000003
+#define BUFFALO_BOARD_LS_WTGL_R1_V2_MPP0_7	0x00000003
 /*                                                |||||||- gpio(0)
                                                   ||||||-- gpio(1)
                                                   |||||--- gpio(2)
@@ -1741,9 +1741,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
                                                   |------- gpio(6)
                                                   -------- gpio(7)
 */
-#define BUFFALO_BOARD_LS_WTGL_R1_V3_MPP8_15	0x00000000
-#define BUFFALO_BOARD_LS_WTGL_R1_V3_MPP16_23	0x00005555
-#define BUFFALO_BOARD_LS_WTGL_R1_V3_MPP_DEV	0x0
+#define BUFFALO_BOARD_LS_WTGL_R1_V2_MPP8_15	0x00000000
+#define BUFFALO_BOARD_LS_WTGL_R1_V2_MPP16_23	0x00005555
+#define BUFFALO_BOARD_LS_WTGL_R1_V2_MPP_DEV	0x0
 
 /* GPIO IRQ
    2:micon
@@ -1869,5 +1869,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 	}
 
 #endif  //CONFIG_BUFFALO_TERASTATION_TSHTGL
+
 
 #endif /* __INCmvBoardEnvSpech */

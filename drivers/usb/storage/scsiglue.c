@@ -333,27 +333,13 @@ void usb_stor_report_bus_reset(struct us_data *us)
 
 static inline void make_guid( __u32 *pg, __u16 vendor, __u16 product, char *serial)
 {
-	int counter = USB_STOR_STRING_LEN;
 	pg[0] = (vendor << 16) | product;
 	pg[1] = pg[2] = 0;
 	while (*serial) {
 #if defined CONFIG_BUFFALO_SUPPORT_WHITE_SPACE_ISERIAL
-		if(counter == 1)
-		{
-			// serial[31] must be a \0 (target of ignore list)
-			break;
-		}
-		else
-		{
-			counter--;
-		}
 		if(*serial == ' '){
 			serial++;
 			continue;
-		}
-		if((int)*serial >= 0xff || (int)*serial < 0 || *serial == NULL)
-		{
-			break;
 		}
 #endif
 		pg[1] <<= 4;

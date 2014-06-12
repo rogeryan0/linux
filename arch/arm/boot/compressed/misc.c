@@ -323,6 +323,12 @@ decompress_kernel(ulg output_start, ulg free_mem_ptr_p, ulg free_mem_ptr_end_p,
 	putstr("CONFIG_BUFFALO_LINKSTATION_LSWTGL_R1 ");
  #elif defined(CONFIG_BUFFALO_LINKSTATION_LSWSGL_R1)
 	putstr("CONFIG_BUFFALO_LINKSTATION_LSWSGL_R1 ");
+ #elif defined(CONFIG_BUFFALO_LINKSTATION_LSWHGL_R1)
+	putstr("CONFIG_BUFFALO_LINKSTATION_LSWHGL_R1 ");
+ #elif defined(CONFIG_BUFFALO_LINKSTATION_LSWTGL_R1_V3)
+	putstr("CONFIG_BUFFALO_LINKSTATION_LSWTGL_R1_V3 ");
+ #elif defined(CONFIG_BUFFALO_LINKSTATION_LSWTGL_R1_V2)
+	putstr("CONFIG_BUFFALO_LINKSTATION_LSWTGL_R1_V2 ");
  #endif
 	putstr("---\n");
 #endif

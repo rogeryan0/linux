@@ -127,15 +127,9 @@ gpio_power_read_proc(char *page, char **start, off_t offset, int length)
 #endif
 	len += sprintf(page + len, "PowerStat=%d\n", (PowerStat & BIT(BIT_POWER))? 1:0);
 	len += sprintf(page + len, "LedInfo=%d\n", (PowerStat & BIT(BIT_LED_INFO))? 0:1);
-#if defined(CONFIG_BUFFALO_USE_LED_ALARM)
 	len += sprintf(page + len, "LedAlarm=%d\n", (PowerStat & BIT(BIT_LED_ALARM))? 0:1);
-#endif
-#if defined(CONFIG_BUFFALO_USE_LED_FUNC)
 	len += sprintf(page + len, "LedFunc=%d\n", (PowerStat & BIT(BIT_LED_FUNC))? 0:1);
-#endif
-#if defined(CONFIG_BUFFALO_USE_HDD_POWER_CONTROL)
 	len += sprintf(page + len, "HddPower=%d\n", (PowerStat & BIT(BIT_HDD_PWR))? 0:1);
-#endif
 	*start = page + (offset - begin);
 	len -= (offset - begin);
 	if (len > length)
@@ -1080,26 +1074,6 @@ BuffaloPowerReadProc(char *page, char **start, off_t offset, int length)
 	return (len);
 
 }
-#else
-static int
-BuffaloPowerReadProc(char *page, char **start, off_t offset, int length)
-{
-	int len = 0;
-	off_t begin = 0;
-	unsigned int PinStat = buffalo_gpio_read();
-
-	if(PinStat & BIT(BIT_POWER))
-		len = sprintf(page, "on\n");
-	else
-		len = sprintf(page, "off\n");
-	*start = page + (offset - begin);
-	len -= (offset - begin);
-	if (len > length)
-		len = length;
-	return (len);
-
-}
-
 #endif //CONFIG_BUFFALO_USE_SWITCH_SLIDE_POWER
 
 static int
@@ -1107,6 +1081,7 @@ BuffaloSlideSwitchReadProc(char *page, char **start, off_t offset, int length)
 {
 	int len = 0;
 	off_t begin = 0;
+	unsigned int PinStat = buffalo_gpio_read();
 
 #if defined(CONFIG_BUFFALO_USE_SWITCH_SLIDE_POWER)
 	len += sprintf(page, "1\n");
@@ -1135,26 +1110,16 @@ BuffaloAutoPowerReadProc(char *page, char **start, off_t offset, int length)
 	unsigned int PinStat = buffalo_gpio_read();
 
 	if(PinStat & BIT(BIT_AUTO_POWER))
-#if defined(CONFIG_BUFFALO_USE_SWITCH_SLIDE_POWER)
 		len = sprintf(page, "on\n");
-#else
-		len = sprintf(page, "off\n");
-#endif
 	else
-#if defined(CONFIG_BUFFALO_USE_SWITCH_SLIDE_POWER)
 		len = sprintf(page, "off\n");
-#else
-		len = sprintf(page, "on\n");
-#endif
 	*start = page + (offset - begin);
 	len -= (offset - begin);
 	if (len > length)
 		len = length;
 	return (len);
 }
-#endif
 
-#if defined(CONFIG_BUFFALO_USE_SWITCH_SLIDE_POWER)
 static int
 BuffaloSwPollingCheck(void)
 {
@@ -1458,6 +1423,15 @@ BuffaloFanControlReadProc(char *page, char **start, off_t offset, int length)
 }
 #endif //CONFIG_BUFFALO_USE_FAN_CONTROL
 
+/* static int BuffaloFanStatusWriteProc(struct file *filep, const char *buffer, unsigned long count, void *data){ */
+/* 	if(strncmp(buffer, "on", 2) == 0){ */
+/* 		//Nothing to do ... */
+/* 	}else if(strncmp(buffer, "off", 3) == 0){ */
+/* 		//Nothing to do ... */
+/* 	} */
+/* 	return count; */
+/* } */
+
 static int BuffaloCpuStatusReadProc(char *page, char **start, off_t offset, int length)
 {
 	int len = 0;
@@ -1556,7 +1530,7 @@ int __init buffaloLedDriver_init (void)
 #if defined(CONFIG_BUFFALO_USE_SWITCH_SLIDE_POWER)
 	struct proc_dir_entry *power_proc;
 #else
-	struct proc_dir_entry *power_proc;
+
 #endif
 	struct proc_dir_entry *slide_switch_proc;
 
@@ -1695,14 +1669,8 @@ int __init buffaloLedDriver_init (void)
 	power_proc = create_proc_entry("buffalo/gpio/switch/power", 0, 0);
 	power_proc->read_proc =&BuffaloPowerReadProc;
 	power_proc->write_proc=&BuffaloPowerReadProc;
-
-	sw_polling_control_proc = create_proc_entry("buffalo/gpio/switch/sw_control", 0, 0);
-	sw_polling_control_proc->read_proc = &BuffaloSwPollingReadProc;
-	sw_polling_control_proc->write_proc= &BuffaloSwPollingWriteProc;
 #else
-	power_proc = create_proc_entry("buffalo/gpio/switch/power", 0, 0);
-	power_proc->read_proc =&BuffaloPowerReadProc;
-	power_proc->write_proc=&BuffaloPowerReadProc;
+
 #endif
 	slide_switch_proc = create_proc_info_entry("buffalo/gpio/switch/slide_switch", 0, 0, BuffaloSlideSwitchReadProc);
 
@@ -1710,6 +1678,10 @@ int __init buffaloLedDriver_init (void)
 	auto_power_proc = create_proc_entry("buffalo/gpio/switch/auto_power", 0, 0);
 	auto_power_proc->read_proc =&BuffaloAutoPowerReadProc;
 	auto_power_proc->write_proc=&BuffaloAutoPowerReadProc;
+
+	sw_polling_control_proc = create_proc_entry("buffalo/gpio/switch/sw_control", 0, 0);
+	sw_polling_control_proc->read_proc = &BuffaloSwPollingReadProc;
+	sw_polling_control_proc->write_proc= &BuffaloSwPollingWriteProc;
 #endif
 
 #if defined(CONFIG_BUFFALO_USE_SWITCH_FUNC)

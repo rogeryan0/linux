@@ -35,19 +35,17 @@ MODULE_VERSION(BUFFALO_DRIVER_VER);
 
 #define POLLING_COUNTS_PER_1SEC	10
 
-#define SW_PUSHED		(1 << 0)	// 0x01
-#define SW_LONG_PUSHED		(1 << 1)	// 0x02
-
 #if !defined(CONFIG_BUFFALO_USE_SWITCH_SLIDE_POWER)
 static int g_irq=0;
-static unsigned int power_pushed_status;
+static int g_ShortNotified=0;
+static int g_Notified=0;
 
 #define PSW_IRQ	(32 + BIT_POWER)
 #define PSW_POL_MSEC	(HZ / POLLING_COUNTS_PER_1SEC) 	// 50 mili second
-#define PSW_WAIT_SECOND	(1 * HZ)			// 3 seccond
-#define PSW_LONG_WAIT_COUNT	(PSW_WAIT_SECOND / PSW_POL_MSEC)	// PSW_WAIT_SECOND / PSW_POL_MSEC
+#define PSW_TOTAL_WAIT	(1 * HZ)			// 3 seccond
+#define PSW_WAIT_COUNT	(PSW_TOTAL_WAIT / PSW_POL_MSEC)	// TOTAL_WAIT / PSW_POL_MSEC
 
-#define PSW_WAIT_COUNT	(0 * PSW_POL_MSEC) // 0.3(6 * 0.05) second wait
+#define PSW_SHORT_WAIT_COUNT	(0 * PSW_POL_MSEC) // 0.3(6 * 0.05) second wait
 
 static struct timer_list PSWPollingTimer;
 static void PollingTimerGoOn(void);
@@ -57,13 +55,13 @@ static void PollingTimerStop(void);
 // for init sw
 #if defined(CONFIG_BUFFALO_USE_SWITCH_INIT)
  static int g_irq_init=0;
- static unsigned int init_pushed_status;
+ int Initializing=0;
 
  #define INIT_IRQ (32 + BIT_INIT)
 
  #define INIT_POL_MSEC	(HZ / POLLING_COUNTS_PER_1SEC)
- #define INIT_WAIT_SECOND	(5 * HZ)
- #define INIT_WAIT_COUNT	(INIT_WAIT_SECOND / INIT_POL_MSEC)
+ #define INIT_TOTAL_WAIT	(5 * HZ)
+ #define INIT_WAIT_COUNT	(INIT_TOTAL_WAIT / INIT_POL_MSEC)
 
  static struct timer_list INITPollingTimer;
  static void PollingTimerGoOnInit(void);
@@ -73,13 +71,15 @@ static void PollingTimerStop(void);
 // for Func sw
 #if defined(CONFIG_BUFFALO_USE_SWITCH_FUNC)
  static int irq_func=0;
- static unsigned int func_pushed_status;
+ static int func_pushed;
  #define FUNC_IRQ (32 + BIT_FUNC)
 
  #define FUNC_POL_MSEC		(HZ / POLLING_COUNTS_PER_1SEC)
- #define FUNC_WAIT_SECOND	(1 * HZ)
+ #define FUNC_TOTAL_WAIT	(1 * HZ)
  #define FUNC_WAIT_COUNT	(0)
- #define FUNC_LONG_WAIT_COUNT	(FUNC_WAIT_SECOND / FUNC_POL_MSEC)
+ #define FUNC_LONG_WAIT_COUNT	(FUNC_TOTAL_WAIT / FUNC_POL_MSEC)
+ #define FUNC_PUSHED		0x01
+ #define FUNC_LONG_PUSHED	0x02
 
  static struct timer_list FuncPollingTimer;
  static void PollingTimerGoOnFunc(void);
@@ -89,32 +89,40 @@ static void PollingTimerStop(void);
 #if !defined(CONFIG_BUFFALO_USE_SWITCH_SLIDE_POWER)
 static int PollingPowerSWStatus(unsigned long data){
 	
-	TRACE(printk(">%s, data=%u, PSW_LONG_WAIT_COUNT=%d\n", __FUNCTION__, data, PSW_LONG_WAIT_COUNT));
-	unsigned int PowerStat = buffalo_gpio_read();
+	TRACE(printk(">%s, data=%u, PSW_WAIT_COUNT=%d\n", __FUNCTION__, data, PSW_WAIT_COUNT));
+	unsigned int PowerStat=buffalo_gpio_read();
 
 	if(PowerStat & BIT(BIT_POWER)){
-		if((data >= PSW_LONG_WAIT_COUNT) && !(power_pushed_status & SW_LONG_PUSHED)){
-			power_pushed_status |= SW_LONG_PUSHED;
+		if((data > PSW_WAIT_COUNT) && (g_Notified == 0)){
+			#if 0
+			// Polling timer must be stopped at power switch release timing.
+			// and irq enabling timing is same to above.
+			PollingTimerStop();
+			if(g_irq)
+				enable_irq(g_irq);
+			#endif
 #if defined CONFIG_BUFFALO_USE_KERNEL_EVENT_DRIVER
 			buffalo_kernevnt_queuein("PSW_pushed");
 #else
 
 #endif
-		}else if((data >= PSW_WAIT_COUNT) && !(power_pushed_status & SW_PUSHED)){
-			power_pushed_status |= SW_PUSHED;
+			g_Notified = 1;
+			// keep polling until button would be released.
+			PollingTimerGoOn();
+			TRACE(printk("shutdown start\n"));
+		}else if((data > PSW_SHORT_WAIT_COUNT) && (g_ShortNotified == 0)){
 #if defined CONFIG_BUFFALO_USE_KERNEL_EVENT_DRIVER
 			buffalo_kernevnt_queuein("PSW_short_pushed");
-#else
-
+			g_ShortNotified = 1;
 #endif
+			PollingTimerGoOn();
+		}else{	
+			PollingTimerGoOn();
 		}
-		PollingTimerGoOn();
 	}else{
 		PollingTimerStop();
 		if(g_irq)
 			enable_irq(g_irq);
-
-		power_pushed_status = 0;
 	}
 
 	return 0;
@@ -122,6 +130,8 @@ static int PollingPowerSWStatus(unsigned long data){
 
 static void PollingTimerStop(void){
 	del_timer(&PSWPollingTimer);
+	g_ShortNotified = 0;
+	g_Notified = 0;
 }
 
 static void PollingTimerGoOn(void){
@@ -135,6 +145,8 @@ static void PollingTimerStart(void){
 	PSWPollingTimer.expires=(jiffies + PSW_POL_MSEC);
 	PSWPollingTimer.function=&PollingPowerSWStatus;
 	PSWPollingTimer.data=0;
+	g_ShortNotified = 0;
+	g_Notified = 0;
 	add_timer(&PSWPollingTimer);
 }
 
@@ -182,22 +194,31 @@ PollingINITSWStatus(unsigned long data){
 	unsigned int InitStat=buffalo_gpio_read();
 
 	if(InitStat & BIT(BIT_INIT)){
-		if((data > INIT_WAIT_COUNT) && !(init_pushed_status & SW_PUSHED)){
-			init_pushed_status |= SW_PUSHED;
+		if((data > INIT_WAIT_COUNT) && (Initializing == 0)){
+			#if 0
+			//PollingTimer must be stopped at button released timing.
+			PollingTimerStopInit();
+
+			//keep irq disabling until PollingTimer stopping.
+			if(g_irq_init)
+				enable_irq(g_irq_init);
+			#endif
 #if defined CONFIG_BUFFALO_USE_KERNEL_EVENT_DRIVER
 			buffalo_kernevnt_queuein("INITSW_pushed");
 #else
 
 #endif
+			Initializing = 1;
 			// keep Polling untile button would be released.
-			TRACE(printk("initialize start\n"));
-		}
 			PollingTimerGoOnInit();
+			TRACE(printk("initialize start\n"));
+		}else{	
+			PollingTimerGoOnInit();
+		}
 	}else{
 		PollingTimerStopInit();
 		if(g_irq_init)
 			enable_irq(g_irq_init);
-		init_pushed_status = 0;
 	}
 
 	return 0;
@@ -207,6 +228,7 @@ PollingINITSWStatus(unsigned long data){
 static void
 PollingTimerStopInit(void){
 	del_timer(&INITPollingTimer);
+	Initializing=0;
 }
 
 
@@ -224,8 +246,10 @@ PollingTimerStartInit(void){
 	INITPollingTimer.expires=(jiffies + INIT_POL_MSEC);
 	INITPollingTimer.function=&PollingINITSWStatus;
 	INITPollingTimer.data=0;
+	Initializing=0;
 	add_timer(&INITPollingTimer);
 }
+
 
 static int
 InitSwInterrupts(int irq, void *dev_id, struct pt_regs *reg)
@@ -247,12 +271,12 @@ static int
 PollingFuncSWStatus(unsigned long data)
 {
 	TRACE(printk(">%s, data=%u, FUNC_WAIT_COUNT=%d\n", __FUNCTION__, data, FUNC_WAIT_COUNT));
-	unsigned int FuncStat = buffalo_gpio_read();
+	unsigned int FuncStat=buffalo_gpio_read();
 
 	if (FuncStat & BIT(BIT_FUNC)){
-		func_pushed_status |= SW_PUSHED;
-		if ((data > FUNC_LONG_WAIT_COUNT) && !(func_pushed_status & SW_LONG_PUSHED)){
-			func_pushed_status |= SW_LONG_PUSHED;
+		func_pushed |= FUNC_PUSHED;
+		if ((data > FUNC_LONG_WAIT_COUNT) && !(func_pushed & FUNC_LONG_PUSHED)){
+			func_pushed |= FUNC_LONG_PUSHED;
 #if defined CONFIG_BUFFALO_USE_KERNEL_EVENT_DRIVER
 			buffalo_kernevnt_queuein("FUNCSW_long_pushed");
 #endif
@@ -263,12 +287,12 @@ PollingFuncSWStatus(unsigned long data)
 		if (irq_func)
 			enable_irq(irq_func);
 		
-		if ((data > FUNC_WAIT_COUNT) && !(func_pushed_status ^ SW_PUSHED)) {
+		if ((data > FUNC_WAIT_COUNT) && !(func_pushed ^ FUNC_PUSHED)) {
 #if defined CONFIG_BUFFALO_USE_KERNEL_EVENT_DRIVER
 			buffalo_kernevnt_queuein("FUNCSW_pushed");
 #endif
 		}
-		func_pushed_status = 0;
+		func_pushed=0;
 	}
 
 	return 0;
