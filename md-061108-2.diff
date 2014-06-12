@@ -1,0 +1,65 @@
+diff -ur MDDRV_SNAP_20061108_R2/buffalo-linux/kernel/drivers/md/md.c MDDRV_SNAP_20061108_R3/buffalo-linux/kernel/drivers/md/md.c
+--- MDDRV_SNAP_20061108_R2/buffalo-linux/kernel/drivers/md/md.c	2006-11-08 11:04:23.000000000 +0900
++++ MDDRV_SNAP_20061108_R3/buffalo-linux/kernel/drivers/md/md.c	2006-11-08 19:12:57.000000000 +0900
+@@ -4855,7 +4855,9 @@
+     mddev->scan_thr_interruption=0;
+     mddev->scan_thr_started=1;
+     atomic_set(&mddev->nr_scanning,0);
+-
++#ifdef CONFIG_BUFFALO_PLATFORM
++    kernevnt_RadiScan(mddev->md_minor,1);
++#endif
+     do {
+         int do_sectors;
+ 
+@@ -4919,7 +4921,10 @@
+     mddev->scan_thread=NULL;
+     mddev->scan_thr_started=0;
+ 
+-    spin_unlock(&mddev->scan_thr_ops); 
++    spin_unlock(&mddev->scan_thr_ops);
++#ifdef CONFIG_BUFFALO_PLATFORM
++    kernevnt_RadiScan(mddev->md_minor,0);
++#endif
+     do_exit(0);
+ 
+ interrupted_end:
+@@ -4933,6 +4938,9 @@
+     mddev->scan_thr_started=0;
+     mddev->scan_thread=NULL;
+     mddev->scan_thr_interruption=0;
++#ifdef CONFIG_BUFFALO_PLATFORM
++    kernevnt_RadiScan(mddev->md_minor,0);
++#endif
+     complete_and_exit(
+         &mddev->scan_thr_complete, mddev->scan_thr_interrupt_reason);
+ 
+diff -ur MDDRV_SNAP_20061108_R2/buffalo-linux/kernel/drivers/md/raid1.c MDDRV_SNAP_20061108_R3/buffalo-linux/kernel/drivers/md/raid1.c
+--- MDDRV_SNAP_20061108_R2/buffalo-linux/kernel/drivers/md/raid1.c	2006-11-08 11:04:23.000000000 +0900
++++ MDDRV_SNAP_20061108_R3/buffalo-linux/kernel/drivers/md/raid1.c	2006-11-08 17:56:08.000000000 +0900
+@@ -1113,7 +1113,7 @@
+                 r1_bio->bios[i] = NULL;
+             }
+         } else {
+-            printk("raid1: conf->mirrors[%d].rdev = NULL\n",i);
++//          printk("raid1: conf->mirrors[%d].rdev = NULL\n",i);
+             r1_bio->bios[i] = NULL;
+         }
+     }
+@@ -1306,6 +1306,16 @@
+ 		}
+ 
+ 	print_conf(conf);
++#ifdef BUFFALO_SCAN
++       spin_lock(&mddev->scan_thr_ops);
++       if(mddev->scan_thr_started==1){
++               init_completion(&mddev->scan_thr_complete);
++               mddev->scan_thr_interrupt_reason=5;
++               mddev->scan_thr_interruption=1;
++               wait_for_completion(&mddev->scan_thr_complete);
++       }
++       spin_unlock(&mddev->scan_thr_ops);
++#endif /* BUFFALO_SCAN */
+ 	return found;
+ }
+ 
