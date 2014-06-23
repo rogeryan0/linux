@@ -112,7 +112,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define     MV_M25P128_MAX_SPI_FREQ             20000000    /* 20MHz */
 #define     MV_M25P128_MAX_FAST_SPI_FREQ        50000000    /* 50MHz */
 #define     MV_M25P128_FAST_READ_DUMMY_BYTES    1
-
 #if defined(CONFIG_BUFFALO_PLATFORM)
 #define     MV_M25P40_DEVICE_ID                 0x2013
 #define     MV_M25P40_MAX_SPI_FREQ              20000000    /* 20MHz */
@@ -123,17 +122,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /* Sector Sizes and population per device model*/
 #define     MV_M25P32_SECTOR_SIZE               0x10000 /* 64K */
+#define     MV_M25P40_SECTOR_SIZE               0x10000 /* 64K */
 #define     MV_M25P64_SECTOR_SIZE               0x10000 /* 64K */
 #define     MV_M25P128_SECTOR_SIZE              0x40000 /* 256K */
-#if defined(CONFIG_BUFFALO_PLATFORM)
-#define     MV_M25P40_SECTOR_SIZE               0x10000 /* 64K */
-#endif
 #define     MV_M25P32_SECTOR_NUMBER             64
+#define     MV_M25P40_SECTOR_NUMBER             8
 #define     MV_M25P64_SECTOR_NUMBER             128
 #define     MV_M25P128_SECTOR_NUMBER            64
-#if defined(CONFIG_BUFFALO_PLATFORM)
-#define     MV_M25P40_SECTOR_NUMBER             8
-#endif
 #define		MV_M25P_PAGE_SIZE				    0x100   /* 256 byte */
 
 #define		MV_M25P_WREN_CMND_OPCD			    0x06	/* Write Enable */
@@ -201,6 +196,108 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define     MV_MX25L_STATUS_BP_1_OF_2           (0x07 << MV_SFLASH_STATUS_REG_WP_OFFSET)
 #define     MV_MX25L_STATUS_BP_ALL              (0x0F << MV_SFLASH_STATUS_REG_WP_OFFSET)
 
+#if defined(CONFIG_BUFFALO_PLATFORM)
+/************************************/
+/*  MXIC MX25L4006E Device Specific  total size: 128*4(kb) = 4Mbit = 0.5MB*/
+/************************************/
+#define     MV_MX25L4006E_DEVICE_ID              0x2013
+#define     MV_MX25L4006E_MAX_SPI_FREQ           20000000    /* 20MHz */
+#define     MV_MX25L4006E_MAX_FAST_SPI_FREQ      50000000    /* 50MHz */
+#define     MV_MX25L4006E_FAST_READ_DUMMY_BYTES  1
+/* Sector Sizes and population per device model*/
+//#define     MV_MX25L4006E_SECTOR_SIZE            0x1000 /* 4K */
+//#define     MV_MX25L4006E_SECTOR_NUMBER          128
+#define     MV_MX25L4006E_SECTOR_SIZE            0x10000 /* 64K */
+#define     MV_MX25L4006E_SECTOR_NUMBER          8
+
+/************************************/
+/*  MXIC MX25L1606E Device Specific  total size: 512*4(kb) = 2MB*/
+/************************************/
+#define     MV_MX25L1606E_DEVICE_ID              0x2015
+#define     MV_MX25L1606E_MAX_SPI_FREQ           20000000    /* 20MHz */
+#define     MV_MX25L1606E_MAX_FAST_SPI_FREQ      50000000    /* 50MHz */
+#define     MV_MX25L1606E_FAST_READ_DUMMY_BYTES  1
+/* Sector Sizes and population per device model*/
+#define     MV_MX25L1606E_SECTOR_SIZE            0x1000 /* 4K for each sector */
+#define     MV_MX25L1606E_SECTOR_NUMBER          512	/*number of sectors*/
+
+/************************************
+    Winbond 4Mbit Spi flash
+************************************/
+#define	MV_WINBOND_WREN_CMND_OPCD		0x06	/* Write Enable */
+#define	MV_WINBOND_WRDI_CMND_OPCD		0x04	/* Write Disable */
+#define	MV_WINBOND_RDID_CMND_OPCD		0x9F	/* Read ID */
+#define	MV_WINBOND_RDSR_CMND_OPCD		0x05	/* Read Status Register */
+#define	MV_WINBOND_WRSR_CMND_OPCD		0x01	/* Write Status Register */
+#define	MV_WINBOND_READ_CMND_OPCD		0x03	/* Sequential Read */
+#define	MV_WINBOND_FAST_RD_CMND_OPCD		0x0B	/* Fast Read */
+#define	MV_WINBOND_PP_CMND_OPCD			0x02	/* Page Program */
+#define	MV_WINBOND_SE_CMND_OPCD			0x20	/* Sector Erase */
+#define	MV_WINBOND_BE_CMND_OPCD			0xC7	/* Bulk Erase */
+#define	MV_WINBOND_DP_CMND_OPCD			0xB9	/* Deep Power Down */
+#define	MV_WINBOND_RES_CMND_OPCD		0xAB	/* Read Electronic Signature */
+
+#define	MV_WINBOND_MANF_ID			0xEF		/* Manufacture ID */
+#define	MV_WINBOND_DEVICE_ID			0x3013		/* Winbond device ID */ 
+#define	MV_WINBOND_MAX_SPI_FREQ			20000000	/* 20MHz */
+#define	MV_WINBOND_MAX_FAST_SPI_FREQ		50000000	/* 50MHz */
+#define	MV_WINBOND_FAST_READ_DUMMY_BYTES	1 
+
+/* Sector Sizes and population per device model*/
+#define	MV_WINBOND_SECTOR_SIZE			0x1000	/* 4K */
+#define	MV_WINBOND_SECTOR_NUMBER		128
+#define	MV_WINBOND_PAGE_SIZE			0x100	/*256 bytes*/
+
+#define	MV_WINBOND_STATUS_REG_WP_MASK		(0x07 << MV_SFLASH_STATUS_REG_WP_OFFSET)
+#define	MV_WINBOND_STATUS_BP_NONE		(0x00 << MV_SFLASH_STATUS_REG_WP_OFFSET)
+#define	MV_WINBOND_STATUS_BP_1_OF_64		(0x01 << MV_SFLASH_STATUS_REG_WP_OFFSET)
+#define	MV_WINBOND_STATUS_BP_1_OF_32		(0x02 << MV_SFLASH_STATUS_REG_WP_OFFSET)
+#define	MV_WINBOND_STATUS_BP_1_OF_16		(0x03 << MV_SFLASH_STATUS_REG_WP_OFFSET)
+#define	MV_WINBOND_STATUS_BP_1_OF_8		(0x04 << MV_SFLASH_STATUS_REG_WP_OFFSET)
+#define	MV_WINBOND_STATUS_BP_1_OF_4		(0x05 << MV_SFLASH_STATUS_REG_WP_OFFSET)
+#define	MV_WINBOND_STATUS_BP_1_OF_2		(0x06 << MV_SFLASH_STATUS_REG_WP_OFFSET)
+#define	MV_WINBOND_STATUS_BP_ALL		(0x07 << MV_SFLASH_STATUS_REG_WP_OFFSET)
+
+/************************************
+    ESMT 4Mbit Spi flash
+************************************/
+#define	MV_ESMT_WREN_CMND_OPCD			0x06	       /* Write Enable */
+#define	MV_ESMT_WRDI_CMND_OPCD			0x04	       /* Write Disable */
+#define	MV_ESMT_RDID_CMND_OPCD			0x9F	       /* Read ID */
+#define	MV_ESMT_RDSR_CMND_OPCD			0x05	       /* Read Status Register */
+#define	MV_ESMT_WRSR_CMND_OPCD			0x01	       /* Write Status Register */
+#define	MV_ESMT_READ_CMND_OPCD			0x03	       /* Sequential Read */
+#define	MV_ESMT_FAST_RD_CMND_OPCD		0x0B	       /* Fast Read */
+#define	MV_ESMT_PP_CMND_OPCD			0x02	       /* Page Program */
+#define	MV_ESMT_SE_CMND_OPCD			0x20	       /* Sector Erase */
+#define	MV_ESMT_BE_CMND_OPCD			0xC7	       /* Bulk Erase */
+#define	MV_ESMT_DP_CMND_OPCD			0xB9	       /* Deep Power Down */
+#define	MV_ESMT_RES_CMND_OPCD			0xAB	       /* Read Electronic Signature */
+
+#define	MV_ESMT_MANF_ID				0x8C	       /*Manufacture ID */
+#define	MV_ESMT_DEVICE_ID			0x3013      /*Winbond device ID */ 
+
+#define	MV_ESMT_MAX_SPI_FREQ			20000000    /* 20MHz */
+#define	MV_ESMT_MAX_FAST_SPI_FREQ		50000000    /* 50MHz */
+#define	MV_ESMT_FAST_READ_DUMMY_BYTES		1 
+
+#define	MV_ESMT_STATUS_REG_WP_MASK		(0x07 << MV_SFLASH_STATUS_REG_WP_OFFSET)
+#define	MV_ESMT_STATUS_BP_NONE			(0x00 << MV_SFLASH_STATUS_REG_WP_OFFSET)
+#define	MV_ESMT_STATUS_BP_1_OF_64		(0x01 << MV_SFLASH_STATUS_REG_WP_OFFSET)
+#define	MV_ESMT_STATUS_BP_1_OF_32		(0x02 << MV_SFLASH_STATUS_REG_WP_OFFSET)
+#define	MV_ESMT_STATUS_BP_1_OF_16		(0x03 << MV_SFLASH_STATUS_REG_WP_OFFSET)
+#define	MV_ESMT_STATUS_BP_1_OF_8		(0x04 << MV_SFLASH_STATUS_REG_WP_OFFSET)
+#define	MV_ESMT_STATUS_BP_1_OF_4		(0x05 << MV_SFLASH_STATUS_REG_WP_OFFSET)
+#define	MV_ESMT_STATUS_BP_1_OF_2		(0x06 << MV_SFLASH_STATUS_REG_WP_OFFSET)
+#define	MV_ESMT_STATUS_BP_ALL			(0x07 << MV_SFLASH_STATUS_REG_WP_OFFSET)
+
+/* Sector Sizes and population per device model*/
+#define	MV_ESMT_SECTOR_SIZE			0x1000 /* 4K */
+#define	MV_ESMT_SECTOR_NUMBER			128
+#define	MV_ESMT_PAGE_SIZE			0x100  /*256 bytes*/
+
+#endif // CONFIG_BUFFALO_PLATFORM
+
 /************************************/
 /*  SPANSION S25FL128P Device Specific  */
 /************************************/
@@ -241,6 +338,49 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define     	MV_S25FL_STATUS_BP_1_OF_4           	(0x06 << MV_SFLASH_STATUS_REG_WP_OFFSET)
 #define     	MV_S25FL_STATUS_BP_1_OF_2           	(0x07 << MV_SFLASH_STATUS_REG_WP_OFFSET)
 #define     	MV_S25FL_STATUS_BP_ALL              	(0x0F << MV_SFLASH_STATUS_REG_WP_OFFSET)
+
+#if defined(CONFIG_BUFFALO_PLATFORM)
+/********************************/
+/*  SST 25VFxxx Device Specific */
+/********************************/
+/* Manufacturer IDs and Device IDs for SFLASHs supported by the driver */
+#define     MV_25VFXXX_ST_MANF_ID               0xbf
+
+#define     MV_25VF040_DEVICE_ID                 0x258d
+#define     MV_25VF040_MAX_SPI_FREQ              20000000    /* 20MHz */
+#define     MV_25VF040_MAX_FAST_SPI_FREQ         50000000    /* 50MHz */
+#define     MV_25VF040_FAST_READ_DUMMY_BYTES     1
+/* Sector Sizes and population per device model*/
+#define     MV_25VF040_SECTOR_SIZE               0x1000 /* 4K */
+
+#define     MV_25VF040_SECTOR_NUMBER             128
+
+#define		MV_25VF_PAGE_SIZE				    0x1   /* 1 byte */
+
+#define		MV_25VF_WREN_CMND_OPCD			    0x06	/* Write Enable */
+#define		MV_25VF_WRDI_CMND_OPCD			    0x04	/* Write Disable */
+#define		MV_25VF_RDID_CMND_OPCD			    0x90	/* Read ID */
+#define		MV_25VF_RDSR_CMND_OPCD			    0x05	/* Read Status Register */
+#define		MV_25VF_WRSR_CMND_OPCD			    0x01	/* Write Status Register */
+#define		MV_25VF_READ_CMND_OPCD			    0x03	/* Sequential Read */
+#define		MV_25VF_FAST_RD_CMND_OPCD		    0x0B	/* Fast Read */
+#define		MV_25VF_PP_CMND_OPCD			    0x02	/* Page Program */
+#define		MV_25VF_SE_CMND_OPCD			    0x20	/* Sector Erase */
+#define		MV_25VF_BE_CMND_OPCD			    0xC7	/* Bulk Erase */
+#define		MV_25VF_RES_CMND_OPCD			    0xAB	/* Read Electronic Signature */
+
+/* Status Register Write Protect Bit Masks - 3bits */
+#define	    MV_25VF_STATUS_REG_WP_MASK	        (0x07 << MV_SFLASH_STATUS_REG_WP_OFFSET)
+#define     MV_25VF_STATUS_BP_NONE              (0x00 << MV_SFLASH_STATUS_REG_WP_OFFSET)
+#define     MV_25VF_STATUS_BP_1_OF_64           (0x01 << MV_SFLASH_STATUS_REG_WP_OFFSET)
+#define     MV_25VF_STATUS_BP_1_OF_32           (0x02 << MV_SFLASH_STATUS_REG_WP_OFFSET)
+#define     MV_25VF_STATUS_BP_1_OF_16           (0x03 << MV_SFLASH_STATUS_REG_WP_OFFSET)
+#define     MV_25VF_STATUS_BP_1_OF_8            (0x04 << MV_SFLASH_STATUS_REG_WP_OFFSET)
+#define     MV_25VF_STATUS_BP_1_OF_4            (0x05 << MV_SFLASH_STATUS_REG_WP_OFFSET)
+#define     MV_25VF_STATUS_BP_1_OF_2            (0x06 << MV_SFLASH_STATUS_REG_WP_OFFSET)
+#define     MV_25VF_STATUS_BP_ALL               (0x07 << MV_SFLASH_STATUS_REG_WP_OFFSET)
+
+#endif /* CONFIG_BUFFALO_PLATFORM */
 
 #endif /* __INCmvSFlashSpecH */
 

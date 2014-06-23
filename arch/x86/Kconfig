@@ -935,6 +935,11 @@ config BUFFALO_MATSU_USE_EVT_BOARD
 	  EVT board and DVT board has difference for GPIO pin.
 	  If this value set to enable, use EVT GPIO settings.
 
+config BUFFALO_KIRI_PLATFORM
+	bool "KIRI_PLATFORM"
+	---help---
+	  Enable hdd control driver / button control driver for kiri platform.
+
 config BUFFALO_USE_MD_KERNEVNT
 	bool "BUFFALO_USE_MD_KERNEVNT"
 	depends on BUFFALO_PLATFORM

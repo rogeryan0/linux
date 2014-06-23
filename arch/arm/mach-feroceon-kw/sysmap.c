@@ -210,6 +210,7 @@ MV_CPU_DEC_WIN* mv_sys_map(void)
 #if defined(CONFIG_BUFFALO_PLATFORM)
 	case BF_MVLSXH_ID:
 	case BF_MVLSXL_ID:
+	case BF_MVLSXL_GE_ID:
 	case BF_MVWXL_ID:
 	case BF_MVWSSX_ID:
 	case BF_MVAVL_ID:
@@ -217,6 +218,7 @@ MV_CPU_DEC_WIN* mv_sys_map(void)
 	case BF_MVLSWV_ID:
 	case BF_MVLSQV_ID:
 	case BF_MVTSXEL_ID:
+	case BF_MVLSXL_GE_V2_ID:
 #endif
 		return SYSMAP_88F6282;
 	case DB_88F6192A_BP_ID:

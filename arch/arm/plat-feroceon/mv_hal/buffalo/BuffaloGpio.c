@@ -865,37 +865,6 @@ MV_VOID bfRegInv(MV_U32 regOffs, MV_U32 mask)
 	MV_REG_WRITE(regOffs, regData);
 }
 
-#ifdef CONFIG_ARCH_FEROCEON_KW
-int bfIsSerialConsoleEnable(void)
-{
-	MV_BOOL uart_pin_input;
-	static int ret = -1;
-	
-	if (ret != -1)
-		return ret;
-
-	if(mvBoardGpioPinNumGet(BOARD_GPP_MC_IRQ, 0) != -1)
-	{
-		ret = 1;
-		return ret;
-	}
-
-	uart_pin_input = bfGppOutEnableRegBitTest(BIT_UART_EN);
-	
-	if (!uart_pin_input) {
-		bfGppOutEnableRegBitSet(BIT_UART_EN);
-	}
-
-	ret = bfGppInRegBitTest(BIT_UART_EN);
-
-	if (!uart_pin_input) {
-		bfGppOutEnableRegBitClr(BIT_UART_EN);
-	}
-
-	return ret;
-}
-#endif
-
 int bfIsSupportMicon(void)
 {
 	if(mvBoardGpioPinNumGet(BOARD_GPP_MC_IRQ, 0) == -1)

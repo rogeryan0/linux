@@ -3172,12 +3172,6 @@ EXPORT_SYMBOL(serial8250_unregister_port);
 static int __init serial8250_init(void)
 {
 	int ret;
-#if defined(CONFIG_ARCH_FEROCEON_KW) && defined(CONFIG_BUFFALO_PLATFORM)
-	extern int bfIsSerialConsoleEnable(void);
-
-	if (!bfIsSerialConsoleEnable())
-	     return -EPERM;
-#endif  
 
 	if (nr_uarts > UART_NR)
 		nr_uarts = UART_NR;

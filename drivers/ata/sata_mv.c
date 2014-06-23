@@ -4184,6 +4184,16 @@ static int mv_pci_init_one(struct pci_dev *pdev,
 	host->private_data = hpriv;
 	hpriv->n_ports = n_ports;
 
+#ifdef CONFIG_BUFFALO_PLATFORM
+{
+	int i;
+
+	printk("** BUFFALO Disable Command Queuing Function [%s %s] **\n", dev_driver_string(&pdev->dev), dev_name(&pdev->dev));
+	for (i = 0; i < n_ports; i++)
+		host->ports[i]->flags &= ~ATA_FLAG_NCQ;
+}
+#endif
+
 	/* acquire resources */
 	rc = pcim_enable_device(pdev);
 	if (rc)

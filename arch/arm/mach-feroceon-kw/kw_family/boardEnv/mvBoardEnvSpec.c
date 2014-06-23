@@ -1287,7 +1287,6 @@ MV_BOARD_INFO mvlsxhInfo = {
 	MVLSXH_BOARD_GPP_INFO_NUM,		/* numBoardGppInfo */
 	mvlsxhInfoBoardGppInfo,			/* pBoardGppInfo */
 	0,					/* activeLedsNumber */
-
 	NULL,					/* pLedGppPin */
 	0,					/* ledsPolarity */
 	MVLSXH_OE_LOW,				/* gppOutEnLow */
@@ -1300,11 +1299,11 @@ MV_BOARD_INFO mvlsxhInfo = {
 	0,					/* nandFlashReadParams */
 	0,					/* nandFlashWriteParams */
 	0,					/* nandFlashControl */
-
 	MVLSXH_BOARD_BUFFALO_LED_INFO_NUM,	/* numLedInfo */
 	mvlsxhLedInfo,				/* pLedInfo */
 };
 
+/****************************** LS-CHL-V2 ******************************/
 MV_BOARD_INFO mvlsxlInfo = {
 	"MVLSXL",				/* boardName[MAX_BOARD_NAME_LEN] */
 	MVLSXH_BOARD_MPP_GROUP_TYPE_NUM,	/* numBoardMppTypeValue */
@@ -1322,7 +1321,6 @@ MV_BOARD_INFO mvlsxlInfo = {
 	MVLSXH_BOARD_GPP_INFO_NUM,		/* numBoardGppInfo */
 	mvlsxhInfoBoardGppInfo,			/* pBoardGppInfo */
 	0,					/* activeLedsNumber */
-
 	NULL,					/* pLedGppPin */
 	0,					/* ledsPolarity */
 	MVLSXH_OE_LOW,				/* gppOutEnLow */
@@ -1335,9 +1333,142 @@ MV_BOARD_INFO mvlsxlInfo = {
 	0,					/* nandFlashReadParams */
 	0,					/* nandFlashWriteParams */
 	0,					/* nandFlashControl */
-
 	MVLSXH_BOARD_BUFFALO_LED_INFO_NUM,	/* numLedInfo */
 	mvlsxhLedInfo,				/* pLedInfo */
+};
+
+/****************************** LS-XL ******************************/
+MV_BOARD_GPP_INFO mvlsxlGeInfoBoardGppInfo[] =
+	/* {{MV_BOARD_GPP_CLASS devClass, MV_U8 gppPinNum}} */
+	{
+		{BOARD_GPP_HDD_POWER, 10},
+		{BOARD_GPP_PWR_LED, 39},
+	};
+
+struct bfLedInfo mvlsxlGeLedInfo[] =
+	{
+		/* name,        gppPin, group,  priority */
+		{"power",	39,	0,	0},
+	};
+
+#define MVLSXL_GE_BOARD_BUFFALO_LED_INFO_NUM	(sizeof(mvlsxlGeLedInfo)/sizeof(mvlsxlGeLedInfo[0]))
+#define MVLSXL_GE_BOARD_GPP_INFO_NUM		(sizeof(mvlsxlGeInfoBoardGppInfo)/sizeof(MV_BOARD_GPP_INFO))
+
+MV_BOARD_INFO mvlsxlGeInfo = {
+	"MVLSXL-GE",				/* boardName[MAX_BOARD_NAME_LEN] */
+	MVLSXH_BOARD_MPP_GROUP_TYPE_NUM,	/* numBoardMppTypeValue */
+	mvlsxhInfoBoardMppTypeInfo,		/* pBoardMppTypeValue */
+	MVLSXH_BOARD_MPP_CONFIG_NUM,		/* numBoardMppConfigValue */
+	mvlsxhInfoBoardMppConfigValue,		/* pBoardMppConfigValue */
+	0,					/* intsGppMaskLow */
+	0,					/* intsGppMaskHigh */
+	MVLSXH_BOARD_DEVICE_CONFIG_NUM,		/* numBoardDeviceIf */
+	mvlsxhInfoBoardDeCsInfo,		/* pDevCsInfo */
+	MVLSXH_BOARD_TWSI_DEF_NUM,		/* numBoardTwsiDev */
+	NULL,					/* pBoardTwsiDev */
+	MVLSXH_BOARD_MAC_INFO_NUM,		/* numBoardMacInfo */
+	mvlsxhInfoBoardMacInfo,			/* pBoardMacInfo */
+	MVLSXL_GE_BOARD_GPP_INFO_NUM,		/* numBoardGppInfo */
+	mvlsxlGeInfoBoardGppInfo,		/* pBoardGppInfo */
+	0,					/* activeLedsNumber */
+	NULL,					/* pLedGppPin */
+	0,					/* ledsPolarity */
+	MVLSXL_GE_OE_LOW,			/* gppOutEnLow */
+	MVLSXL_GE_OE_HIGH,			/* gppOutEnHigh */
+	MVLSXL_GE_OE_VAL_LOW,			/* gppOutValLow */
+	MVLSXL_GE_OE_VAL_HIGH,			/* gppOutValHigh */
+	MVLSXL_GE_POLARITY_VAL_LOW,		/* gppPolarityValLow */
+	MVLSXL_GE_POLARITY_VAL_HIGH,		/* gppPolarityValHigh */
+	NULL,					/* pSwitchInfo */
+	0,					/* nandFlashReadParams */
+	0,					/* nandFlashWriteParams */
+	0,					/* nandFlashControl */
+	MVLSXL_GE_BOARD_BUFFALO_LED_INFO_NUM,	/* numLedInfo */
+	mvlsxlGeLedInfo,			/* pLedInfo */
+};
+
+/****************************** LS-XL-V2 ******************************/
+MV_BOARD_MAC_INFO mvlsxlGeV2InfoBoardMacInfo[] =
+	/* {{MV_BOARD_MAC_SPEED boardMacSpeed, MV_U8 boardEthSmiAddr}} */
+	{
+		{BOARD_MAC_SPEED_AUTO, 0x0}
+	};
+
+struct bfLedInfo mvlsxlGeV2LedInfo[] =
+	{
+		/* name,        gppPin, group,  priority */
+		{"power",	17,	0,	0},
+	};
+
+
+MV_BOARD_GPP_INFO mvlsxlGeV2InfoBoardGppInfo[] = 
+	/* {{MV_BOARD_GPP_CLASS	devClass, MV_U8	gppPinNum}} */
+	{
+		{BOARD_GPP_PWR_LED, 17},
+		{BOARD_GPP_HDD_POWER, 14},
+		{BOARD_GPP_ALARM_LED, 26},
+		{BOARD_GPP_INFO_LED, 27},
+	};
+
+MV_BOARD_MPP_INFO	mvlsxlGeV2InfoBoardMppConfigValue[] = 
+	{{{
+	MVLSXL_GE_V2_MPP0_7,
+	MVLSXL_GE_V2_MPP8_15,
+	MVLSXL_GE_V2_MPP16_23,
+	MVLSXL_GE_V2_MPP24_31,
+	MVLSXL_GE_V2_MPP32_35
+	}}};
+
+MV_DEV_CS_INFO mvlsxlGeV2InfoBoardDeCsInfo[] = 
+	/*{deviceCS, params, devType, devWidth}*/
+	{
+		{0, N_A, BOARD_DEV_NAND_FLASH, 8},	/* NAND DEV */
+		{1, N_A, BOARD_DEV_SPI_FLASH, 8},	/* SPI DEV */
+	};
+
+#define MVLSXL_GE_V2_BOARD_PCI_IF_NUM		0x0
+#define MVLSXL_GE_V2_BOARD_TWSI_DEF_NUM		0x0
+#define MVLSXL_GE_V2_BOARD_MAC_INFO_NUM		0x1
+#define MVLSXL_GE_V2_BOARD_GPP_INFO_NUM		(sizeof(mvlsxlGeV2InfoBoardGppInfo)/sizeof(MV_BOARD_GPP_INFO))
+#define MVLSXL_GE_V2_BOARD_MPP_GROUP_TYPE_NUM	0x1
+#define MVLSXL_GE_V2_BOARD_MPP_CONFIG_NUM	0x1
+#define MVLSXL_GE_V2_BOARD_DEVICE_CONFIG_NUM	0x2
+#define MVLSXL_GE_V2_BOARD_NAND_READ_PARAMS	0x003E07CF
+#define MVLSXL_GE_V2_BOARD_NAND_WRITE_PARAMS	0x000F0F0F
+#define MVLSXL_GE_V2_BOARD_NAND_CONTROL		0x01c7D943
+#define MVLSXL_GE_V2_BOARD_BUFFALO_LED_INFO_NUM	(sizeof(mvlsxlGeV2LedInfo)/sizeof(mvlsxlGeV2LedInfo[0]))
+
+MV_BOARD_INFO mvlsxlGeV2Info = {
+	"MVLSXL-GE-V2",				/* boardName[MAX_BOARD_NAME_LEN] */
+	MVLSXH_BOARD_MPP_GROUP_TYPE_NUM,	/* numBoardMppTypeValue */
+	mvlsxhInfoBoardMppTypeInfo,		/* pBoardMppTypeValue */
+	MVLSXL_GE_V2_BOARD_MPP_CONFIG_NUM,	/* numBoardMppConfigValue */
+	mvlsxlGeV2InfoBoardMppConfigValue,	/* pBoardMppConfigValue */
+	0,					/* intsGppMaskLow */
+	0,					/* intsGppMaskHigh */
+	MVLSXL_GE_V2_BOARD_DEVICE_CONFIG_NUM,	/* numBoardDeviceIf */
+	mvlsxlGeV2InfoBoardDeCsInfo,		/* pDevCsInfo */
+	MVLSXH_BOARD_TWSI_DEF_NUM,		/* numBoardTwsiDev */
+	NULL,					/* pBoardTwsiDev */
+	MVLSXL_GE_V2_BOARD_MAC_INFO_NUM,	/* numBoardMacInfo */
+	mvlsxlGeV2InfoBoardMacInfo,		/* pBoardMacInfo */
+	MVLSXL_GE_V2_BOARD_GPP_INFO_NUM,	/* numBoardGppInfo */
+	mvlsxlGeV2InfoBoardGppInfo,		/* pBoardGppInfo */
+	0,					/* activeLedsNumber */
+	NULL,					/* pLedGppPin */
+	0,					/* ledsPolarity */
+	MVLSXL_GE_V2_OE_LOW,			/* gppOutEnLow */
+	MVLSXL_GE_V2_OE_HIGH,			/* gppOutEnHigh */
+	MVLSXL_GE_V2_OE_VAL_LOW,		/* gppOutValLow */
+	MVLSXL_GE_V2_OE_VAL_HIGH,		/* gppOutValHigh */
+	MVLSXL_GE_V2_POLARITY_VAL_LOW,		/* gppPolarityValLow */
+	MVLSXL_GE_V2_POLARITY_VAL_HIGH,		/* gppPolarityValHigh */
+	NULL,					/* pSwitchInfo */
+	MVLSXL_GE_V2_BOARD_NAND_READ_PARAMS,	/* nandFlashReadParams */
+	MVLSXL_GE_V2_BOARD_NAND_WRITE_PARAMS,	/* nandFlashWriteParams */
+	MVLSXL_GE_V2_BOARD_NAND_CONTROL,	/* nandFlashControl */
+	MVLSXL_GE_V2_BOARD_BUFFALO_LED_INFO_NUM,
+	mvlsxlGeV2LedInfo,
 };
 
 /****************************** LS-WXL ******************************/
@@ -2098,8 +2229,8 @@ MV_BOARD_INFO* boardInfoTbl[] = {
 	&mvlswvInfo,				/* 0x02: MVLSWV */
 	&mvlsqvInfo,				/* 0x03: MVLSQV */
 	&mvlsxlInfo,				/* 0x04: MVLSXL */
-	&mvlsxhInfo,				/* 0x05: dummy */
-	&mvlsxhInfo,				/* 0x06: dummy */
+	&mvlsxlGeInfo,				/* 0x05: MVLSXL-GE (G Edition) */
+	&mvlsxlGeV2Info,			/* 0x06: MVLSXL-GE-V2 */
 	&mvlsxhInfo,				/* 0x07: dummy */
 	&mvwxlInfo,				/* 0x08: MVWXL */
 	&mvlsxhInfo,				/* 0x09: dummy */

@@ -774,6 +774,12 @@ config BUFFALO_USE_AES_DRIVER
 	---help---
 	  Use aes driver. PacketVideo made for DTCP-IP.
 
+config BUFFALO_NTFS_CPU32_FIX
+	bool "BUFFALO_NTFS_CPU32_FIX"
+	depends on BUFFALO_PLATFORM
+	---help---
+	  Experimental. Over 2TB NTFS HDD support.
+
 endmenu
 
 

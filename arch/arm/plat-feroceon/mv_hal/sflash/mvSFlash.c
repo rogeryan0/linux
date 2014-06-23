@@ -149,31 +149,6 @@ static MV_SFLASH_DEVICE_PARAMS sflash[] = {
      MV_M25P128_MAX_FAST_SPI_FREQ,
      MV_M25P128_FAST_READ_DUMMY_BYTES
     },
-#if defined(CONFIG_BUFFALO_PLATFORM)
-    {
-     MV_M25P_WREN_CMND_OPCD,
-     MV_M25P_WRDI_CMND_OPCD,
-     MV_M25P_RDID_CMND_OPCD,
-     MV_M25P_RDSR_CMND_OPCD,
-     MV_M25P_WRSR_CMND_OPCD,
-     MV_M25P_READ_CMND_OPCD,
-     MV_M25P_FAST_RD_CMND_OPCD,
-     MV_M25P_PP_CMND_OPCD,
-     MV_M25P_SE_CMND_OPCD,
-     MV_M25P_BE_CMND_OPCD,
-     MV_M25P_RES_CMND_OPCD,
-     MV_SFLASH_NO_SPECIFIC_OPCD,    /* power save not supported */
-     MV_M25P40_SECTOR_SIZE,
-     MV_M25P40_SECTOR_NUMBER,
-     MV_M25P_PAGE_SIZE,
-     "ST M25P40",
-     MV_M25PXXX_ST_MANF_ID,
-     MV_M25P40_DEVICE_ID,
-     MV_M25P40_MAX_SPI_FREQ,
-     MV_M25P40_MAX_FAST_SPI_FREQ,
-     MV_M25P40_FAST_READ_DUMMY_BYTES
-},
-#endif
     /* Macronix MXIC MX25L6405 SPI flash, 8MB, 128 sectors of 64K each */
     {
      MV_MX25L_WREN_CMND_OPCD,
@@ -221,7 +196,153 @@ static MV_SFLASH_DEVICE_PARAMS sflash[] = {
      MV_S25FL128_MAX_SPI_FREQ,
      MV_M25P128_MAX_FAST_SPI_FREQ,
      MV_M25P128_FAST_READ_DUMMY_BYTES
-    }
+    },
+#if defined(CONFIG_BUFFALO_PLATFORM)
+    /* SST 25VF040 SPI flash, 4MB, 64 sectors of 64K each */
+    {
+     MV_25VF_WREN_CMND_OPCD,
+     MV_25VF_WRDI_CMND_OPCD,
+     MV_25VF_RDID_CMND_OPCD,
+     MV_25VF_RDSR_CMND_OPCD,
+     MV_25VF_WRSR_CMND_OPCD,
+     MV_25VF_READ_CMND_OPCD,
+     MV_25VF_FAST_RD_CMND_OPCD,
+     MV_25VF_PP_CMND_OPCD,
+     MV_25VF_SE_CMND_OPCD,
+     MV_25VF_BE_CMND_OPCD,
+     MV_25VF_RES_CMND_OPCD,
+     MV_SFLASH_NO_SPECIFIC_OPCD,    /* power save not supported */
+     MV_25VF040_SECTOR_SIZE,
+     MV_25VF040_SECTOR_NUMBER,
+     MV_25VF_PAGE_SIZE,
+     "SST 25VF040",
+     MV_25VFXXX_ST_MANF_ID,
+     MV_25VF040_DEVICE_ID,
+     MV_25VF040_MAX_SPI_FREQ,
+     MV_25VF040_MAX_FAST_SPI_FREQ,
+     MV_25VF040_FAST_READ_DUMMY_BYTES
+    },
+    /* ST M25P40 SPI flash, 512B, 8 sectors of 64K each */
+    {
+     MV_M25P_WREN_CMND_OPCD,
+     MV_M25P_WRDI_CMND_OPCD,
+     MV_M25P_RDID_CMND_OPCD,
+     MV_M25P_RDSR_CMND_OPCD,
+     MV_M25P_WRSR_CMND_OPCD,
+     MV_M25P_READ_CMND_OPCD,
+     MV_M25P_FAST_RD_CMND_OPCD,
+     MV_M25P_PP_CMND_OPCD,
+     MV_M25P_SE_CMND_OPCD,
+     MV_M25P_BE_CMND_OPCD,
+     MV_M25P_RES_CMND_OPCD,
+     MV_SFLASH_NO_SPECIFIC_OPCD,    /* power save not supported */
+     MV_M25P40_SECTOR_SIZE,
+     MV_M25P40_SECTOR_NUMBER,
+     MV_M25P_PAGE_SIZE,
+     "ST M25P40",
+     MV_M25PXXX_ST_MANF_ID,
+     MV_M25P40_DEVICE_ID,
+     MV_M25P40_MAX_SPI_FREQ,
+     MV_M25P40_MAX_FAST_SPI_FREQ,
+     MV_M25P40_FAST_READ_DUMMY_BYTES
+    },
+    /* Macronix MXIC MX25L4006E SPI flash, 4Mbit, 128 sectors of 4K each */
+    {
+     MV_MX25L_WREN_CMND_OPCD,
+     MV_MX25L_WRDI_CMND_OPCD,
+     MV_MX25L_RDID_CMND_OPCD,
+     MV_MX25L_RDSR_CMND_OPCD,
+     MV_MX25L_WRSR_CMND_OPCD,
+     MV_MX25L_READ_CMND_OPCD,
+     MV_MX25L_FAST_RD_CMND_OPCD,
+     MV_MX25L_PP_CMND_OPCD,
+     MV_MX25L_SE_CMND_OPCD,
+     MV_MX25L_BE_CMND_OPCD,
+     MV_MX25L_RES_CMND_OPCD,
+     MV_MX25L_DP_CMND_OPCD,
+     MV_MX25L4006E_SECTOR_SIZE,
+     MV_MX25L4006E_SECTOR_NUMBER,
+     MV_MXIC_PAGE_SIZE,
+     "MXIC MX25L4006E",
+     MV_MXIC_MANF_ID,
+     MV_MX25L4006E_DEVICE_ID,
+     MV_MX25L4006E_MAX_SPI_FREQ,
+     MV_MX25L4006E_MAX_FAST_SPI_FREQ,
+     MV_MX25L4006E_FAST_READ_DUMMY_BYTES
+    },
+    /* Macronix MXIC MX25L1606E SPI flash, 16Mbit, 512 sectors of 4K each */
+    {
+     MV_MX25L_WREN_CMND_OPCD,
+     MV_MX25L_WRDI_CMND_OPCD,
+     MV_MX25L_RDID_CMND_OPCD,
+     MV_MX25L_RDSR_CMND_OPCD,
+     MV_MX25L_WRSR_CMND_OPCD,
+     MV_MX25L_READ_CMND_OPCD,
+     MV_MX25L_FAST_RD_CMND_OPCD,
+     MV_MX25L_PP_CMND_OPCD,
+     MV_MX25L_SE_CMND_OPCD,
+     MV_MX25L_BE_CMND_OPCD,
+     MV_MX25L_RES_CMND_OPCD,
+     MV_MX25L_DP_CMND_OPCD,
+     MV_MX25L1606E_SECTOR_SIZE,
+     MV_MX25L1606E_SECTOR_NUMBER,
+     MV_MXIC_PAGE_SIZE,
+     "MXIC MX25L1606E",
+     MV_MXIC_MANF_ID,
+     MV_MX25L1606E_DEVICE_ID,
+     MV_MX25L1606E_MAX_SPI_FREQ,
+     MV_MX25L1606E_MAX_FAST_SPI_FREQ,
+     MV_MX25L1606E_FAST_READ_DUMMY_BYTES
+    },
+    /* Winbond SPI flash, 4Mbit, 128 sectors of 4K each */
+    {
+     MV_WINBOND_WREN_CMND_OPCD,
+     MV_WINBOND_WRDI_CMND_OPCD,
+     MV_WINBOND_RDID_CMND_OPCD,
+     MV_WINBOND_RDSR_CMND_OPCD,
+     MV_WINBOND_WRSR_CMND_OPCD,
+     MV_WINBOND_READ_CMND_OPCD,
+     MV_WINBOND_FAST_RD_CMND_OPCD,
+     MV_WINBOND_PP_CMND_OPCD,
+     MV_WINBOND_SE_CMND_OPCD,
+     MV_WINBOND_BE_CMND_OPCD,
+     MV_WINBOND_RES_CMND_OPCD,
+     MV_WINBOND_DP_CMND_OPCD,
+     MV_WINBOND_SECTOR_SIZE,
+     MV_WINBOND_SECTOR_NUMBER,
+     MV_WINBOND_PAGE_SIZE,
+     "WINBOND 25X40BVNIG",
+     MV_WINBOND_MANF_ID,
+     MV_WINBOND_DEVICE_ID,
+     MV_WINBOND_MAX_SPI_FREQ,
+     MV_WINBOND_MAX_FAST_SPI_FREQ,
+     MV_WINBOND_FAST_READ_DUMMY_BYTES
+    },
+    /* ESMT SPI flash, 4Mbit, 128 sectors of 4K each */
+    {
+     MV_ESMT_WREN_CMND_OPCD,
+     MV_ESMT_WRDI_CMND_OPCD,
+     MV_ESMT_RDID_CMND_OPCD,
+     MV_ESMT_RDSR_CMND_OPCD,
+     MV_ESMT_WRSR_CMND_OPCD,
+     MV_ESMT_READ_CMND_OPCD,
+     MV_ESMT_FAST_RD_CMND_OPCD,
+     MV_ESMT_PP_CMND_OPCD,
+     MV_ESMT_SE_CMND_OPCD,
+     MV_ESMT_BE_CMND_OPCD,
+     MV_ESMT_RES_CMND_OPCD,
+     MV_ESMT_DP_CMND_OPCD,
+     MV_ESMT_SECTOR_SIZE,
+     MV_ESMT_SECTOR_NUMBER,
+     MV_ESMT_PAGE_SIZE,
+     "ESMT F25L04PA(2D)",
+     MV_ESMT_MANF_ID,
+     MV_ESMT_DEVICE_ID,
+     MV_ESMT_MAX_SPI_FREQ,
+     MV_ESMT_MAX_FAST_SPI_FREQ,
+     MV_ESMT_FAST_READ_DUMMY_BYTES
+    },
+#endif // CONFIG_BUFFALO_PLATFORM
 };
 
 /* Static Functions */
@@ -293,16 +414,8 @@ static MV_STATUS mvWaitOnWipClear(MV_SFLASH_INFO * pFlinfo)
 
 	for (i=0; i<MV_SFLASH_MAX_WAIT_LOOP; i++)
 	{
-#if defined(CONFIG_BUFFALO_PLATFORM)
-        if ((ret = mvStatusRegGet(pFlinfo, &stat)) != MV_OK) {
-		DB(mvOsPrintf("%s INFO: Cannot get StatusReg ret %x\n", __FUNCTION__, ret);)
-#else
         if ((ret = mvStatusRegGet(pFlinfo, &stat)) != MV_OK)
-#endif
             return ret;
-	}
-	DB(mvOsPrintf("%s INFO: StatusReg %x\n", __FUNCTION__, stat);)
-
 
 		if ((stat & MV_SFLASH_STATUS_REG_WIP_MASK) == 0)
 			return MV_OK;
@@ -545,14 +658,6 @@ MV_STATUS mvSFlashInit (MV_SFLASH_INFO * pFlinfo)
     /* As default lock the SR */
     if ((ret = mvSFlashStatRegLock(pFlinfo, MV_TRUE)) != MV_OK)
         return ret;
-
-#if defined(CONFIG_BUFFALO_PLATFORM)
-    if ((ret = mvSFlashWpRegionSet(pFlinfo, MV_WP_NONE)) != MV_OK)
-        return ret;
-
-    if ((ret = mvSFlashStatRegLock(pFlinfo, MV_FALSE)) != MV_OK)
-        return ret;
-#endif
 
 	return MV_OK;
 }
@@ -1141,6 +1246,96 @@ MV_STATUS mvSFlashWpRegionSet (MV_SFLASH_INFO * pFlinfo, MV_SFLASH_WP_REGION wpR
                 return MV_BAD_PARAM;
         }
     }
+    else if (pFlinfo->manufacturerId == MV_WINBOND_MANF_ID)
+    {
+        switch (wpRegion)
+        {	
+	    case MV_WP_NONE:
+                wpMask = MV_WINBOND_STATUS_BP_NONE;
+                break;
+	    /*
+            case MV_WP_UPR_1OF128:
+                wpMask = MV_WINBOND_STATUS_BP_1_OF_128;
+                break;
+            */
+            case MV_WP_UPR_1OF64:
+                wpMask = MV_WINBOND_STATUS_BP_1_OF_64;
+                break;
+
+            case MV_WP_UPR_1OF32:
+                wpMask = MV_WINBOND_STATUS_BP_1_OF_32;
+                break;
+
+            case MV_WP_UPR_1OF16:
+                wpMask = MV_WINBOND_STATUS_BP_1_OF_16;
+                break;
+
+            case MV_WP_UPR_1OF8:
+                wpMask = MV_WINBOND_STATUS_BP_1_OF_8;
+                break;
+
+            case MV_WP_UPR_1OF4:
+                wpMask = MV_WINBOND_STATUS_BP_1_OF_4;
+                break;
+
+            case MV_WP_UPR_1OF2:
+                wpMask = MV_WINBOND_STATUS_BP_1_OF_2;
+                break;
+
+            case MV_WP_ALL:
+                wpMask = MV_WINBOND_STATUS_BP_ALL;
+                break;
+
+            default:
+                DB(mvOsPrintf("%s WARNING: Invaild parameter WP region!\n", __FUNCTION__);)
+                return MV_BAD_PARAM;
+        }
+    }
+    else if (pFlinfo->manufacturerId == MV_ESMT_MANF_ID)
+    {
+        switch (wpRegion)
+        {	
+	    case MV_WP_NONE:
+                wpMask = MV_ESMT_STATUS_BP_NONE;
+                break;
+	    /*
+            case MV_WP_UPR_1OF128:
+                wpMask = MV_WINBOND_STATUS_BP_1_OF_128;
+                break;
+            */
+            case MV_WP_UPR_1OF64:
+                wpMask = MV_ESMT_STATUS_BP_1_OF_64;
+                break;
+
+            case MV_WP_UPR_1OF32:
+                wpMask = MV_ESMT_STATUS_BP_1_OF_32;
+                break;
+
+            case MV_WP_UPR_1OF16:
+                wpMask = MV_ESMT_STATUS_BP_1_OF_16;
+                break;
+
+            case MV_WP_UPR_1OF8:
+                wpMask = MV_ESMT_STATUS_BP_1_OF_8;
+                break;
+
+            case MV_WP_UPR_1OF4:
+                wpMask = MV_ESMT_STATUS_BP_1_OF_4;
+                break;
+
+            case MV_WP_UPR_1OF2:
+                wpMask = MV_ESMT_STATUS_BP_1_OF_2;
+                break;
+
+            case MV_WP_ALL:
+                wpMask = MV_ESMT_STATUS_BP_ALL;
+                break;
+
+            default:
+                DB(mvOsPrintf("%s WARNING: Invaild parameter WP region!\n", __FUNCTION__);)
+                return MV_BAD_PARAM;
+        }
+    }
     else
     {
         DB(mvOsPrintf("%s WARNING: Invaild parameter Manufacturer ID!\n", __FUNCTION__);)
@@ -1279,6 +1474,100 @@ MV_STATUS mvSFlashWpRegionGet (MV_SFLASH_INFO * pFlinfo, MV_SFLASH_WP_REGION * p
             default:
                 DB(mvOsPrintf("%s WARNING: Unidentified WP region in h/w!\n", __FUNCTION__);)
                 return MV_BAD_VALUE;
+        }
+    }
+    else if (pFlinfo->manufacturerId == MV_WINBOND_MANF_ID)
+    {	
+        switch ((reg & MV_WINBOND_STATUS_REG_WP_MASK))
+        {	
+
+            case MV_WINBOND_STATUS_BP_NONE:
+                *pWpRegion = MV_WP_NONE;
+                break;
+	    /*
+            case MV_WP_UPR_1OF128:
+                *pWpRegion = MV_WINBOND_STATUS_BP_1_OF_128;
+                break;
+            */
+            case MV_WINBOND_STATUS_BP_1_OF_64:
+                *pWpRegion =MV_WP_UPR_1OF64;
+                break;
+
+            case MV_WINBOND_STATUS_BP_1_OF_32:
+                *pWpRegion = MV_WP_UPR_1OF32;
+                break;
+
+            case MV_WINBOND_STATUS_BP_1_OF_16:
+                *pWpRegion = MV_WP_UPR_1OF16;
+                break;
+
+            case MV_WINBOND_STATUS_BP_1_OF_8:
+                *pWpRegion = MV_WP_UPR_1OF8;
+                break;
+
+            case MV_WINBOND_STATUS_BP_1_OF_4:
+                *pWpRegion = MV_WP_UPR_1OF4;
+                break;
+
+            case MV_WP_UPR_1OF2:
+                *pWpRegion = MV_WP_UPR_1OF2; 
+                break;
+
+            case MV_WINBOND_STATUS_BP_ALL :
+	    	
+                *pWpRegion = MV_WP_ALL;
+                break;
+
+            default:
+                DB(mvOsPrintf("%s WARNING: Invaild parameter WP region!\n", __FUNCTION__);)
+                return MV_BAD_PARAM;
+        }
+    }
+    else if (pFlinfo->manufacturerId == MV_ESMT_MANF_ID)
+    {	
+        switch ((reg & MV_ESMT_STATUS_REG_WP_MASK))
+        {	
+
+            case MV_ESMT_STATUS_BP_NONE:
+                *pWpRegion = MV_WP_NONE;
+                break;
+	    /*
+            case MV_WP_UPR_1OF128:
+                *pWpRegion = MV_WINBOND_STATUS_BP_1_OF_128;
+                break;
+            */
+            case MV_ESMT_STATUS_BP_1_OF_64:
+                *pWpRegion =MV_WP_UPR_1OF64;
+                break;
+
+            case MV_ESMT_STATUS_BP_1_OF_32:
+                *pWpRegion = MV_WP_UPR_1OF32;
+                break;
+
+            case MV_ESMT_STATUS_BP_1_OF_16:
+                *pWpRegion = MV_WP_UPR_1OF16;
+                break;
+
+            case MV_ESMT_STATUS_BP_1_OF_8:
+                *pWpRegion = MV_WP_UPR_1OF8;
+                break;
+
+            case MV_ESMT_STATUS_BP_1_OF_4:
+                *pWpRegion = MV_WP_UPR_1OF4;
+                break;
+
+            case MV_WP_UPR_1OF2:
+                *pWpRegion = MV_WP_UPR_1OF2; 
+                break;
+
+            case MV_ESMT_STATUS_BP_ALL :
+	    	
+                *pWpRegion = MV_WP_ALL;
+                break;
+
+            default:
+                DB(mvOsPrintf("%s WARNING: Invaild parameter WP region!\n", __FUNCTION__);)
+                return MV_BAD_PARAM;
         }
     }
     /* Check if the chip is an SPANSION flash; then WP supports only 3 bits */

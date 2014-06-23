@@ -544,7 +544,15 @@ BuffaloLedWriteProc(struct file *filep, const char *buffer, unsigned long count,
 		led->ledCodeInfo.on_flag = 0;
 		bfGppOutRegBitNagate(led->gppPinNumber);
 
-		if (led->ledCodeInfo.code == 0) {
+		if ((code == 52) && !strncmp(led->name, "info", 4)) {
+			bfLedCodeDispStop(led);
+			led->ledCodeInfo.on_flag = 1;
+			if (!bfIsHighPriorityLedActive(led)) {
+				bfGppOutRegBitAssert(led->gppPinNumber);
+				bfDeactivateLowPriorityLed(led);
+			}
+		}
+		else if (led->ledCodeInfo.code == 0) {
 			led->ledCodeInfo.code = code;
 			if (!bfIsHighPriorityLedActive(led)) {
 				bfDeactivateLowPriorityLed(led);

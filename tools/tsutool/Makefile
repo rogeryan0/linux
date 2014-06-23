@@ -15,7 +15,7 @@ else
 CC := arm-mv5sft-linux-gnueabi-gcc
 LD := arm-mv5sft-linux-gnueabi-ld
 endif
-CFLAGS  := $(EXTRA_CFLAGS) -static
+CFLAGS  := $(EXTRA_CFLAGS)
 CFLAGS  += -I$(KSRC)/arch/arm/plat-feroceon/mv_drivers_lsp/mv_tsu/
 
 SRCS := mv_tsu_tool.c
@@ -25,6 +25,7 @@ TARGET := mvTsuTool
 
 default :
 	$(CC) $(CFLAGS) $(SRCS) -o $(TARGET)
+	$(STRIP) $(TARGET)
 
 clean:
 	rm -f $(TARGET) $(OBJS)

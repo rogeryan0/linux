@@ -6218,8 +6218,14 @@ SK_EVPARA  Param)  /* event-parameter            */
 			if ((Stat == SK_LMODE_STAT_AUTOHALF) ||
 			    (Stat == SK_LMODE_STAT_HALF)) {
 				printk("    duplex mode:     half\n");
+#if defined(CONFIG_BUFFALO_PLATFORM)
+				flag = 0;
+#endif
 			} else {
 				printk("    duplex mode:     full\n");
+#if defined(CONFIG_BUFFALO_PLATFORM)
+				flag = 1;
+#endif
 			}
 
 			Stat = pAC->GIni.GP[FromPort].PFlowCtrlStatus;

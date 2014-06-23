@@ -27,10 +27,6 @@
 #define DEV_REG		(*(volatile unsigned int *)(INTER_REGS_BASE + 0x40000))
 #define CLK_REG         (*(volatile unsigned int *)(INTER_REGS_BASE + 0x2011c))
 
-#if defined(CONFIG_BUFFALO_PLATFORM)
-extern int bfIsSerialConsoleEnable(void);
-#endif
-
 /*
  * This does not append a newline
  */
@@ -38,11 +34,6 @@ static void putstr(const char *s)
 {
 	unsigned int model;
 	
-#if defined(CONFIG_BUFFALO_PLATFORM)
-	/* if (!bfIsSerialConsoleEnable()) */
-	/* 	return; */
-#endif
-
 	/* Get dev ID, make sure pex clk is on */
 	if((CLK_REG & 0x4) == 0)
 	{

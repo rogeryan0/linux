@@ -55,24 +55,30 @@ all : Makefile $(TARGETS)
 	@for subdir in $(SUBDIRS); do \
                 (cd $$subdir && $(MAKE) $@) || exit 1; \
         done
-	
+
 mv_shell : mv_shell.c 
-	$(CC) $(CFLAGS) -static mv_shell.c -o mv_shell
+	$(CC) $(CFLAGS) mv_shell.c -o mv_shell
+	$(STRIP) mv_shell
 
 mv_eth_tool: mv_eth_tool.c
-	$(CC) $(CFLAGS) -static mv_eth_tool.c -o mv_eth_tool
+	$(CC) $(CFLAGS) mv_eth_tool.c -o mv_eth_tool
+	$(STRIP) mv_eth_tool
 
 mv_set_coal : mv_set_coal.c
 	$(CC) $(CFLAGS) mv_set_coal.c -o mv_set_coal
+	$(STRIP) mv_set_coal
 
 mv_voip_tool: mv_voip_tool.c
-	$(CC) $(CFLAGS) -static mv_voip_tool.c -o mv_voip_tool
+	$(CC) $(CFLAGS) mv_voip_tool.c -o mv_voip_tool
+	$(STRIP) mv_voip_tool
 
 mv_cesa_tool:mv_cesa_tool.c
-	$(CC) $(CFLAGS) -static mv_cesa_tool.c -o mv_cesa_tool
+	$(CC) $(CFLAGS) mv_cesa_tool.c -o mv_cesa_tool
+	$(STRIP) mv_cesa_tool
 
 testusb: testusb.c
-	$(CC) $(CFLAGS) -static testusb.c -o testusb -lpthread
+	$(CC) $(CFLAGS) testusb.c -o testusb -lpthread
+	$(STRIP) testusb
 
 install:$(TARGETS)
 	mkdir -p -m 777 ${INSTALL_DIR}
